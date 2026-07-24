@@ -1,36 +1,55 @@
 # ATHERE Mesh
 
-ATHERE Mesh is a decentralized AI operating model for coordinating specialized agents across a shared language substrate.
+ATHERE Mesh is a decentralized AI operating model where specialized agents collaborate through a shared language substrate, coordinated by TITAN and grounded in ATHERE.
 
-## Concept
+## The Story
 
-Instead of building intelligence as one giant monolithic model, ATHERE Mesh distributes reasoning across a coordinated mesh of specialized roles:
+The future of AI will not be one giant chatbot pretending to be the whole world. The future will be a mesh: a network of agents, each with a role, each with a reason to exist, each moving through a shared protocol of intent, evidence, state, decision, and handoff.
 
-- ATHERE: the language substrate and semantic kernel
-- TITAN: the command and orchestration spine
-- Mesh agents: role-based specialists for validation, execution, routing, resource coordination, and oversight
+That is the ATHERE Mesh thesis.
 
-## Why This Matters
+- ATHERE is the language substrate: the semantic layer that gives the mesh a common way to think and communicate.
+- TITAN is the command spine: the orchestration layer that frames the mission and keeps the system aligned.
+- The agents are the operators: specialists that validate, coordinate, guard, execute, and adapt.
 
-This architecture is built for the next era of AI systems: modular, secure, resilient, and decentralized. The mesh can interpret intent, move state through structured handoffs, and keep multiple specialized agents aligned around a common mission.
+## Why It’s Different
+
+Most AI systems are built like single-brain monoliths: one model, one prompt, one fragile point of failure.
+
+ATHERE Mesh is built like infrastructure.
+
+It is modular, role-bound, resilient, and designed to keep intelligence distributed rather than centralized. The system improves because each node contributes a perspective, not just more tokens.
+
+## Architecture at a Glance
+
+ATHERE Mesh flows like this:
+
+1. A mission enters the mesh.
+2. TITAN frames the objective and routes the task.
+3. ATHERE converts the request into structured packets of meaning.
+4. Specialized agents execute, validate, and report back.
+5. The mesh adapts through handoff, refinement, and oversight.
 
 ## Repository Purpose
 
-This repository serves as the public-facing concept package for ATHERE Mesh, including:
+This repository is a launch-ready concept package for ATHERE Mesh and contains:
 
-- architecture notes
+- the core architecture story
 - a hackathon-ready pitch
-- a workflow overview
-- agent role definitions
-- an early-stage paper narrative
+- workflow and role definitions
+- the foundation of the paper narrative for the competition
 
-## Key Documents
+## Documentation
 
 - [docs/HACKATHON_PITCH.md](docs/HACKATHON_PITCH.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/AGENTS.md](docs/AGENTS.md)
 - [docs/WORKFLOW.md](docs/WORKFLOW.md)
 - [docs/ATHERE_MESH_PAPER.md](docs/ATHERE_MESH_PAPER.md)
+
+## One-Line Hook
+
+ATHERE gives the language. TITAN gives the command. The mesh gives the intelligence.
 
 ## Status
 
