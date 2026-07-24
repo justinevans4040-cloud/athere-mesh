@@ -1,0 +1,16 @@
+name: Docs Check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate repository docs
+        run: |
+          test -f README.md
+          test -f docs/HACKATHON_PITCH.md
+          test -f docs/ARCHITECTURE.md
