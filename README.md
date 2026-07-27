@@ -18,7 +18,10 @@ Published entry: [AI Needs to Shut Up and Get to Work](https://hackernoon.com/ai
 |---|---|---|
 | Brochure v0 (early Jul 2026) | Docs-only concept scaffold | [archive/iterations/2026-07-brochure-v0/](archive/iterations/2026-07-brochure-v0/SNAPSHOT.md) |
 | Direction align (2026-07-27) | Brand + Redis RAM share + Titan recreate + Resonance Bus | This README + [docs/current/](docs/current/) |
-| Next | Runnable Titan slices 0–3 + demo videos | [docs/current/PROGRESS.md](docs/current/PROGRESS.md) · [evidence/demos/](evidence/demos/README.md) |
+| Slices 0–3 + demos (2026-07-27) | Runnable fabric → bus → UI → durable/policy + MP4s | [PROGRESS](docs/current/PROGRESS.md) · [demos](evidence/demos/README.md) |
+| Contest pack (2026-07-27) | Judge one-pager, &lt;10 min script, HackerNoon build draft | [JUDGE_PACK](docs/current/JUDGE_PACK.md) |
+
+**Start here (judges):** [docs/current/JUDGE_PACK.md](docs/current/JUDGE_PACK.md)
 
 **Nothing is deleted.** Prior intros and explanations are frozen under `archive/iterations/`. Live docs below are rewritten to match CURRENT direction and link back to history.
 
@@ -46,6 +49,9 @@ Agents remain role-bound specialists (validation, resources, monitoring, steward
 - [docs/current/TITAN.md](docs/current/TITAN.md)
 - [docs/current/PROGRESS.md](docs/current/PROGRESS.md)
 - [docs/current/ACTION_LOG.md](docs/current/ACTION_LOG.md)
+- [docs/current/JUDGE_PACK.md](docs/current/JUDGE_PACK.md)
+- [docs/current/CONTEST_DEMO_SCRIPT.md](docs/current/CONTEST_DEMO_SCRIPT.md)
+- [docs/current/HACKERNOON_BUILD_POST_DRAFT.md](docs/current/HACKERNOON_BUILD_POST_DRAFT.md)
 
 ### Rewritten living docs (history preserved in archive)
 

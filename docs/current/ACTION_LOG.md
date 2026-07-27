@@ -84,3 +84,14 @@ Align public GitHub with recreate direction (Athere name line, Redis RAM share, 
 2. Recorded Playwright → ffmpeg MP4 demos for Slices 0–3 with on-page explanations.
 3. Published under `evidence/demos/` with README index (nothing deleted from prior evidence).
 
+## 2026-07-27 — Slice 4 Contest package
+
+**Actor:** Cursor parent agent (no subagents)
+
+### Actions
+
+1. Added `docs/current/JUDGE_PACK.md` (one-page reviewer index).
+2. Added `docs/current/CONTEST_DEMO_SCRIPT.md` (timed &lt;10 minute live/video script).
+3. Added `docs/current/HACKERNOON_BUILD_POST_DRAFT.md` (paste-ready Round 1 build update; not auto-published).
+4. Linked pack from root README + PROGRESS; archived iteration snapshot (nothing deleted).
+
