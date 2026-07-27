@@ -1,110 +1,126 @@
 Athere Mesh: From Thesis to Titan — Redis Fabric, Resonance Bus, and Proof
 
-People keep asking where they can go to find the AI they were promised. Not another chatbot that says “done.” Not a rented brain with a monthly meter. They want to know if there is a *there*.
+I already wrote the thesis: [AI Needs to Shut Up and Get to Work][thesis].
+
+This is the part where I stop arguing about it and show the machine.
+
+People keep asking if there’s somewhere to go for the AI they were promised. Not another chat window that says “done” and leaves you holding nothing. Not a rented brain on a meter.
+
+Is there a *there*?
 
 There is. It’s called **Athere**.
 
-This is the build update to my Decentralize AI / HackerNoon entry, [AI Needs to Shut Up and Get to Work][thesis]. Same thesis. More metal on the table.
+Titan is the product surface I’m building for that. GitHub is the public trail so nobody has to take my word for it: [athere-mesh][repo].
 
-## The problem with “agent progress”
+## Why I’m mad at “agent progress”
 
-Most agent stacks still communicate like interns writing novels. Long paragraphs. Soft status. No artifact. You can’t audit a vibes-based handoff.
+Most agent stacks still talk like interns. Long paragraphs. Soft status. No file. No hash. You’re supposed to feel progress.
 
-Athere Mesh takes the opposite bet:
+I don’t buy that.
 
-1. **Shared edge RAM** for hot state (Redis over Tailscale — phones included).  
-2. **Typed mission signals** instead of essay chat (Resonance Bus).  
-3. **Proof-over-“done”** — COMS says DONE only with evidence.  
-4. **Tokenless-default** for ordinary mesh work; external/rented models are deny-by-default until unlocked.
+If COMS says DONE, I want evidence. A path. A SHA-256. Something I can reopen tomorrow when the chat scroll is gone.
 
-Public trail (nothing deleted; brochure v0 archived): [athere-mesh on GitHub][repo].
+So Athere Mesh is built around a few hard bets:
 
-## What we refused to ship
+- Hot state lives in shared edge RAM — Redis over Tailscale, phones included.
+- Missions talk in typed signals, not essays. That’s the Resonance Bus.
+- DONE without proof isn’t DONE.
+- Ordinary mesh work is tokenless-default. External / rented models stay deny-by-default until I unlock them on purpose.
 
-- A chatbot that narrates completion without a proof hash.  
-- A “restore” of a wiped/rewrite-damaged Titan tree dressed up as progress.  
-- Founder persona reconstruction without provenance. Hold stays hold.
+## What I refused to call progress
 
-## Slice walkthrough (what actually runs)
+I wiped and fought a Titan rewrite that drifted. I am not shipping a fake “restore” as if that was the win.
 
-Live operator recreate lives on Lenovo Titan; GitHub is the **traceable public record**. Judge one-pager: [JUDGE_PACK][judge]. Timed demo script (&lt;10 min): [CONTEST_DEMO_SCRIPT][demo-script]. Screen recordings: [evidence/demos][demos].
+I’m also not reconstructing founder personas out of thin air. Missing source means blocked. Hold stays hold.
 
-### Slice 0 — Redis RAM fabric
+## What actually runs
 
-Redis is the mesh **hot memory** layer — not the durable archive. Same client contract for Lenovo seed and phone contributors.
+I rebuilt Titan on the Lenovo. The public repo is the record. Judges can start here:
 
-**Live now:** Lenovo Titan is wired to **Samsung S24 Termux Redis** over Tailscale (`100.83.225.17:6379`). Pool API reports contributor `justins-s24-termux`, healthy, 512MB `allkeys-lru`. Probe set/get returned live values.
+- One-pager: [JUDGE_PACK][judge]
+- Timed walkthrough under 10 minutes: [CONTEST_DEMO_SCRIPT][demo-script]
+- Screen recordings: [evidence/demos][demos]
 
-- Direction: [REDIS_RAM_POOL.md][redis-doc]  
-- Demo video: [slice0 MP4][demo0]  
-- Smoke JSON: [smoke-redis-pool][smoke0]
+### Slice 0 — Redis as hot memory
+
+Redis is the mesh RAM layer. Not the archive. Same client contract whether it’s the Lenovo seed or a phone joining in.
+
+Live right now: Lenovo Titan talks to Redis on my Samsung S24 in Termux over Tailscale (`100.83.225.17:6379`). The pool API shows contributor `justins-s24-termux`, healthy, 512MB `allkeys-lru`. I poked set/get. Real values came back.
+
+- Notes: [REDIS_RAM_POOL.md][redis-doc]
+- Video: [slice0][demo0]
+- Smoke: [smoke-redis-pool][smoke0]
 
 ### Slice 1 — Resonance Bus
 
-Missions emit typed signals: `accepted → running → completed`, with a SHA-256 proof on completion. Not an essay thread.
+A mission emits signals: accepted → running → completed. Completion carries a SHA-256 proof. That’s it. No novel.
 
-- Spec/direction: [RESONANCE_BUS.md][bus-doc]  
-- Demo: [slice1 MP4][demo1]  
+- Notes: [RESONANCE_BUS.md][bus-doc]
+- Video: [slice1][demo1]
 - Smoke: [smoke-resonance-bus][smoke1]
 
-### Slice 2 — Mission command UI
+### Slice 2 — Mission command
 
-Titan’s operator surface: enter intent → Start mission → causal river → COMS **DONE** + proof path. You watch work; you don’t negotiate paragraphs.
+This is the Titan UI I actually use. Type intent. Hit Start mission. Watch the causal river. When it’s done you get COMS DONE and a proof path.
 
-- Direction: [TITAN.md][titan-doc]  
-- Demo: [slice2 MP4][demo2]  
+You’re watching work. You’re not negotiating paragraphs with a chatbot.
+
+- Notes: [TITAN.md][titan-doc]
+- Video: [slice2][demo2]
 - Smoke: [smoke-mission-ui][smoke2]
 
 ### Slice 3 — Durable + policy
 
-Missions persist to a file durable store with an audit log. Policy flags:
+Missions land in a file durable store with an audit log. Policy is blunt:
 
-- **tokenless-default** (local mesh doesn’t require cloud API keys)  
-- **external models deny-by-default** (`ALLOW_EXTERNAL_MODELS=1` to unlock)
+- tokenless-default — local mesh doesn’t need cloud API keys to move
+- external models deny-by-default — flip `ALLOW_EXTERNAL_MODELS=1` if you mean it
 
-Postgres remains the long-term control-plane store; Lenovo Slice 3 uses an approved file durable stand-in.
+Postgres is still the long-term control plane. Slice 3 on Lenovo uses a file durable stand-in on purpose.
 
-- Demo: [slice3 MP4][demo3]  
+- Video: [slice3][demo3]
 - Smoke: [smoke-durable-policy][smoke3]
 
-### Bonus — Nosana GPU smoke (paid credits, then stop)
+### Nosana — short GPU smoke, then I killed it
 
-After funding Nosana credits, we ran a **short** PyTorch Jupyter deployment on an NVIDIA 3060 (Simple strategy, 1 replica, 1h timeout — not Infinite). Notebook proof:
+Hackathon credits showed $0. I put real money on the account (~$10), spun a Simple PyTorch Jupyter job on an NVIDIA 3060, one replica, one-hour timeout — not Infinite — and got:
 
 ```text
 athere-nosana-smoke Linux-6.17.0-41-generic-x86_64-with-glibc2.35
 ```
 
-Deployment was **stopped immediately** after proof to conserve credits.
+Then I stopped the deployment. Credits are for work, not overnight burn.
 
-- Evidence folder: [evidence/nosana][nosana]  
-- Screenshot + JSON: [nosana-smoke-20260727.json][nosana-json]
+- Folder: [evidence/nosana][nosana]
+- JSON: [nosana-smoke-20260727.json][nosana-json]
+- Screenshot: [nosana-jupyter-smoke][nosana-shot]
 
-## Why this matches Decentralize AI
+## Contest fit (plain English)
 
-| Contest pressure | Athere answer | Source |
-|---|---|---|
-| Distributed / edge compute | Tailscale Redis contributor on S24 + Nosana GPU smoke | [redis-doc], [nosana] |
-| Open coordination (not monopoly assistant) | Resonance Bus typed signals + proof | [bus-doc], [smoke1] |
-| Verifiable progress | Smoke JSON, MP4 demos, iteration archive | [progress], [demos], [archive] |
-| User-owned / local-first | Tokenless-default; external deny-by-default | [smoke3], [direction] |
+Decentralize AI wants open, user-owned infrastructure — not another monopoly assistant. Contest home: [decentralizeai.tech][contest]. Announcement: [HackerNoon contest post][contest-hn].
 
-Contest home: [decentralizeai.tech][contest]. Prize framing: [hackernoon contest announcement][contest-hn].
+Here’s how what I built maps:
 
-## What’s next
+- Edge / distributed compute → S24 Redis over Tailscale + Nosana GPU smoke ([redis-doc], [nosana])
+- Open coordination → Resonance Bus typed signals + proof ([bus-doc], [smoke1])
+- Verifiable progress → smoke JSON, demos, iteration archive ([progress], [demos], [archive])
+- Local-first → tokenless-default, external deny-by-default ([smoke3], [direction])
 
-- More Nosana workloads only when they earn their burn (smoke already proved the path).  
-- Postgres durable on Ubuntu control plane.  
-- Optional Arweave permanence for proofs when that lane is active.  
-- More Tailscale phone nodes on the same Redis client contract / cluster path.
+## Next
 
-Athere is the destination. Titan commands the mission. Redis shares the RAM. The Resonance Bus carries proof — not essays.
+I’ll burn more Nosana when the workload earns it. Smoke already proved the path.
+
+Postgres durable on the Ubuntu control plane. Arweave for proofs when that lane is active. More phones on the same Redis contract if they stay healthy.
+
+Athere is the place. Titan runs the mission. Redis shares the RAM. The bus carries proof.
+
+If an agent tells you it’s done and can’t show you a hash, it lied.
 
 ---
 
-## Sources (complete)
+## Sources
 
-Every material claim above maps to a public URL:
+I got bounced once for thin sourcing. Everything above points at a public URL:
 
 1. [thesis]: https://hackernoon.com/ai-needs-to-shut-up-and-get-to-work  
 2. [repo]: https://github.com/justinevans4040-cloud/athere-mesh  
