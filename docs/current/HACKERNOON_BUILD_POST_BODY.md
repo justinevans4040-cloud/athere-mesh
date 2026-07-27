@@ -31,6 +31,8 @@ So Athere Mesh is built around a few hard bets:
 
 I didn’t like the flow. I didn’t like the drift. So I redesign.
 
+Richard Feynman wrote it cleaner than I ever will: *“For a successful technology, reality must take precedence over public relations, for Nature cannot be fooled.”*
+
 That’s the deal for anyone building in public on this contest: we ship what we can prove. I’m not going to slap a “done” sticker on something that isn’t true — not for judges, not for readers, not for me. If the source isn’t there, I don’t invent it. If the proof isn’t there, COMS doesn’t get to say DONE.
 
 We’re all in this mess together. Decentralize AI only works if the receipts are real. So I’m keeping the bar honest and inviting anyone reading this to hold me to it — click the demos, open the smoke JSON, break it if you can.
@@ -118,6 +120,8 @@ Athere is the place. Titan runs the mission. Redis shares the RAM. The bus carri
 
 If an agent tells you it’s done and can’t show you a hash, it lied.
 
+Linus Torvalds said it best: *“Talk is cheap. Show me the code.”*
+
 ---
 
 ## Sources
@@ -149,5 +153,7 @@ I got bounced once for thin sourcing. Paste these into HackerNoon’s Sources fi
 23. https://decentralizeai.tech/
 24. https://hackernoon.com/compete-for-over-$51k-in-the-decentralize-ai-hackathon-by-hackernoon-nosana-arweave-and-mexc
 25. https://deploy.nosana.com/
+26. https://www.nasa.gov/wp-content/uploads/static/history/rogersrep/v2appf.htm
+27. https://lkml.org/lkml/2000/8/25/132
 
 **Tags (hash them in HackerNoon):** `#decentralize-ai` `#decentralize-ai-hackathon` `#gpu-marketplace` `#nosana` `#arweave` `#open-source` `#ai` `#redis` `#tailscale`
