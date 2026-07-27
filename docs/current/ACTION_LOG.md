@@ -33,3 +33,17 @@ Align public GitHub with recreate direction (Athere name line, Redis RAM share, 
 3. Embedded Redis via `redis-memory-server` for smoke (same client contract).
 4. `scripts/smoke-redis-pool.ps1` ? **SMOKE_REDIS_POOL=PASS** (evidence copied under `evidence/`).
 
+
+## 2026-07-27 — Slice 1 Resonance Bus
+
+**Actor:** Cursor parent agent (no subagents)  
+**Tree:** `C:\Users\justi\WORKSPACE\Internal_Systems\athere-titan`
+
+### Actions
+
+1. Added typed Resonance Bus on Redis lists (`athere:bus:signals` / per-mission keys).
+2. APIs: `POST /api/missions` (run deterministic worker), `GET /api/missions/:id`, `GET|POST /api/bus/signals`.
+3. Proof artifacts under `workspace/proofs/mission-<id>.json` with SHA-256 on completed signal.
+4. `scripts/smoke-resonance-bus.ps1` ? **SMOKE_RESONANCE_BUS=PASS**; typecheck pass.
+5. Evidence + `archive/iterations/2026-07-27-slice1-resonance-bus/` added (nothing deleted).
+

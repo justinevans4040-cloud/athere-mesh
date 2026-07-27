@@ -1,0 +1,61 @@
+﻿{
+    "at":  "2026-07-27T10:36:21.1764791-07:00",
+    "health":  {
+                   "ok":  true,
+                   "product":  "athere-titan",
+                   "mode":  "recreate",
+                   "brand":  "There is a there. It is called Athere.",
+                   "fabric":  "embedded",
+                   "slices":  [
+                                  "fabric-ram-pool",
+                                  "resonance-bus"
+                              ]
+               },
+    "ok":  true,
+    "listedCount":  3,
+    "created":  {
+                    "ok":  true,
+                    "mission":  {
+                                    "id":  "a21af348-5c88-442d-8505-1d2393c600a1",
+                                    "intent":  "Slice 1 Resonance Bus smoke",
+                                    "status":  "completed",
+                                    "createdAt":  "2026-07-27T17:36:21.136Z",
+                                    "updatedAt":  "2026-07-27T17:36:21.143Z",
+                                    "proofPath":  "workspace/proofs/mission-a21af348-5c88-442d-8505-1d2393c600a1.json"
+                                },
+                    "signals":  [
+                                    {
+                                        "id":  "b8eb9c37-81f4-499b-9c9a-fc690ee6020d",
+                                        "missionId":  "a21af348-5c88-442d-8505-1d2393c600a1",
+                                        "type":  "accepted",
+                                        "at":  "2026-07-27T17:36:21.136Z",
+                                        "detail":  "mission accepted by Titan",
+                                        "agent":  "titan"
+                                    },
+                                    {
+                                        "id":  "1e538721-8209-44a8-ae3c-2cabe27eb35f",
+                                        "missionId":  "a21af348-5c88-442d-8505-1d2393c600a1",
+                                        "type":  "running",
+                                        "at":  "2026-07-27T17:36:21.140Z",
+                                        "detail":  "deterministic worker started",
+                                        "agent":  "worker-stub"
+                                    },
+                                    {
+                                        "id":  "323e6979-9b1c-4e4b-8637-3a1ebb0965d5",
+                                        "missionId":  "a21af348-5c88-442d-8505-1d2393c600a1",
+                                        "type":  "completed",
+                                        "at":  "2026-07-27T17:36:21.142Z",
+                                        "detail":  "deterministic worker completed with proof",
+                                        "agent":  "worker-stub",
+                                        "proof":  {
+                                                      "path":  "workspace/proofs/mission-a21af348-5c88-442d-8505-1d2393c600a1.json",
+                                                      "sha256":  "337346c01ac6af5ee906c7ba1c11b69c8acf3b20dd04b360e5fb7b57a4859874"
+                                                  }
+                                    }
+                                ],
+                    "proofPath":  "workspace/proofs/mission-a21af348-5c88-442d-8505-1d2393c600a1.json",
+                    "proofSha256":  "337346c01ac6af5ee906c7ba1c11b69c8acf3b20dd04b360e5fb7b57a4859874",
+                    "coms":  "DONE"
+                },
+    "proofAbs":  "C:\\Users\\justi\\WORKSPACE\\Internal_Systems\\athere-titan\\workspace\\proofs\\mission-a21af348-5c88-442d-8505-1d2393c600a1.json"
+}
