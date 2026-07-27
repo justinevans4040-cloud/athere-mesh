@@ -27,11 +27,13 @@ So Athere Mesh is built around a few hard bets:
 - DONE without proof isn’t DONE.
 - Ordinary mesh work is tokenless-default. External / rented models stay deny-by-default until I unlock them on purpose.
 
-## What I refused to call progress
+## Redesign, not cosplay
 
-I wiped and fought a Titan rewrite that drifted. I am not shipping a fake “restore” as if that was the win.
+I didn’t like the flow. I didn’t like the drift. So I redesign.
 
-I’m also not reconstructing founder personas out of thin air. Missing source means blocked. Hold stays hold.
+That’s the deal for anyone building in public on this contest: we ship what we can prove. I’m not going to slap a “done” sticker on something that isn’t true — not for judges, not for readers, not for me. If the source isn’t there, I don’t invent it. If the proof isn’t there, COMS doesn’t get to say DONE.
+
+We’re all in this mess together. Decentralize AI only works if the receipts are real. So I’m keeping the bar honest and inviting anyone reading this to hold me to it — click the demos, open the smoke JSON, break it if you can.
 
 ## What actually runs
 
