@@ -10,6 +10,7 @@ Traceable public work on [athere-mesh](https://github.com/justinevans4040-cloud/
 | 2026-07-27 | Slice 0 | Redis RAM fabric API + smoke PASS (embedded seed on Lenovo; Docker compose ready) | [evidence/smoke-redis-pool-20260727-103136.json](../../evidence/smoke-redis-pool-20260727-103136.json) |
 | 2026-07-27 | Slice 1 | Resonance Bus + deterministic mission worker + proof; smoke PASS | [archive/iterations/2026-07-27-slice1-resonance-bus/](../../archive/iterations/2026-07-27-slice1-resonance-bus/SNAPSHOT.md) · [evidence/smoke-resonance-bus-20260727-103621.json](../../evidence/smoke-resonance-bus-20260727-103621.json) |
 | 2026-07-27 | Slice 2 | Mission command UI (`/` start → causal river → DONE + proof); smoke PASS | [archive/iterations/2026-07-27-slice2-mission-ui/](../../archive/iterations/2026-07-27-slice2-mission-ui/SNAPSHOT.md) · [evidence/smoke-mission-ui-20260727-122848.json](../../evidence/smoke-mission-ui-20260727-122848.json) |
-| TBD | Slice 3+ | Durable Postgres + policy flags; contest evidence pack | pending |
+| 2026-07-27 | Slice 3 | Durable file store + tokenless + external deny-by-default; smoke PASS | [archive/iterations/2026-07-27-slice3-durable-policy/](../../archive/iterations/2026-07-27-slice3-durable-policy/SNAPSHOT.md) · [evidence/smoke-durable-policy-20260727-130214.json](../../evidence/smoke-durable-policy-20260727-130214.json) |
+| TBD | Slice 4 | Contest evidence pack / HackerNoon build post | pending |
 
 **Rule:** each milestone adds a new dated folder under `archive/iterations/`. Prior folders are never deleted.

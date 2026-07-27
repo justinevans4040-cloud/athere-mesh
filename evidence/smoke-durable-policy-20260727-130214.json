@@ -1,0 +1,124 @@
+﻿{
+    "at":  "2026-07-27T13:02:16.3881778-07:00",
+    "health":  {
+                   "ok":  true,
+                   "product":  "athere-titan",
+                   "mode":  "recreate",
+                   "brand":  "There is a there. It is called Athere.",
+                   "fabric":  "embedded",
+                   "durable":  {
+                                   "root":  "C:\\Users\\justi\\WORKSPACE\\Internal_Systems\\athere-titan\\workspace\\durable\\smoke-20260727-130214",
+                                   "backend":  "filesystem"
+                               },
+                   "policy":  {
+                                  "tokenlessDefault":  true,
+                                  "externalModels":  "deny-by-default"
+                              },
+                   "slices":  [
+                                  "fabric-ram-pool",
+                                  "resonance-bus",
+                                  "mission-command-ui",
+                                  "durable-policy"
+                              ],
+                   "ui":  "/"
+               },
+    "ok":  true,
+    "durableCount":  1,
+    "missionFile":  "C:\\Users\\justi\\WORKSPACE\\Internal_Systems\\athere-titan\\workspace\\durable\\smoke-20260727-130214\\missions\\22aa2b93-35fa-40da-aec8-8984495d054e.json",
+    "created":  {
+                    "ok":  true,
+                    "mission":  {
+                                    "id":  "22aa2b93-35fa-40da-aec8-8984495d054e",
+                                    "intent":  "Slice 3 durable policy smoke",
+                                    "status":  "completed",
+                                    "createdAt":  "2026-07-27T20:02:16.351Z",
+                                    "updatedAt":  "2026-07-27T20:02:16.355Z",
+                                    "proofPath":  "workspace/proofs/mission-22aa2b93-35fa-40da-aec8-8984495d054e.json",
+                                    "proofSha256":  "d80b10fb10cb9a0c60713e04f6a4a19a22f427b117cff2c438fe1c4bcd6db99b",
+                                    "signals":  [
+                                                    {
+                                                        "id":  "55eaaa94-eef6-4610-8b5c-8b23391dde2a",
+                                                        "missionId":  "22aa2b93-35fa-40da-aec8-8984495d054e",
+                                                        "type":  "accepted",
+                                                        "at":  "2026-07-27T20:02:16.351Z",
+                                                        "detail":  "mission accepted by Titan",
+                                                        "agent":  "titan"
+                                                    },
+                                                    {
+                                                        "id":  "74da40ee-00a5-4eec-97d9-5f5f806fe2b3",
+                                                        "missionId":  "22aa2b93-35fa-40da-aec8-8984495d054e",
+                                                        "type":  "running",
+                                                        "at":  "2026-07-27T20:02:16.352Z",
+                                                        "detail":  "deterministic worker started",
+                                                        "agent":  "worker-stub"
+                                                    },
+                                                    {
+                                                        "id":  "94cee964-1a27-4711-9eb7-420821a901e5",
+                                                        "missionId":  "22aa2b93-35fa-40da-aec8-8984495d054e",
+                                                        "type":  "completed",
+                                                        "at":  "2026-07-27T20:02:16.354Z",
+                                                        "detail":  "deterministic worker completed with proof",
+                                                        "agent":  "worker-stub",
+                                                        "proof":  {
+                                                                      "path":  "workspace/proofs/mission-22aa2b93-35fa-40da-aec8-8984495d054e.json",
+                                                                      "sha256":  "d80b10fb10cb9a0c60713e04f6a4a19a22f427b117cff2c438fe1c4bcd6db99b"
+                                                                  }
+                                                    }
+                                                ],
+                                    "coms":  "DONE",
+                                    "durableAt":  "2026-07-27T20:02:16.355Z"
+                                },
+                    "signals":  [
+                                    {
+                                        "id":  "55eaaa94-eef6-4610-8b5c-8b23391dde2a",
+                                        "missionId":  "22aa2b93-35fa-40da-aec8-8984495d054e",
+                                        "type":  "accepted",
+                                        "at":  "2026-07-27T20:02:16.351Z",
+                                        "detail":  "mission accepted by Titan",
+                                        "agent":  "titan"
+                                    },
+                                    {
+                                        "id":  "74da40ee-00a5-4eec-97d9-5f5f806fe2b3",
+                                        "missionId":  "22aa2b93-35fa-40da-aec8-8984495d054e",
+                                        "type":  "running",
+                                        "at":  "2026-07-27T20:02:16.352Z",
+                                        "detail":  "deterministic worker started",
+                                        "agent":  "worker-stub"
+                                    },
+                                    {
+                                        "id":  "94cee964-1a27-4711-9eb7-420821a901e5",
+                                        "missionId":  "22aa2b93-35fa-40da-aec8-8984495d054e",
+                                        "type":  "completed",
+                                        "at":  "2026-07-27T20:02:16.354Z",
+                                        "detail":  "deterministic worker completed with proof",
+                                        "agent":  "worker-stub",
+                                        "proof":  {
+                                                      "path":  "workspace/proofs/mission-22aa2b93-35fa-40da-aec8-8984495d054e.json",
+                                                      "sha256":  "d80b10fb10cb9a0c60713e04f6a4a19a22f427b117cff2c438fe1c4bcd6db99b"
+                                                  }
+                                    }
+                                ],
+                    "proofPath":  "workspace/proofs/mission-22aa2b93-35fa-40da-aec8-8984495d054e.json",
+                    "proofSha256":  "d80b10fb10cb9a0c60713e04f6a4a19a22f427b117cff2c438fe1c4bcd6db99b",
+                    "coms":  "DONE",
+                    "durable":  {
+                                    "root":  "C:\\Users\\justi\\WORKSPACE\\Internal_Systems\\athere-titan\\workspace\\durable\\smoke-20260727-130214",
+                                    "saved":  true
+                                },
+                    "policy":  {
+                                   "tokenlessDefault":  true,
+                                   "externalModels":  "deny-by-default",
+                                   "allowExternalModelsEnv":  false,
+                                   "notes":  [
+                                                 "Local mesh runs tokenless by default (no cloud API key required).",
+                                                 "External/rented models are deny-by-default until ALLOW_EXTERNAL_MODELS=1.",
+                                                 "Postgres remains the long-term durable target; Lenovo uses file durable store for Slice 3."
+                                             ]
+                               }
+                },
+    "auditKinds":  [
+                       "system.boot",
+                       "policy.denied",
+                       "mission.completed"
+                   ]
+}

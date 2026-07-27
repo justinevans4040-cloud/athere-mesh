@@ -1,6 +1,6 @@
 # Titan — CURRENT (2026-07-27)
 
-**Status label:** CURRENT — recreate through Slice 2  
+**Status label:** CURRENT — recreate through Slice 3  
 **Not:** a restored copy of the wiped/rewrite-damaged Lenovo tree
 
 ## Role
@@ -11,12 +11,15 @@ Titan is the operator-facing **mission command** surface for Athere Mesh:
 - Watch Resonance Bus signals
 - Show Redis RAM pool health
 - Surface proof artifacts
+- Durable mission/audit + mesh policy
 
 ## Live now (Lenovo recreate)
 
 - API + UI: `corepack pnpm run dev:api` → `http://127.0.0.1:5050/`
-- Slices: fabric-ram-pool, resonance-bus, mission-command-ui
-- Smokes: `smoke:redis`, `smoke:bus`, `smoke:ui`
+- Slices: fabric-ram-pool, resonance-bus, mission-command-ui, durable-policy
+- Smokes: `smoke:redis`, `smoke:bus`, `smoke:ui`, `smoke:durable`
+- Policy: tokenless-default; external models deny-by-default
+- Durable: `workspace/durable/` (Postgres later on Ubuntu)
 
 ## Recreate principles
 

@@ -60,3 +60,17 @@ Align public GitHub with recreate direction (Athere name line, Redis RAM share, 
 4. `scripts/smoke-mission-ui.ps1` → **SMOKE_MISSION_UI=PASS**; `@athere/api-server` typecheck pass.
 5. Evidence + `archive/iterations/2026-07-27-slice2-mission-ui/` added (nothing deleted).
 
+## 2026-07-27 — Slice 3 Durable + Policy
+
+**Actor:** Cursor parent agent (no subagents)  
+**Tree:** `C:\Users\justi\WORKSPACE\Internal_Systems\athere-titan`
+
+### Actions
+
+1. Added file durable store under `workspace/durable/` (missions + `audit.jsonl`); Postgres deferred to Ubuntu/control plane.
+2. Policy: tokenless-default; external models deny-by-default (`ALLOW_EXTERNAL_MODELS=1` unlock).
+3. APIs: `GET /api/policy`, `GET /api/durable/missions`, `GET /api/durable/audit`; missions persist + audit.
+4. UI policy line; healthz slice `durable-policy`.
+5. `scripts/smoke-durable-policy.ps1` → **SMOKE_DURABLE_POLICY=PASS**; typecheck pass.
+6. Evidence + `archive/iterations/2026-07-27-slice3-durable-policy/` added (nothing deleted).
+
