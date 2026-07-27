@@ -1,0 +1,36 @@
+﻿{
+    "pool":  {
+                 "ok":  true,
+                 "product":  "athere-mesh-redis-ram-pool",
+                 "mode":  "embedded",
+                 "policy":  "allkeys-lru",
+                 "nodes":  [
+                               {
+                                   "id":  "lenovo-embedded-seed",
+                                   "role":  "seed",
+                                   "bind":  "127.0.0.1 (embedded)",
+                                   "maxmemoryBytes":  0,
+                                   "usedMemoryBytes":  692144,
+                                   "healthy":  true
+                               }
+                           ],
+                 "note":  "Tailscale Termux contributors join the same client contract later. Docker Compose redis is preferred when Docker is available."
+             },
+    "ok":  true,
+    "health":  {
+                   "ok":  true,
+                   "product":  "athere-titan",
+                   "mode":  "recreate",
+                   "brand":  "There is a there. It is called Athere.",
+                   "fabric":  "embedded"
+               },
+    "probe":  {
+                  "ok":  true,
+                  "ping":  "PONG",
+                  "probe":  {
+                                "set":  "OK",
+                                "get":  "ram-share-ok"
+                            }
+              },
+    "at":  "2026-07-27T10:31:36.3300283-07:00"
+}
