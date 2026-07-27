@@ -13,5 +13,6 @@ Traceable public work on [athere-mesh](https://github.com/justinevans4040-cloud/
 | 2026-07-27 | Slice 3 | Durable file store + tokenless + external deny-by-default; smoke PASS | [archive/iterations/2026-07-27-slice3-durable-policy/](../../archive/iterations/2026-07-27-slice3-durable-policy/SNAPSHOT.md) · [evidence/smoke-durable-policy-20260727-130214.json](../../evidence/smoke-durable-policy-20260727-130214.json) |
 | 2026-07-27 | Demo pack | Caption/explained MP4 demos for Slices 0–3 (progression) | [evidence/demos/](../../evidence/demos/README.md) |
 | 2026-07-27 | Slice 4 | Contest pack: judge page, &lt;10 min script, HackerNoon build draft | [archive/iterations/2026-07-27-slice4-contest-pack/](../../archive/iterations/2026-07-27-slice4-contest-pack/SNAPSHOT.md) · [JUDGE_PACK.md](JUDGE_PACK.md) |
+| 2026-07-27 | Nosana smoke | Paid-credit Jupyter on 3060; cell proof; deployment stopped | [evidence/nosana/](../../evidence/nosana/README.md) |
 
 **Rule:** each milestone adds a new dated folder under `archive/iterations/`. Prior folders are never deleted.

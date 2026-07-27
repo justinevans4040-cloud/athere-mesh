@@ -26,7 +26,7 @@ Under-10-minute script: [CONTEST_DEMO_SCRIPT.md](https://github.com/justinevans4
 
 ## Why this matches Decentralize AI
 
-1. **Compute path** — edge RAM fabric live on Tailscale (S24 contributor); Nosana GPU when credits land (claim submitted; we won’t fake spend).  
+1. **Compute path** — edge RAM fabric live on Tailscale (S24 contributor); Nosana GPU smoke PASS on 3060 (`athere-nosana-smoke Linux-6.17.0-41-generic-x86_64-with-glibc2.35`) then stopped — evidence at [evidence/nosana/](https://github.com/justinevans4040-cloud/athere-mesh/tree/master/evidence/nosana).  
 2. **Coordination** — open, typed agent language instead of opaque assistant monopoly chat.  
 3. **Evidence** — iteration archive keeps prior brochure text; smoke JSON + MP4 demos land in `evidence/` without deleting history.
 

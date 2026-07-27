@@ -95,3 +95,14 @@ Align public GitHub with recreate direction (Athere name line, Redis RAM share, 
 3. Added `docs/current/HACKERNOON_BUILD_POST_DRAFT.md` (paste-ready Round 1 build update; not auto-published).
 4. Linked pack from root README + PROGRESS; archived iteration snapshot (nothing deleted).
 
+## 2026-07-27 — Nosana GPU smoke (paid credits)
+
+**Actor:** Justin (ops) + Cursor (evidence filing)
+
+### Actions
+
+1. Justin funded ~$10 Nosana credits; created `athere-mesh-wlm-smoke` (Simple, 1 replica, 1h, NVIDIA 3060).
+2. JupyterLab ran smoke cell: `athere-nosana-smoke Linux-6.17.0-41-generic-x86_64-with-glibc2.35`.
+3. Deployment **stopped** immediately after proof.
+4. Evidence filed under `evidence/nosana/` (JSON + screenshot + README).
+

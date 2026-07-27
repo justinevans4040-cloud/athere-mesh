@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "at": "2026-07-27T21:46:00-07:00",
+  "kind": "nosana-gpu-smoke",
+  "product": "athere-mesh",
+  "deployment": {
+    "name": "athere-mesh-wlm-smoke",
+    "template": "docker.io/nosana/pytorch-jupyter:2.0.0",
+    "strategy": "SIMPLE",
+    "replicas": 1,
+    "timeoutHours": 1,
+    "gpu": "NVIDIA 3060",
+    "rateUsdPerHour": 0.048,
+    "creditsSource": "Justin purchased ~$10 Nosana credits (hackathon/build lane)"
+  },
+  "result": {
+    "jupyterLab": true,
+    "notebookCell": "import platform; print(\"athere-nosana-smoke\", platform.platform())",
+    "stdout": "athere-nosana-smoke Linux-6.17.0-41-generic-x86_64-with-glibc2.35",
+    "stopped": true
+  },
+  "screenshot": "evidence/nosana/nosana-jupyter-smoke-20260727.png",
+  "note": "Short smoke only — deployment stopped immediately after proof to conserve credits."
+}
