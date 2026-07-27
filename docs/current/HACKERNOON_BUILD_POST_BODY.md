@@ -147,3 +147,5 @@ I got bounced once for thin sourcing. Paste these into HackerNoon’s Sources fi
 23. https://decentralizeai.tech/
 24. https://hackernoon.com/compete-for-over-$51k-in-the-decentralize-ai-hackathon-by-hackernoon-nosana-arweave-and-mexc
 25. https://deploy.nosana.com/
+
+**Tags (hash them in HackerNoon):** `#decentralize-ai` `#decentralize-ai-hackathon` `#gpu-marketplace` `#nosana` `#arweave` `#open-source` `#ai` `#redis` `#tailscale`
