@@ -74,3 +74,13 @@ Align public GitHub with recreate direction (Athere name line, Redis RAM share, 
 5. `scripts/smoke-durable-policy.ps1` → **SMOKE_DURABLE_POLICY=PASS**; typecheck pass.
 6. Evidence + `archive/iterations/2026-07-27-slice3-durable-policy/` added (nothing deleted).
 
+## 2026-07-27 — Slice progression demo videos
+
+**Actor:** Cursor parent agent (no subagents)
+
+### Actions
+
+1. Added Titan `/tour.html?slice=0..3` explanation pages (what each slice means + live run).
+2. Recorded Playwright → ffmpeg MP4 demos for Slices 0–3 with on-page explanations.
+3. Published under `evidence/demos/` with README index (nothing deleted from prior evidence).
+

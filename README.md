@@ -18,7 +18,7 @@ Published entry: [AI Needs to Shut Up and Get to Work](https://hackernoon.com/ai
 |---|---|---|
 | Brochure v0 (early Jul 2026) | Docs-only concept scaffold | [archive/iterations/2026-07-brochure-v0/](archive/iterations/2026-07-brochure-v0/SNAPSHOT.md) |
 | Direction align (2026-07-27) | Brand + Redis RAM share + Titan recreate + Resonance Bus | This README + [docs/current/](docs/current/) |
-| Next | Runnable Titan slices (fabric → bus → mission UI) | [docs/current/PROGRESS.md](docs/current/PROGRESS.md) |
+| Next | Runnable Titan slices 0–3 + demo videos | [docs/current/PROGRESS.md](docs/current/PROGRESS.md) · [evidence/demos/](evidence/demos/README.md) |
 
 **Nothing is deleted.** Prior intros and explanations are frozen under `archive/iterations/`. Live docs below are rewritten to match CURRENT direction and link back to history.
 
