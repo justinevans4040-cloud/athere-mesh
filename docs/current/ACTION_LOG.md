@@ -20,3 +20,16 @@ Append-only record of material public-repo actions.
 ### Intent
 
 Align public GitHub with recreate direction (Athere name line, Redis RAM share, Titan recreate, Resonance Bus, proof-over-done) while keeping full iteration trail for Decentralize AI / HackerNoon judges.
+
+## 2026-07-27 — Slice 0 Redis fabric scaffold (Lenovo)
+
+**Actor:** Cursor parent agent  
+**Tree:** `C:\Users\justi\WORKSPACE\Internal_Systems\athere-titan` (clean recreate; leftover node_modules removed)
+
+### Actions
+
+1. Scaffolded pnpm monorepo + `@athere/api-server` with `GET /api/fabric/ram-pool` and `POST /api/fabric/probe`.
+2. Added `docker-compose.yml` Redis (Docker not installed on Lenovo yet — compose ready for when available).
+3. Embedded Redis via `redis-memory-server` for smoke (same client contract).
+4. `scripts/smoke-redis-pool.ps1` ? **SMOKE_REDIS_POOL=PASS** (evidence copied under `evidence/`).
+
