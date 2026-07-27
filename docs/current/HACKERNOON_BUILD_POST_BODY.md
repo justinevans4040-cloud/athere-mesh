@@ -1,39 +1,135 @@
-People asked if there was a *there* for the AI they were promised.
+Athere Mesh: From Thesis to Titan — Redis Fabric, Resonance Bus, and Proof
+
+People keep asking where they can go to find the AI they were promised. Not another chatbot that says “done.” Not a rented brain with a monthly meter. They want to know if there is a *there*.
 
 There is. It’s called **Athere**.
 
-In June–July I entered HackerNoon’s Decentralize AI track with a thesis piece: [AI Needs to Shut Up and Get to Work](https://hackernoon.com/ai-needs-to-shut-up-and-get-to-work). This post is the **build update** — what actually runs now, with evidence.
+This is the build update to my Decentralize AI / HackerNoon entry, [AI Needs to Shut Up and Get to Work][thesis]. Same thesis. More metal on the table.
+
+## The problem with “agent progress”
+
+Most agent stacks still communicate like interns writing novels. Long paragraphs. Soft status. No artifact. You can’t audit a vibes-based handoff.
+
+Athere Mesh takes the opposite bet:
+
+1. **Shared edge RAM** for hot state (Redis over Tailscale — phones included).  
+2. **Typed mission signals** instead of essay chat (Resonance Bus).  
+3. **Proof-over-“done”** — COMS says DONE only with evidence.  
+4. **Tokenless-default** for ordinary mesh work; external/rented models are deny-by-default until unlocked.
+
+Public trail (nothing deleted; brochure v0 archived): [athere-mesh on GitHub][repo].
 
 ## What we refused to ship
 
-Another chatbot that narrates “done” without proof.  
-A restore of a wiped/rewrite-damaged tree dressed up as progress.  
-Founder persona reconstruction without provenance (hold stays hold).
+- A chatbot that narrates completion without a proof hash.  
+- A “restore” of a wiped/rewrite-damaged Titan tree dressed up as progress.  
+- Founder persona reconstruction without provenance. Hold stays hold.
 
-## What we built instead (Titan recreate)
+## Slice walkthrough (what actually runs)
 
-Public trail: https://github.com/justinevans4040-cloud/athere-mesh
+Live operator recreate lives on Lenovo Titan; GitHub is the **traceable public record**. Judge one-pager: [JUDGE_PACK][judge]. Timed demo script (&lt;10 min): [CONTEST_DEMO_SCRIPT][demo-script]. Screen recordings: [evidence/demos][demos].
 
-| Slice | Meaning | Proof |
-|---|---|---|
-| **0** Redis RAM fabric | Shared edge hot memory — Lenovo Titan now wired to S24 Termux Redis over Tailscale | [demo](https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/demos/athere-titan-slice0-demo.mp4) |
-| **1** Resonance Bus | Typed signals: accepted → running → completed + SHA proof | [demo](https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/demos/athere-titan-slice1-demo.mp4) |
-| **2** Mission command UI | Operator starts a mission and watches a causal river — not an essay thread | [demo](https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/demos/athere-titan-slice2-demo.mp4) |
-| **3** Durable + policy | Missions persist; audit log; **tokenless-default**; external models **deny-by-default** | [demo](https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/demos/athere-titan-slice3-demo.mp4) |
+### Slice 0 — Redis RAM fabric
 
-Judge one-pager: [JUDGE_PACK.md](https://github.com/justinevans4040-cloud/athere-mesh/blob/master/docs/current/JUDGE_PACK.md)  
-Under-10-minute script: [CONTEST_DEMO_SCRIPT.md](https://github.com/justinevans4040-cloud/athere-mesh/blob/master/docs/current/CONTEST_DEMO_SCRIPT.md)
+Redis is the mesh **hot memory** layer — not the durable archive. Same client contract for Lenovo seed and phone contributors.
+
+**Live now:** Lenovo Titan is wired to **Samsung S24 Termux Redis** over Tailscale (`100.83.225.17:6379`). Pool API reports contributor `justins-s24-termux`, healthy, 512MB `allkeys-lru`. Probe set/get returned live values.
+
+- Direction: [REDIS_RAM_POOL.md][redis-doc]  
+- Demo video: [slice0 MP4][demo0]  
+- Smoke JSON: [smoke-redis-pool][smoke0]
+
+### Slice 1 — Resonance Bus
+
+Missions emit typed signals: `accepted → running → completed`, with a SHA-256 proof on completion. Not an essay thread.
+
+- Spec/direction: [RESONANCE_BUS.md][bus-doc]  
+- Demo: [slice1 MP4][demo1]  
+- Smoke: [smoke-resonance-bus][smoke1]
+
+### Slice 2 — Mission command UI
+
+Titan’s operator surface: enter intent → Start mission → causal river → COMS **DONE** + proof path. You watch work; you don’t negotiate paragraphs.
+
+- Direction: [TITAN.md][titan-doc]  
+- Demo: [slice2 MP4][demo2]  
+- Smoke: [smoke-mission-ui][smoke2]
+
+### Slice 3 — Durable + policy
+
+Missions persist to a file durable store with an audit log. Policy flags:
+
+- **tokenless-default** (local mesh doesn’t require cloud API keys)  
+- **external models deny-by-default** (`ALLOW_EXTERNAL_MODELS=1` to unlock)
+
+Postgres remains the long-term control-plane store; Lenovo Slice 3 uses an approved file durable stand-in.
+
+- Demo: [slice3 MP4][demo3]  
+- Smoke: [smoke-durable-policy][smoke3]
+
+### Bonus — Nosana GPU smoke (paid credits, then stop)
+
+After funding Nosana credits, we ran a **short** PyTorch Jupyter deployment on an NVIDIA 3060 (Simple strategy, 1 replica, 1h timeout — not Infinite). Notebook proof:
+
+```text
+athere-nosana-smoke Linux-6.17.0-41-generic-x86_64-with-glibc2.35
+```
+
+Deployment was **stopped immediately** after proof to conserve credits.
+
+- Evidence folder: [evidence/nosana][nosana]  
+- Screenshot + JSON: [nosana-smoke-20260727.json][nosana-json]
 
 ## Why this matches Decentralize AI
 
-1. **Compute path** — edge RAM fabric live on Tailscale (S24 contributor); Nosana GPU smoke PASS on 3060 (`athere-nosana-smoke Linux-6.17.0-41-generic-x86_64-with-glibc2.35`) then stopped — evidence at [evidence/nosana/](https://github.com/justinevans4040-cloud/athere-mesh/tree/master/evidence/nosana).  
-2. **Coordination** — open, typed agent language instead of opaque assistant monopoly chat.  
-3. **Evidence** — iteration archive keeps prior brochure text; smoke JSON + MP4 demos land in `evidence/` without deleting history.
+| Contest pressure | Athere answer | Source |
+|---|---|---|
+| Distributed / edge compute | Tailscale Redis contributor on S24 + Nosana GPU smoke | [redis-doc], [nosana] |
+| Open coordination (not monopoly assistant) | Resonance Bus typed signals + proof | [bus-doc], [smoke1] |
+| Verifiable progress | Smoke JSON, MP4 demos, iteration archive | [progress], [demos], [archive] |
+| User-owned / local-first | Tokenless-default; external deny-by-default | [smoke3], [direction] |
+
+Contest home: [decentralizeai.tech][contest]. Prize framing: [hackernoon contest announcement][contest-hn].
 
 ## What’s next
 
-- Nosana deployment when credits appear on the account.  
-- Postgres durable on the Ubuntu control plane (file durable is the Lenovo Slice 3 stand-in).  
-- Optional Arweave permanence for proofs once the contest storage lane is active.
+- More Nosana workloads only when they earn their burn (smoke already proved the path).  
+- Postgres durable on Ubuntu control plane.  
+- Optional Arweave permanence for proofs when that lane is active.  
+- More Tailscale phone nodes on the same Redis client contract / cluster path.
 
 Athere is the destination. Titan commands the mission. Redis shares the RAM. The Resonance Bus carries proof — not essays.
+
+---
+
+## Sources (complete)
+
+Every material claim above maps to a public URL:
+
+1. [thesis]: https://hackernoon.com/ai-needs-to-shut-up-and-get-to-work  
+2. [repo]: https://github.com/justinevans4040-cloud/athere-mesh  
+3. [judge]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/docs/current/JUDGE_PACK.md  
+4. [demo-script]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/docs/current/CONTEST_DEMO_SCRIPT.md  
+5. [demos]: https://github.com/justinevans4040-cloud/athere-mesh/tree/master/evidence/demos  
+6. [demo0]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/demos/athere-titan-slice0-demo.mp4  
+7. [demo1]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/demos/athere-titan-slice1-demo.mp4  
+8. [demo2]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/demos/athere-titan-slice2-demo.mp4  
+9. [demo3]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/demos/athere-titan-slice3-demo.mp4  
+10. [smoke0]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/smoke-redis-pool-20260727-103136.json  
+11. [smoke1]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/smoke-resonance-bus-20260727-103621.json  
+12. [smoke2]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/smoke-mission-ui-20260727-122848.json  
+13. [smoke3]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/smoke-durable-policy-20260727-130214.json  
+14. [nosana]: https://github.com/justinevans4040-cloud/athere-mesh/tree/master/evidence/nosana  
+15. [nosana-json]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/nosana/nosana-smoke-20260727.json  
+16. [nosana-shot]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/evidence/nosana/nosana-jupyter-smoke-20260727.png  
+17. [redis-doc]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/docs/current/REDIS_RAM_POOL.md  
+18. [bus-doc]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/docs/current/RESONANCE_BUS.md  
+19. [titan-doc]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/docs/current/TITAN.md  
+20. [direction]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/docs/current/DIRECTION.md  
+21. [progress]: https://github.com/justinevans4040-cloud/athere-mesh/blob/master/docs/current/PROGRESS.md  
+22. [archive]: https://github.com/justinevans4040-cloud/athere-mesh/tree/master/archive/iterations  
+23. [contest]: https://decentralizeai.tech/  
+24. [contest-hn]: https://hackernoon.com/compete-for-over-$51k-in-the-decentralize-ai-hackathon-by-hackernoon-nosana-arweave-and-mexc  
+25. [nosana-deploy]: https://deploy.nosana.com/  
+
+**Suggested tags:** `decentralize-ai` · `decentralize-ai-hackathon` · `gpu-marketplace` · `nosana` · `arweave` · `open-source` · `ai` · `redis` · `tailscale`
