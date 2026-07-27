@@ -1,24 +1,32 @@
-# ATHERE Mesh Architecture
+# ATHERE Mesh Architecture — CURRENT (2026-07-27)
 
-## Layers
+> Historical brochure text (unchanged): [archive/iterations/2026-07-brochure-v0/docs/ARCHITECTURE.md](../archive/iterations/2026-07-brochure-v0/docs/ARCHITECTURE.md)
 
-### 1. ATHERE
-The language kernel. Responsible for packetized meaning, state tracking, and semantic handoff.
+## Layers (CURRENT)
 
-### 2. TITAN
-The orchestration spine. Responsible for mission framing, system-level routing, and control flow.
+### 1. Athere
+Destination and language layer. Brand: *there is a there — it’s called Athere.* Converts operating pressure into structured meaning (intent / state / evidence / decision / handoff) without requiring essay chat between agents.
 
-### 3. Agent Mesh
-Specialists that perform domain tasks and coordinate through shared signals.
+### 2. Titan
+Mission command spine. **Recreated to design** (not the wiped rewrite tree). Frames missions, exposes bus + RAM pool health, demands proof.
 
-## Flow
+### 3. Fabric — Redis RAM pool
+Tailscale-bound Redis contributors (Termux phones + seed nodes) share capped RAM for hot scratch and bus transport. See [current/REDIS_RAM_POOL.md](current/REDIS_RAM_POOL.md).
 
-1. A mission is received.
-2. TITAN defines the objective and routes the task.
-3. ATHERE translates the request into structured intent/state/evidence/decision packets.
-4. Specialized agents execute, validate, and report outcome.
-5. The mesh adaptively reroutes or escalates when needed.
+### 4. Resonance Bus
+Typed signals on the fabric. See [current/RESONANCE_BUS.md](current/RESONANCE_BUS.md).
 
-## Design Principle
+### 5. Agent mesh
+Role-bound specialists (validate, coordinate, monitor, steward, execute). Identities are capability + policy — not permanent chat personas published without provenance.
 
-The mesh is stronger than any one agent because it distributes reasoning, trust, and execution across a network.
+## Flow (CURRENT)
+
+1. Mission enters Titan.
+2. Titan emits `accepted` on the Resonance Bus.
+3. Deterministic / specialist workers advance `running` → `blocked` | `completed` with **proof**.
+4. Redis RAM pool holds hot signal + scratch state.
+5. Durable stores (next slices) keep audit and mission records.
+
+## Design principle
+
+Distribute trust and execution. Prefer compact signals and shared edge memory over one rented model and one fragile prompt.

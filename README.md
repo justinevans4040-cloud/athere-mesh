@@ -1,45 +1,53 @@
 # ATHERE Mesh
 
-ATHERE Mesh is a decentralized AI operating model where specialized agents collaborate through a shared language substrate, coordinated by TITAN and grounded in ATHERE.
+> People keep asking where they can go to find the technology they were promised.  
+> They want to know if there is a *there*.  
+> **There is. It’s called Athere.**
 
-## The Story
+**CURRENT (2026-07-27):** Athere Mesh is a user-owned decentralized AI operating fabric. Titan is the mission command surface. Agents coordinate through a **Resonance Bus** of typed signals and proof — not essay handoffs. Shared edge memory is a **Redis RAM pool** across Tailscale-connected devices (phones/Termux + build cells). Ordinary work is **tokenless-default** and local-first.
 
-The future of AI will not be one giant chatbot pretending to be the whole world. The future will be a mesh: a network of agents, each with a role, each with a reason to exist, each moving through a shared protocol of intent, evidence, state, decision, and handoff.
+This repository is the public, **traceable** record of that product direction for the [Decentralize AI](https://decentralizeai.tech/) / HackerNoon track.
 
-That is the ATHERE Mesh thesis.
+Published entry: [AI Needs to Shut Up and Get to Work](https://hackernoon.com/ai-needs-to-shut-up-and-get-to-work)
 
-- ATHERE is the language substrate: the semantic layer that gives the mesh a common way to think and communicate.
-- TITAN is the command spine: the orchestration layer that frames the mission and keeps the system aligned.
-- The agents are the operators: specialists that validate, coordinate, guard, execute, and adapt.
+---
 
-## Why It’s Different
+## What changed (honest status)
 
-Most AI systems are built like single-brain monoliths: one model, one prompt, one fragile point of failure.
+| Era | What it was | Where to read it |
+|---|---|---|
+| Brochure v0 (early Jul 2026) | Docs-only concept scaffold | [archive/iterations/2026-07-brochure-v0/](archive/iterations/2026-07-brochure-v0/SNAPSHOT.md) |
+| Direction align (2026-07-27) | Brand + Redis RAM share + Titan recreate + Resonance Bus | This README + [docs/current/](docs/current/) |
+| Next | Runnable Titan slices (fabric → bus → mission UI) | [docs/current/PROGRESS.md](docs/current/PROGRESS.md) |
 
-ATHERE Mesh is built like infrastructure.
+**Nothing is deleted.** Prior intros and explanations are frozen under `archive/iterations/`. Live docs below are rewritten to match CURRENT direction and link back to history.
 
-It is modular, role-bound, resilient, and designed to keep intelligence distributed rather than centralized. The system improves because each node contributes a perspective, not just more tokens.
+---
 
-## Architecture at a Glance
+## The product (CURRENT)
 
-ATHERE Mesh flows like this:
+- **Athere** — the destination: where AI stops promising and starts working; also the compact language / meaning layer for the mesh.
+- **Titan** — mission command. Being **recreated to design** (Redis-first + typed bus). The old rewrite-damaged tree is not the product.
+- **Resonance Bus** — structured A2A: intent/state/evidence/decision/handoff as machine-readable signals; proof-over-“done.”
+- **Redis RAM share** — Android/Termux (and seed nodes) contribute capped RAM into one Tailscale-bound Redis fabric for hot scratch + bus transport.
+- **COMS-SYNTAX** — CLAIM / PLAN / DONE / REVIEW / BLOCK for operator discipline.
 
-1. A mission enters the mesh.
-2. TITAN frames the objective and routes the task.
-3. ATHERE converts the request into structured packets of meaning.
-4. Specialized agents execute, validate, and report back.
-5. The mesh adapts through handoff, refinement, and oversight.
+Agents remain role-bound specialists (validation, resources, monitoring, stewardship). Founder-owned persona packs are not published here until provenance and hold rules allow.
 
-## Repository Purpose
+---
 
-This repository is a launch-ready concept package for ATHERE Mesh and contains:
+## Documentation map
 
-- the core architecture story
-- a hackathon-ready pitch
-- workflow and role definitions
-- the foundation of the paper narrative for the competition
+### Current direction
 
-## Documentation
+- [docs/current/DIRECTION.md](docs/current/DIRECTION.md)
+- [docs/current/REDIS_RAM_POOL.md](docs/current/REDIS_RAM_POOL.md)
+- [docs/current/RESONANCE_BUS.md](docs/current/RESONANCE_BUS.md)
+- [docs/current/TITAN.md](docs/current/TITAN.md)
+- [docs/current/PROGRESS.md](docs/current/PROGRESS.md)
+- [docs/current/ACTION_LOG.md](docs/current/ACTION_LOG.md)
+
+### Rewritten living docs (history preserved in archive)
 
 - [docs/HACKATHON_PITCH.md](docs/HACKATHON_PITCH.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
@@ -47,18 +55,22 @@ This repository is a launch-ready concept package for ATHERE Mesh and contains:
 - [docs/WORKFLOW.md](docs/WORKFLOW.md)
 - [docs/ATHERE_MESH_PAPER.md](docs/ATHERE_MESH_PAPER.md)
 
-## One-Line Hook
+### Iteration archive
 
-ATHERE gives the language. TITAN gives the command. The mesh gives the intelligence.
+- [archive/iterations/](archive/iterations/) — dated snapshots of every public narrative pass
+- [archive/ip-imports/](archive/ip-imports/) — associated IP excerpts with provenance labels
+- [evidence/](evidence/) — smoke logs and demo artifacts as slices land
 
-## Status
+---
 
-Concept scaffold for a decentralized AI hackathon submission.
+## One-line hook (CURRENT)
+
+Athere is the *there*. Titan commands the mission. Redis shares the RAM. The Resonance Bus carries proof — not essays.
 
 ## License
 
-This project is licensed under the MIT License.
+MIT — see [LICENSE](LICENSE).
 
 ## Contributing
 
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Prefer additive PRs that archive prior text instead of deleting history.

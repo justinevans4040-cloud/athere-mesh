@@ -1,14 +1,17 @@
-# ATHERE Mesh Workflow
+# ATHERE Mesh Workflow — CURRENT (2026-07-27)
 
-## Mission Lifecycle
+> Historical brochure workflow: [archive/iterations/2026-07-brochure-v0/docs/WORKFLOW.md](../archive/iterations/2026-07-brochure-v0/docs/WORKFLOW.md)
 
-1. A user or system submits intent.
-2. TITAN frames the mission and routes responsibility.
-3. ATHERE interprets the mission into structured packets.
-4. Specialized agents execute and validate work.
-5. The system records state, evidence, and decisions.
-6. A handoff occurs when the next role takes ownership.
+## Mission lifecycle (CURRENT)
 
-## Design Outcome
+1. Operator submits intent in Titan.
+2. Titan frames the mission and posts `accepted` on the Resonance Bus.
+3. Workers advance `running` (deterministic-first when possible).
+4. Blockers emit `blocked` with reason (COMS `BLOCK`).
+5. Completion requires `completed` **plus proof** (artifact / hash) — COMS `DONE`.
+6. Hot state lives on the Redis RAM pool; durable audit follows in later slices.
+7. Handoffs are signal + ownership claims (`CLAIM` / `REVIEW`), not essay threads.
 
-This creates a resilient feedback loop. The system does not need one all-knowing model; it needs a coordinated mesh that can move intelligently through complexity.
+## Design outcome
+
+A resilient loop that judges can verify: mission → signals → proof — with a public iteration trail in `archive/`.

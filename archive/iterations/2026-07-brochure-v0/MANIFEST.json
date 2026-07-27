@@ -1,0 +1,37 @@
+﻿[
+    {
+        "path":  "CONTRIBUTING.md",
+        "sha256":  "E5054926DD9165F1F7F22556E39A9194AED54002CC0D55279D2472EBF5F7B357",
+        "bytes":  235
+    },
+    {
+        "path":  "README.md",
+        "sha256":  "82D7C0956AC82582F274B7EC68D3D2EB4E0EAC29B61043980FD8B104AA87151F",
+        "bytes":  2418
+    },
+    {
+        "path":  "docs\\AGENTS.md",
+        "sha256":  "FF54DF103142921D941C12B01DBB9C3796D9EAFFC4B98C5790916BD7BEDA5D90",
+        "bytes":  618
+    },
+    {
+        "path":  "docs\\ARCHITECTURE.md",
+        "sha256":  "04E2833B1A3ED91ADFC0F0CB2ADB0093CF96E5B254BFD416F879EEDCD7985363",
+        "bytes":  811
+    },
+    {
+        "path":  "docs\\ATHERE_MESH_PAPER.md",
+        "sha256":  "847CF0AF104A5D99F61C59C2FFC7E6CC7BB11DF82AB9ADAAE278B13B93F81E95",
+        "bytes":  2508
+    },
+    {
+        "path":  "docs\\HACKATHON_PITCH.md",
+        "sha256":  "9AF7BA2F48536A897B0C738A12B5F31D72909E4F17CB8AA6FD0E99FEDBAD2F8A",
+        "bytes":  1509
+    },
+    {
+        "path":  "docs\\WORKFLOW.md",
+        "sha256":  "394239288A7663A8C635FDEFC043CE24B20CBDAD67880EBF6413ABB140605F74",
+        "bytes":  552
+    }
+]

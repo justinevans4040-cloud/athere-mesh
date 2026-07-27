@@ -1,34 +1,29 @@
-# ATHERE Mesh — Hackathon Pitch
+# ATHERE Mesh — Hackathon Pitch (CURRENT 2026-07-27)
 
-ATHERE Mesh is a decentralized AI operating model built around one bold idea: intelligence is strongest when it is shared across a coordinated system of specialized agents.
+> Historical brochure pitch: [archive/iterations/2026-07-brochure-v0/docs/HACKATHON_PITCH.md](../archive/iterations/2026-07-brochure-v0/docs/HACKATHON_PITCH.md)
 
-## The Core Thesis
+**Contest:** [Decentralize AI](https://decentralizeai.tech/) via HackerNoon.  
+**Live entry:** [AI Needs to Shut Up and Get to Work](https://hackernoon.com/ai-needs-to-shut-up-and-get-to-work)
 
-Instead of relying on one giant model to do everything, ATHERE Mesh distributes work across a mesh of roles:
+## Core thesis (CURRENT)
 
-- ATHERE acts as the language substrate and semantic kernel.
-- TITAN acts as the command and orchestration spine.
-- The agents act as specialists for validation, routing, execution, monitoring, and governance.
+Centralized AI rents you a brain. Athere Mesh builds a **user-owned operating fabric**:
 
-## Why Judges Should Care
+- **Athere** — the *there*: where promised AI becomes working infrastructure + compact mesh language.
+- **Titan** — mission command (recreate: Redis-first, proof-first).
+- **Resonance Bus** — structured A2A; proof over “done.”
+- **Redis RAM share** — phones and build cells contribute Tailscale-private RAM to one hot pool.
+- **Tokenless-default** — ordinary work does not burn paid API tokens.
 
-This is not just another AI wrapper. ATHERE Mesh introduces a real operating architecture for decentralized intelligence.
+## Why judges should care
 
-It offers:
+| Need | What we show |
+|---|---|
+| Technical depth | Fabric + bus + mission command, not a chat wrapper |
+| Novelty | Shared edge Redis RAM as mesh memory; signal bus vs essay agents |
+| Impact | Local-first, user-owned, mixed-device Tailscale mesh |
+| Evidence | Iteration archive in this repo + upcoming smoke/`evidence/` |
 
-- modular intelligence rather than one fragile brain
-- safer role-bound handoffs and decision paths
-- resilience when one agent fails or a subtask changes
-- a clean story for private, local-first, secure AI infrastructure
+## One-sentence hook
 
-## The Market Story
-
-In the current AI landscape, many systems collapse into centralization: one API, one model, one bottleneck. ATHERE Mesh proposes the opposite. It is a city of intelligence, where the system becomes stronger because each component is constrained to a job it can perform well.
-
-## Pitch Summary
-
-ATHERE Mesh is the operating environment where decentralized AI stops being a concept and starts being a system.
-
-## One-Sentence Hook
-
-ATHERE gives the language, TITAN gives the command, and the mesh gives the intelligence.
+Athere is the *there*. Titan commands. Redis shares the RAM. The bus carries proof.

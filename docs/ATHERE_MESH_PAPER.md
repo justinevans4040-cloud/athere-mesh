@@ -1,29 +1,31 @@
-# ATHERE Mesh: A Decentralized AI Operating System
+# ATHERE Mesh: A Decentralized AI Operating System (CURRENT 2026-07-27)
 
-The future of AI is not one giant machine pretending to be everything. The future is a mesh: a network of specialized systems that communicate, validate, and adapt in real time. ATHERE Mesh is built around that principle.
+> Historical brochure paper: [archive/iterations/2026-07-brochure-v0/docs/ATHERE_MESH_PAPER.md](../archive/iterations/2026-07-brochure-v0/docs/ATHERE_MESH_PAPER.md)
 
-## The Layered Architecture
+## Opening
 
-ATHERE is the language substrate. It provides the semantic floor on which the system can exchange intent, evidence, state, and decision packets. In practical terms, ATHERE converts raw prompts and operating pressure into structured meaning.
+The future of AI is not one giant machine pretending to be everything. The future is a mesh you can own: specialized systems that communicate with compact signals, share edge memory, validate with proof, and adapt in real time.
 
-TITAN acts as the command spine. It frames the mission, determines routing, and preserves systemic alignment. TITAN is not the replacement for the mesh; it is the architecture that keeps the mesh coherent.
+People keep asking if there is a *there* for the technology they were promised. **There is. It’s called Athere.**
 
-The agents are the operational surface. Each agent owns a role in the system. Some validate. Some coordinate resources. Some monitor. Some execute. Some observe shift and risk. Taken together, they create an ecosystem of intelligence that is more adaptable than any single monolithic agent.
+## Layered architecture (CURRENT)
 
-## Why the Mesh Works
+**Athere** is destination and language substrate — structured meaning for intent, evidence, state, decision, and handoff.
 
-The power of the architecture comes from distribution.
+**Titan** is mission command. It is being recreated to design around a Redis-first fabric and a Resonance Bus. It is not a restored copy of a rewrite-damaged tree.
 
-A single large model centralizes reasoning, but a mesh distributes it. That distribution creates better resilience, clearer ownership of responsibilities, and more rigorous operational trust. The system does not need every agent to know everything. It only needs each agent to know its slice of the problem and communicate that slice clearly.
+**Redis RAM pool** turns phones and build cells on Tailscale into one hot shared memory plane for scratch and bus transport.
 
-This approach gives ATHERE Mesh a major advantage in competitive and real-world AI settings: it is explainable, modular, and robust under changing conditions. The architecture is intentionally designed to move beyond prompt-only interactions and toward a true operating model for specialized intelligence.
+**Agents** are operational specialists bound by role and policy. They emit signals; they do not drown the mesh in free-form chat.
 
-## The Competition Narrative
+## Why the mesh works
 
-ATHERE Mesh tells a story that is both ambitious and grounded.
+Distribution beats a single rented brain. Each node owns a slice. The bus carries transitions. Proof replaces performative “done.” Tokenless-default keeps ordinary work off the meter.
 
-It is ambitious because it proposes a decentralized AI substrate, not just another chatbot interface. It is grounded because the structure is clear: a shared language layer, a command spine, and role-bound specialists. The result is not simply a smarter single agent. It is a system that behaves more like infrastructure than like an isolated product.
+## Competition narrative
 
-## Closing Thought
+Decentralize AI / HackerNoon judges need depth, novelty, impact, and **evidence**. This repository keeps every public narrative iteration under `archive/iterations/` so progress is auditable. The HackerNoon entry states the lived thesis; this repo tracks the build.
 
-ATHERE Mesh is not a single model trying to be everything. It is a network of intelligence designed to cooperate. In a world dominated by centralization, that is the more interesting, more resilient, and more future-facing architecture.
+## Closing
+
+Athere Mesh is not one model trying to be everything. It is infrastructure for user-owned intelligence — with a *there* you can point to.
