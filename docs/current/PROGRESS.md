@@ -9,7 +9,7 @@ Traceable public work on [athere-mesh](https://github.com/justinevans4040-cloud/
 | 2026-07-27 | Direction align | Rewrote intros/explanations to CURRENT direction; archived brochure v0 intact; IP imports with provenance | [ACTION_LOG.md](ACTION_LOG.md) |
 | 2026-07-27 | Slice 0 | Redis RAM fabric API + smoke PASS (embedded seed on Lenovo; Docker compose ready) | [evidence/smoke-redis-pool-20260727-103136.json](../../evidence/smoke-redis-pool-20260727-103136.json) |
 | 2026-07-27 | Slice 1 | Resonance Bus + deterministic mission worker + proof; smoke PASS | [archive/iterations/2026-07-27-slice1-resonance-bus/](../../archive/iterations/2026-07-27-slice1-resonance-bus/SNAPSHOT.md) · [evidence/smoke-resonance-bus-20260727-103621.json](../../evidence/smoke-resonance-bus-20260727-103621.json) |
-| TBD | Slice 2 | Mission command UI demo | pending |
+| 2026-07-27 | Slice 2 | Mission command UI (`/` start → causal river → DONE + proof); smoke PASS | [archive/iterations/2026-07-27-slice2-mission-ui/](../../archive/iterations/2026-07-27-slice2-mission-ui/SNAPSHOT.md) · [evidence/smoke-mission-ui-20260727-122848.json](../../evidence/smoke-mission-ui-20260727-122848.json) |
 | TBD | Slice 3+ | Durable Postgres + policy flags; contest evidence pack | pending |
 
 **Rule:** each milestone adds a new dated folder under `archive/iterations/`. Prior folders are never deleted.

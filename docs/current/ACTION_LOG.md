@@ -21,7 +21,7 @@ Append-only record of material public-repo actions.
 
 Align public GitHub with recreate direction (Athere name line, Redis RAM share, Titan recreate, Resonance Bus, proof-over-done) while keeping full iteration trail for Decentralize AI / HackerNoon judges.
 
-## 2026-07-27 — Slice 0 Redis fabric scaffold (Lenovo)
+## 2026-07-27 ï¿½ Slice 0 Redis fabric scaffold (Lenovo)
 
 **Actor:** Cursor parent agent  
 **Tree:** `C:\Users\justi\WORKSPACE\Internal_Systems\athere-titan` (clean recreate; leftover node_modules removed)
@@ -29,12 +29,12 @@ Align public GitHub with recreate direction (Athere name line, Redis RAM share, 
 ### Actions
 
 1. Scaffolded pnpm monorepo + `@athere/api-server` with `GET /api/fabric/ram-pool` and `POST /api/fabric/probe`.
-2. Added `docker-compose.yml` Redis (Docker not installed on Lenovo yet — compose ready for when available).
+2. Added `docker-compose.yml` Redis (Docker not installed on Lenovo yet ï¿½ compose ready for when available).
 3. Embedded Redis via `redis-memory-server` for smoke (same client contract).
 4. `scripts/smoke-redis-pool.ps1` ? **SMOKE_REDIS_POOL=PASS** (evidence copied under `evidence/`).
 
 
-## 2026-07-27 — Slice 1 Resonance Bus
+## 2026-07-27 ï¿½ Slice 1 Resonance Bus
 
 **Actor:** Cursor parent agent (no subagents)  
 **Tree:** `C:\Users\justi\WORKSPACE\Internal_Systems\athere-titan`
@@ -46,4 +46,17 @@ Align public GitHub with recreate direction (Athere name line, Redis RAM share, 
 3. Proof artifacts under `workspace/proofs/mission-<id>.json` with SHA-256 on completed signal.
 4. `scripts/smoke-resonance-bus.ps1` ? **SMOKE_RESONANCE_BUS=PASS**; typecheck pass.
 5. Evidence + `archive/iterations/2026-07-27-slice1-resonance-bus/` added (nothing deleted).
+
+## 2026-07-27 â€” Slice 2 Mission Command UI
+
+**Actor:** Cursor parent agent (no subagents)  
+**Tree:** `C:\Users\justi\WORKSPACE\Internal_Systems\athere-titan`
+
+### Actions
+
+1. Added static UI at `/` (index + styles + app.js) served by Express from `artifacts/api-server/public/`.
+2. Operator flow: enter intent â†’ Start mission â†’ causal river of Resonance Bus signals â†’ COMS DONE + proof SHA/path.
+3. Healthz now reports slice `mission-command-ui`.
+4. `scripts/smoke-mission-ui.ps1` â†’ **SMOKE_MISSION_UI=PASS**; `@athere/api-server` typecheck pass.
+5. Evidence + `archive/iterations/2026-07-27-slice2-mission-ui/` added (nothing deleted).
 

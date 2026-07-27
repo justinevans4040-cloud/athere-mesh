@@ -1,0 +1,62 @@
+﻿{
+    "ok":  true,
+    "created":  {
+                    "ok":  true,
+                    "mission":  {
+                                    "id":  "466ba846-4e15-4796-ac9c-1912ba2290ba",
+                                    "intent":  "Slice 2 mission command UI smoke",
+                                    "status":  "completed",
+                                    "createdAt":  "2026-07-27T19:28:48.694Z",
+                                    "updatedAt":  "2026-07-27T19:28:48.703Z",
+                                    "proofPath":  "workspace/proofs/mission-466ba846-4e15-4796-ac9c-1912ba2290ba.json"
+                                },
+                    "signals":  [
+                                    {
+                                        "id":  "d8c86f1f-ce65-4eeb-8ab6-a0764d83b314",
+                                        "missionId":  "466ba846-4e15-4796-ac9c-1912ba2290ba",
+                                        "type":  "accepted",
+                                        "at":  "2026-07-27T19:28:48.696Z",
+                                        "detail":  "mission accepted by Titan",
+                                        "agent":  "titan"
+                                    },
+                                    {
+                                        "id":  "8aae1892-bc40-4621-ac00-4e5f590b4d94",
+                                        "missionId":  "466ba846-4e15-4796-ac9c-1912ba2290ba",
+                                        "type":  "running",
+                                        "at":  "2026-07-27T19:28:48.699Z",
+                                        "detail":  "deterministic worker started",
+                                        "agent":  "worker-stub"
+                                    },
+                                    {
+                                        "id":  "398184c8-7262-40df-afb8-f6212b9e5649",
+                                        "missionId":  "466ba846-4e15-4796-ac9c-1912ba2290ba",
+                                        "type":  "completed",
+                                        "at":  "2026-07-27T19:28:48.701Z",
+                                        "detail":  "deterministic worker completed with proof",
+                                        "agent":  "worker-stub",
+                                        "proof":  {
+                                                      "path":  "workspace/proofs/mission-466ba846-4e15-4796-ac9c-1912ba2290ba.json",
+                                                      "sha256":  "e08f74d96871df4a9f2ad0c346c46aa7f78095745be46a88c38a32c08deb9070"
+                                                  }
+                                    }
+                                ],
+                    "proofPath":  "workspace/proofs/mission-466ba846-4e15-4796-ac9c-1912ba2290ba.json",
+                    "proofSha256":  "e08f74d96871df4a9f2ad0c346c46aa7f78095745be46a88c38a32c08deb9070",
+                    "coms":  "DONE"
+                },
+    "health":  {
+                   "ok":  true,
+                   "product":  "athere-titan",
+                   "mode":  "recreate",
+                   "brand":  "There is a there. It is called Athere.",
+                   "fabric":  "embedded",
+                   "slices":  [
+                                  "fabric-ram-pool",
+                                  "resonance-bus",
+                                  "mission-command-ui"
+                              ],
+                   "ui":  "/"
+               },
+    "uiStatus":  200,
+    "at":  "2026-07-27T12:28:48.7328080-07:00"
+}
