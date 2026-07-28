@@ -1,0 +1,46 @@
+﻿{
+    "ok":  true,
+    "kind":  "nosana-api-burn-restart",
+    "product":  "athere-mesh",
+    "checkedAt":  "2026-07-28T00:15:25.5554654Z",
+    "deployment":  {
+                       "id":  "DV8WDbAvP2mqjRrMGFPV4iUuJzScGMDW9v7NbHH9AwGv",
+                       "name":  "athere-mesh-wlm-smoke",
+                       "market":  "7AtiXMSH6R1jjBxrcYjehCkkSF7zvYWte63gwEDBcGHq",
+                       "strategy":  "SIMPLE",
+                       "replicas":  1,
+                       "timeout":  60,
+                       "status":  "STOPPED",
+                       "endpoints":  [
+                                         {
+                                             "opId":  "Pytorch",
+                                             "port":  8888,
+                                             "url":  "https://3tizm8QQa8zk9XCbKNSXs27XzJV7LCDRvt9kvY5fyZ7A.node.k8s.prd.nos.ci"
+                                         }
+                                     ],
+                       "active_jobs":  0
+                   },
+    "sawRunning":  true,
+    "credits":  {
+                    "assignedCredits":  10,
+                    "reservedCredits":  0.044,
+                    "settledCredits":  0.01
+                },
+    "timeline":  [
+                     {
+                         "at":  "2026-07-28T00:14:28.4681393Z",
+                         "status":  "RUNNING",
+                         "active_jobs":  1,
+                         "reserved":  0.044,
+                         "available":  9.946,
+                         "endpoints":  [
+                                           {
+                                               "opId":  "Pytorch",
+                                               "port":  8888,
+                                               "url":  "https://3tizm8QQa8zk9XCbKNSXs27XzJV7LCDRvt9kvY5fyZ7A.node.k8s.prd.nos.ci"
+                                           }
+                                       ]
+                     }
+                 ],
+    "note":  "Controlled API restart of existing SIMPLE smoke deployment; stopped after short RUNNING window. No Infinite strategy."
+}
