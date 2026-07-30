@@ -18,5 +18,6 @@ Traceable public work on [athere-mesh](https://github.com/justinevans4040-cloud/
 | 2026-07-27 | Nosana API burn | Restarted SIMPLE smoke via API; RUNNING proof; stopped | [evidence/nosana/api-burn-20260727-171525.json](../../evidence/nosana/api-burn-20260727-171525.json) |
 | 2026-07-30 | S24 Redis Tailscale | Lenovo Titan → S24 Termux Redis over Tailscale (`tcp` / `justins-s24-termux`) | [evidence/smoke-s24-redis-tailscale-20260730-122029.json](../../evidence/smoke-s24-redis-tailscale-20260730-122029.json) |
 | 2026-07-30 | Postgres durable (Lenovo) | Postgres client contract via PGlite; Ubuntu `DATABASE_URL` when control plane returns | [evidence/smoke-durable-postgres-20260730-123416.json](../../evidence/smoke-durable-postgres-20260730-123416.json) |
+| 2026-07-30 | Arweave permanence | S24 Redis smoke JSON pinned via Turbo free &lt;100 KiB path; verified on arweave.net | [evidence/smoke-arweave-20260730-s24-redis.json](../../evidence/smoke-arweave-20260730-s24-redis.json) · [arweave.net object](https://arweave.net/SdrVKy0BCjDMhIQQO7Igt-wSNvOSKq5zCXOXBbOGpe4) |
 
 **Rule:** each milestone adds a new dated folder under `archive/iterations/`. Prior folders are never deleted.

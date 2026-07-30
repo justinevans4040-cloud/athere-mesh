@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "smoke": "arweave-permanence",
+  "claim": "Selected Athere Mesh smoke evidence is stored permanently on Arweave via Turbo (free authenticated upload under 100 KiB).",
+  "at": "2026-07-30T20:59:08.959Z",
+  "runtime": "athere-titan",
+  "upload": {
+    "method": "TurboFactory.authenticated({ ArweaveSigner }).upload",
+    "note": "Free Turbo path for payloads under 100 KiB (winc=0).",
+    "sourceFile": "smoke-s24-redis-tailscale-20260730-122029.json",
+    "bytes": 1269,
+    "sha256": "fb3bbe14ff199e8e9617dcf05f84b50397c50a6fb429dd21eb10190651f2a3bc",
+    "id": "SdrVKy0BCjDMhIQQO7Igt-wSNvOSKq5zCXOXBbOGpe4",
+    "owner": "s_NN5i4xiwljavHSl7pJuMeO58AGDNZZjdfuMIRz7Ws",
+    "winc": "0",
+    "urls": [
+      "https://arweave.net/SdrVKy0BCjDMhIQQO7Igt-wSNvOSKq5zCXOXBbOGpe4",
+      "https://arweave.net/raw/SdrVKy0BCjDMhIQQO7Igt-wSNvOSKq5zCXOXBbOGpe4"
+    ]
+  },
+  "verify": {
+    "verified": true,
+    "verifiedUrl": "https://arweave.net/SdrVKy0BCjDMhIQQO7Igt-wSNvOSKq5zCXOXBbOGpe4",
+    "sha256Match": true
+  }
+}

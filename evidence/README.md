@@ -10,6 +10,8 @@ Public smoke / demo artifacts for Athere Mesh Titan recreate.
 | [smoke-mission-ui-20260727-122848.json](./smoke-mission-ui-20260727-122848.json) | Slice 2 Mission command UI |
 | [smoke-durable-policy-20260727-130214.json](./smoke-durable-policy-20260727-130214.json) | Slice 3 Durable + policy |
 | [smoke-durable-postgres-20260730-123416.json](./smoke-durable-postgres-20260730-123416.json) | Postgres durable client contract (Lenovo PGlite; Ubuntu when online) |
+| [smoke-arweave-20260730-s24-redis.json](./smoke-arweave-20260730-s24-redis.json) | Arweave permanence — S24 Redis smoke pinned (`winc=0`) |
+| [arweave/](./arweave/) | Arweave permanence folder + README |
 | [demos/](./demos/) | Slice 0–3 demo MP4s |
 | [nosana/](./nosana/) | Nosana GPU smoke (started then stopped) |
 

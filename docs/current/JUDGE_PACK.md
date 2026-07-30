@@ -22,6 +22,7 @@ One page for reviewers. Everything else is linked.
 | 2 UI | Mission command operator surface | [smoke](../../evidence/smoke-mission-ui-20260727-122848.json) · [demo](../../evidence/demos/athere-titan-slice2-demo.mp4) |
 | 3 Durable+policy | File durable + tokenless + external deny | [smoke](../../evidence/smoke-durable-policy-20260727-130214.json) · [demo](../../evidence/demos/athere-titan-slice3-demo.mp4) |
 | 3b Postgres durable | Postgres client contract (Lenovo PGlite; Ubuntu next) | [smoke](../../evidence/smoke-durable-postgres-20260730-123416.json) |
+| Arweave | S24 Redis smoke pinned permanently | [smoke](../../evidence/smoke-arweave-20260730-s24-redis.json) · [live](https://arweave.net/SdrVKy0BCjDMhIQQO7Igt-wSNvOSKq5zCXOXBbOGpe4) |
 | Nosana | Short GPU smoke then STOPPED | [nosana/](../../evidence/nosana/) |
 
 ## How to review in &lt;10 minutes
@@ -43,6 +44,7 @@ Follow [CONTEST_DEMO_SCRIPT.md](CONTEST_DEMO_SCRIPT.md) or watch demos in order:
 - Founder agent personas are **not** reconstructed here.  
 - S24 Redis claim is backed by Tailscale smoke (2026-07-30).  
 - Postgres durable Lenovo smoke uses embedded PGlite with the **same SQL contract** Ubuntu/`DATABASE_URL` will use when the control plane is online.  
+- Arweave permanence: S24 Redis smoke JSON is live at [arweave.net/SdrVKy0BCjDMhIQQO7Igt-wSNvOSKq5zCXOXBbOGpe4](https://arweave.net/SdrVKy0BCjDMhIQQO7Igt-wSNvOSKq5zCXOXBbOGpe4) (`winc=0`, SHA verified).  
 - Nosana: short smoke only — stopped after proof.
 
 ## Build follow-up draft (publish on HackerNoon)

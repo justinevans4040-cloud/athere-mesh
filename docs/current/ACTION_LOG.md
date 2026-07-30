@@ -126,3 +126,13 @@ Align public GitHub with recreate direction (Athere name line, Redis RAM share, 
 2. `scripts/smoke-durable-postgres.ps1` → **SMOKE_DURABLE_POSTGRES=PASS**; filesystem smoke still PASS.
 3. Filed public evidence `evidence/smoke-durable-postgres-20260730-123416.json`; refreshed JUDGE_PACK + PROGRESS.
 
+## 2026-07-30 — Arweave permanence (S24 Redis smoke)
+
+**Actor:** Cursor (Turbo free &lt;100 KiB path)
+
+### Actions
+
+1. Authenticated Turbo upload of `smoke-s24-redis-tailscale-20260730-122029.json` (`winc=0`).
+2. TX id `SdrVKy0BCjDMhIQQO7Igt-wSNvOSKq5zCXOXBbOGpe4`; gateway verify SHA-256 match on `arweave.net`.
+3. Filed `evidence/smoke-arweave-20260730-s24-redis.json` + `evidence/arweave/`; refreshed JUDGE_PACK + PROGRESS.
+
