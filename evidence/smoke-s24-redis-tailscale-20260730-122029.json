@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "smoke": "s24-redis-tailscale",
+  "claim": "Lenovo Titan talks to Redis on Samsung S24 Termux over Tailscale (REDIS_URL tcp mode, not embedded).",
+  "at": "2026-07-30T12:20:29.9605711-07:00",
+  "runtime": "athere-titan",
+  "command": "REDIS_URL=redis://100.83.225.17:6379 REDIS_EMBEDDED=0 corepack pnpm run smoke:redis",
+  "health": {
+    "ok": true,
+    "product": "athere-titan",
+    "mode": "recreate",
+    "brand": "There is a there. It is called Athere.",
+    "fabric": "tcp"
+  },
+  "pool": {
+    "ok": true,
+    "product": "athere-mesh-redis-ram-pool",
+    "mode": "tcp",
+    "policy": "allkeys-lru",
+    "nodes": [
+      {
+        "id": "justins-s24-termux",
+        "role": "contributor",
+        "bind": "100.83.225.17:6379 (Tailscale)",
+        "maxmemoryBytes": 536870912,
+        "usedMemoryBytes": 975212,
+        "healthy": true
+      }
+    ],
+    "note": "Connected to Tailscale Redis contributor. Additional Termux nodes can join the same client contract / cluster later."
+  },
+  "probe": {
+    "ok": true,
+    "ping": "PONG",
+    "probe": {
+      "set": "OK",
+      "get": "ram-share-ok"
+    }
+  },
+  "localProofMirror": "athere-titan/workspace/proofs/smoke-redis-pool-20260730-122029.json"
+}
