@@ -9,6 +9,7 @@ Public smoke / demo artifacts for Athere Mesh Titan recreate.
 | [smoke-resonance-bus-20260727-103621.json](./smoke-resonance-bus-20260727-103621.json) | Slice 1 Resonance Bus |
 | [smoke-mission-ui-20260727-122848.json](./smoke-mission-ui-20260727-122848.json) | Slice 2 Mission command UI |
 | [smoke-durable-policy-20260727-130214.json](./smoke-durable-policy-20260727-130214.json) | Slice 3 Durable + policy |
+| [smoke-durable-postgres-20260730-123416.json](./smoke-durable-postgres-20260730-123416.json) | Postgres durable client contract (Lenovo PGlite; Ubuntu when online) |
 | [demos/](./demos/) | Slice 0–3 demo MP4s |
 | [nosana/](./nosana/) | Nosana GPU smoke (started then stopped) |
 

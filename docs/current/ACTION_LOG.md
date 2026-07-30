@@ -106,3 +106,23 @@ Align public GitHub with recreate direction (Athere name line, Redis RAM share, 
 3. Deployment **stopped** immediately after proof.
 4. Evidence filed under `evidence/nosana/` (JSON + screenshot + README).
 
+## 2026-07-30 — S24 Redis over Tailscale
+
+**Actor:** Justin (Termux Redis) + Cursor (smoke + public filing)
+
+### Actions
+
+1. Confirmed `justins-s24` online on Tailscale; Termux `redis-server` on `100.83.225.17:6379`.
+2. Ran `REDIS_URL` / `REDIS_EMBEDDED=0` smoke → PASS (`justins-s24-termux`, tcp, PONG + set/get).
+3. Filed + pushed `evidence/smoke-s24-redis-tailscale-20260730-122029.json`.
+
+## 2026-07-30 — Postgres durable (Lenovo stand-in)
+
+**Actor:** Cursor (Ubuntu/ichabodcrane still offline)
+
+### Actions
+
+1. Added Postgres durable backend (`ATHERE_DURABLE_BACKEND=postgres`): PGlite on Lenovo; `DATABASE_URL` for Ubuntu later.
+2. `scripts/smoke-durable-postgres.ps1` → **SMOKE_DURABLE_POSTGRES=PASS**; filesystem smoke still PASS.
+3. Filed public evidence `evidence/smoke-durable-postgres-20260730-123416.json`; refreshed JUDGE_PACK + PROGRESS.
+

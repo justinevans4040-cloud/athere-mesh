@@ -16,5 +16,7 @@ Traceable public work on [athere-mesh](https://github.com/justinevans4040-cloud/
 | 2026-07-27 | Nosana smoke | Paid-credit Jupyter on 3060; cell proof; deployment stopped | [evidence/nosana/](../../evidence/nosana/README.md) |
 | 2026-07-27 | HN Round-1 draft | Build post **submitted** for HackerNoon review (await live URL) | [HACKERNOON_BUILD_POST_BODY.md](HACKERNOON_BUILD_POST_BODY.md) |
 | 2026-07-27 | Nosana API burn | Restarted SIMPLE smoke via API; RUNNING proof; stopped | [evidence/nosana/api-burn-20260727-171525.json](../../evidence/nosana/api-burn-20260727-171525.json) |
+| 2026-07-30 | S24 Redis Tailscale | Lenovo Titan → S24 Termux Redis over Tailscale (`tcp` / `justins-s24-termux`) | [evidence/smoke-s24-redis-tailscale-20260730-122029.json](../../evidence/smoke-s24-redis-tailscale-20260730-122029.json) |
+| 2026-07-30 | Postgres durable (Lenovo) | Postgres client contract via PGlite; Ubuntu `DATABASE_URL` when control plane returns | [evidence/smoke-durable-postgres-20260730-123416.json](../../evidence/smoke-durable-postgres-20260730-123416.json) |
 
 **Rule:** each milestone adds a new dated folder under `archive/iterations/`. Prior folders are never deleted.

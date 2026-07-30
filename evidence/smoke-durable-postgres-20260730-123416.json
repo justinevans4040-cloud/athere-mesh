@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "smoke": "durable-postgres",
+  "claim": "Titan durable missions/audit persist through Postgres client contract (Lenovo PGlite stand-in; Ubuntu DATABASE_URL when control plane is online).",
+  "at": "2026-07-30T12:34:23.0252016-07:00",
+  "runtime": "athere-titan",
+  "command": "ATHERE_DURABLE_BACKEND=postgres ATHERE_PG_EMBEDDED=1 corepack pnpm run smoke:durable-postgres",
+  "backend": "postgres-embedded",
+  "root": "pglite://lenovo-embedded",
+  "missionId": "40402135-b084-4481-a499-ae85fd4e58b8",
+  "proofSha256": "e1bb83bc90427f775464da13d8c29bd92625d26add8e931d1042018ee01a5033",
+  "health": {
+    "ok": true,
+    "product": "athere-titan",
+    "mode": "recreate",
+    "brand": "There is a there. It is called Athere.",
+    "fabric": "tcp",
+    "durable": {
+      "root": "pglite://lenovo-embedded",
+      "backend": "postgres-embedded"
+    },
+    "policy": {
+      "tokenlessDefault": true,
+      "externalModels": "deny-by-default"
+    },
+    "slices": [
+      "fabric-ram-pool",
+      "resonance-bus",
+      "mission-command-ui",
+      "durable-policy",
+      "durable-postgres"
+    ]
+  },
+  "probe": {
+    "externalModelDenied": true,
+    "missionComs": "DONE",
+    "durableSaved": true,
+    "durableCount": 1,
+    "auditKinds": ["system.boot", "policy.denied", "mission.completed"]
+  },
+  "note": "Ubuntu/ichabodcrane was offline. Same client contract will bind to DATABASE_URL on the control plane when it returns. File durable (Slice 3) remains the default without ATHERE_DURABLE_BACKEND=postgres."
+}

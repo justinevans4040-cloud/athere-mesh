@@ -12,14 +12,17 @@ One page for reviewers. Everything else is linked.
 - Repo: https://github.com/justinevans4040-cloud/athere-mesh  
 - Contest site: https://decentralizeai.tech/
 
-## What shipped (2026-07-27 recreate)
+## What shipped
 
-| Slice | Claim | Evidence |
+| Slice / cut | Claim | Evidence |
 |---|---|---|
 | 0 Fabric | Redis RAM pool API + smoke | [smoke JSON](../../evidence/smoke-redis-pool-20260727-103136.json) · [demo](../../evidence/demos/athere-titan-slice0-demo.mp4) |
+| 0b S24 Tailscale | Lenovo Titan → S24 Termux Redis over Tailscale | [smoke JSON](../../evidence/smoke-s24-redis-tailscale-20260730-122029.json) |
 | 1 Bus | accepted→running→completed + proof | [smoke](../../evidence/smoke-resonance-bus-20260727-103621.json) · [demo](../../evidence/demos/athere-titan-slice1-demo.mp4) |
 | 2 UI | Mission command operator surface | [smoke](../../evidence/smoke-mission-ui-20260727-122848.json) · [demo](../../evidence/demos/athere-titan-slice2-demo.mp4) |
 | 3 Durable+policy | File durable + tokenless + external deny | [smoke](../../evidence/smoke-durable-policy-20260727-130214.json) · [demo](../../evidence/demos/athere-titan-slice3-demo.mp4) |
+| 3b Postgres durable | Postgres client contract (Lenovo PGlite; Ubuntu next) | [smoke](../../evidence/smoke-durable-postgres-20260730-123416.json) |
+| Nosana | Short GPU smoke then STOPPED | [nosana/](../../evidence/nosana/) |
 
 ## How to review in &lt;10 minutes
 
@@ -38,7 +41,9 @@ Follow [CONTEST_DEMO_SCRIPT.md](CONTEST_DEMO_SCRIPT.md) or watch demos in order:
 - This repo is the **public trail**; live code recreate lives on the operator Lenovo under `athere-titan`.  
 - Brochure v0 is archived, not deleted: [archive/iterations/2026-07-brochure-v0/](../../archive/iterations/2026-07-brochure-v0/SNAPSHOT.md).  
 - Founder agent personas are **not** reconstructed here.  
-- Nosana GPU credits: claim submitted; balance may still be pending — do not assume spend.
+- S24 Redis claim is backed by Tailscale smoke (2026-07-30).  
+- Postgres durable Lenovo smoke uses embedded PGlite with the **same SQL contract** Ubuntu/`DATABASE_URL` will use when the control plane is online.  
+- Nosana: short smoke only — stopped after proof.
 
 ## Build follow-up draft (publish on HackerNoon)
 
