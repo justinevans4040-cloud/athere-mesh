@@ -66,6 +66,7 @@ Agents remain role-bound specialists (validation, resources, monitoring, steward
 - [archive/iterations/](archive/iterations/) — dated snapshots of every public narrative pass
 - [archive/ip-imports/](archive/ip-imports/) — associated IP excerpts with provenance labels
 - [evidence/](evidence/) — smoke logs and demo artifacts as slices land
+- [future-integrations/](future-integrations/) — **inactive, quarantined research material** retained for later hostile audit and integration
 
 ---
 

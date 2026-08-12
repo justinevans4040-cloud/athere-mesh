@@ -1,0 +1,69 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/rucelium-core",
+    "crates/rucelium-abi",
+    "crates/rucelium-transport",
+    "crates/rucelium-ingest",
+    "crates/rucelium-store",
+    "crates/rucelium-calibration",
+    "crates/rucelium-notary",
+    "crates/rucelium-policy",
+    "crates/rufield-core",
+    "crates/rufield-privacy",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["rUv <ruv@ruv.net>", "RuField Contributors"]
+license = "MIT"
+repository = "https://github.com/ruvnet/RuCelium"
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["float_roundtrip"] }
+sha2 = "0.10"
+ed25519-dalek = "2.1"
+
+rucelium-core = { version = "0.1.0", path = "crates/rucelium-core" }
+rucelium-abi = { version = "0.1.0", path = "crates/rucelium-abi" }
+rucelium-transport = { version = "0.1.0", path = "crates/rucelium-transport" }
+rucelium-ingest = { version = "0.1.0", path = "crates/rucelium-ingest" }
+rucelium-store = { version = "0.1.0", path = "crates/rucelium-store" }
+rucelium-calibration = { version = "0.1.0", path = "crates/rucelium-calibration" }
+rucelium-notary = { version = "0.1.0", path = "crates/rucelium-notary" }
+rucelium-policy = { version = "0.1.0", path = "crates/rucelium-policy" }
+rufield-core = { version = "0.1.0", path = "crates/rufield-core" }
+rufield-privacy = { version = "0.1.0", path = "crates/rufield-privacy" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+doc_markdown = "allow"
+too_many_arguments = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_lossless = "allow"
+similar_names = "allow"
+uninlined_format_args = "allow"
+
+[profile.release]
+opt-level = 3
+lto = true
+
+[profile.dev.package.curve25519-dalek]
+opt-level = 3
+
+[profile.dev.package.ed25519-dalek]
+opt-level = 3
+
+[profile.dev.package.sha2]
+opt-level = 3
