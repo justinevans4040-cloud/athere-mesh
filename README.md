@@ -81,3 +81,6 @@ MIT — see [LICENSE](LICENSE).
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Prefer additive PRs that archive prior text instead of deleting history.
+
+## Repository Operations Template
+This repository follows the standard operating files: STATUS.md, ROADMAP.md, CHANGELOG.md, CONTRIBUTING.md, SECURITY.md, GOVERNANCE.md, and REPO_TEMPLATE.md.
