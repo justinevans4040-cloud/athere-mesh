@@ -1,0 +1,22 @@
+{
+  "name": "athere-titan",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "test": "node --test",
+    "test:contract": "node --test tests/contract",
+    "test:performance": "node --test tests/performance",
+    "smoke:postgres": "node scripts/smoke-postgres.js",
+    "start:agent-api": "node scripts/start-agent-api.js",
+    "chat": "node scripts/chat.js"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.5",
+    "pg": "8.23.0"
+  }
+}

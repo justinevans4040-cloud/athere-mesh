@@ -1,0 +1,8 @@
+---
+description: Load Titan's durable operating context and status boundaries
+alwaysApply: true
+---
+
+# Titan operating memory
+
+Read `docs/current/TITAN_OPERATING_MEMORY.md` before Titan work. Preserve its canonical locations, scope boundaries, no-removal rule, Odin exclusion, and evidence requirements. Update the memory when a live status boundary materially changes.

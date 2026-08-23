@@ -35,3 +35,11 @@ Titan is the operator-facing **mission command** surface for Athere Mesh:
 ## Slice order
 
 See [PROGRESS.md](PROGRESS.md).
+
+## Programming backup
+
+The verified 2026-08-23 Titan source backup is recorded in [TITAN_PROGRAMMING_BACKUP.md](TITAN_PROGRAMMING_BACKUP.md). The archive is stored privately under the existing Google Drive **Athere Mesh** folder with its size, SHA-256, contents, exclusions, test result, and status boundary documented there.
+
+## Operating memory
+
+Future Titan work must begin with [TITAN_OPERATING_MEMORY.md](TITAN_OPERATING_MEMORY.md), which records canonical GitHub and Drive locations, the verified Ichabod route, scope boundaries, and the current unproven Ollama loopback-hardening state.
