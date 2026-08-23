@@ -37,6 +37,7 @@ This is the durable handoff for future work on Titan. Treat it as operational co
 - Last verified effective bind: `OLLAMA_HOST=0.0.0.0:11434`, listening on all IPv4 interfaces.
 - `/etc/systemd/system/ollama.service.d/override.conf` also contained that all-interface value.
 - Loopback hardening was prepared but not applied because Ubuntu required interactive sudo authentication. Do not claim it is fixed until `systemctl show`, `ss`, and the loopback API probe all prove the effective listener is `127.0.0.1:11434` only.
+- Durable repair script: `scripts/harden-ollama-loopback.sh`. It adds a later systemd drop-in without removing the existing one and refuses to report success unless the effective environment, listener, and API probe pass.
 
 ## Backup proof
 
