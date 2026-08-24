@@ -100,3 +100,83 @@ test('mission store does not retry non-transient filesystem failures', async () 
   );
   assert.equal(retryDelays, 0);
 });
+
+test('mission store rejects a successful write when lock cleanup fails and still attempts every cleanup step', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-mission-'));
+  const cleanupSteps = [];
+  const store = createMissionStore({
+    filesystem: {
+      ...filesystem,
+      async open(...args) {
+        const handle = await filesystem.open(...args);
+        return {
+          async close() {
+            cleanupSteps.push('close');
+            await handle.close();
+          },
+        };
+      },
+      async rm(file, ...args) {
+        cleanupSteps.push(String(file).endsWith('.lock') ? 'lock' : 'temporary');
+        if (String(file).endsWith('.lock')) throw transientError('EIO');
+        return filesystem.rm(file, ...args);
+      },
+    },
+  });
+  await assert.rejects(
+    () => store.saveMission({ root, mission: createMission({ id: 'mission-lock-cleanup', intent: 'Never report stale locks as success' }) }),
+    (error) => error instanceof AggregateError
+      && error.message === 'mission cleanup failed'
+      && error.errors.length === 1
+      && error.errors[0].cause?.code === 'EIO',
+  );
+  assert.deepEqual(cleanupSteps, ['temporary', 'close', 'lock']);
+});
+
+test('mission store preserves a primary write failure while aggregating cleanup failures', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-mission-'));
+  const store = createMissionStore({
+    filesystem: {
+      ...filesystem,
+      async rename() { throw transientError('EIO'); },
+      async rm(file, ...args) {
+        if (String(file).endsWith('.lock')) throw transientError('EPERM');
+        return filesystem.rm(file, ...args);
+      },
+    },
+  });
+  await assert.rejects(
+    () => store.saveMission({ root, mission: createMission({ id: 'mission-primary-failure', intent: 'Retain the primary error' }) }),
+    (error) => error instanceof AggregateError
+      && error.message === 'mission write and cleanup failed'
+      && error.errors[0].code === 'EIO'
+      && error.errors[1] instanceof AggregateError
+      && error.errors[1].errors[0].cause?.code === 'EPERM',
+  );
+});
+
+test('mission store tolerates only absent cleanup files and already-closed handles', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-mission-'));
+  const store = createMissionStore({
+    filesystem: {
+      ...filesystem,
+      async open(...args) {
+        const handle = await filesystem.open(...args);
+        return {
+          async close() {
+            await handle.close();
+            throw transientError('EBADF');
+          },
+        };
+      },
+      async rm(file, ...args) {
+        await filesystem.rm(file, ...args);
+        throw transientError('ENOENT');
+      },
+    },
+  });
+  assert.equal(
+    (await store.saveMission({ root, mission: createMission({ id: 'mission-expected-cleanup', intent: 'Permit only expected cleanup absence' }) })).revision,
+    1,
+  );
+});

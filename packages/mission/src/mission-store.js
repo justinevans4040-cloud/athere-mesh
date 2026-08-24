@@ -49,6 +49,27 @@ async function retryTransientSharing(operation, { retryDelay, maxTransientAttemp
   throw new Error('unreachable transient filesystem retry');
 }
 
+function expectedCleanupError(operation, error) {
+  return error?.code === 'ENOENT' || (operation === 'close' && error?.code === 'EBADF');
+}
+
+async function cleanupMissionWrite({ operations, temporary, lockHandle, lock }) {
+  const failures = [];
+  const attempt = async (operation, work) => {
+    try {
+      await work();
+    } catch (error) {
+      if (!expectedCleanupError(operation, error)) {
+        failures.push(new Error(`mission cleanup failed: ${operation}`, { cause: error }));
+      }
+    }
+  };
+  await attempt('temporary', () => operations.rm(temporary, { force: true }));
+  await attempt('close', () => lockHandle.close());
+  await attempt('lock', () => operations.rm(lock, { force: true }));
+  return failures.length === 0 ? undefined : new AggregateError(failures, 'mission cleanup failed');
+}
+
 async function readSnapshot(snapshot, { missing = false, readFileImpl = readFile } = {}) {
   try {
     const parsed = JSON.parse(await readFileImpl(snapshot, 'utf8'));
@@ -99,6 +120,8 @@ export function createMissionStore({
     }
 
     const temporary = path.join(directory, `.${mission.id}.${randomUUID()}.tmp`);
+    let result;
+    let writeFailure;
     try {
       const current = await readSnapshot(snapshot, { missing: true, readFileImpl: operations.readFile });
       const currentRevision = current?.revision ?? 0;
@@ -112,12 +135,17 @@ export function createMissionStore({
       const record = { revision: currentRevision + 1, mission };
       await operations.writeFile(temporary, `${JSON.stringify(record)}\n`, { encoding: 'utf8', flag: 'wx' });
       await retryTransientSharing(() => operations.rename(temporary, snapshot), { retryDelay, maxTransientAttempts: attempts });
-      return record;
-    } finally {
-      await operations.rm(temporary, { force: true }).catch(() => {});
-      await lockHandle.close().catch(() => {});
-      await operations.rm(lock, { force: true }).catch(() => {});
+      result = record;
+    } catch (error) {
+      writeFailure = error;
     }
+    const cleanupFailure = await cleanupMissionWrite({ operations, temporary, lockHandle, lock });
+    if (writeFailure && cleanupFailure) {
+      throw new AggregateError([writeFailure, cleanupFailure], 'mission write and cleanup failed');
+    }
+    if (writeFailure) throw writeFailure;
+    if (cleanupFailure) throw cleanupFailure;
+    return result;
   }
 
   return Object.freeze({ loadMission: load, saveMission: save });
