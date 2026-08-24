@@ -1,0 +1,133 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { createMemoryResonanceBus } from '../../packages/resonance/src/resonance-bus.js';
+import { createMissionOrchestrator } from '../../packages/orchestrator/src/mission-orchestrator.js';
+import { createMission } from '../../packages/contracts/src/mission.js';
+import { saveMission } from '../../packages/mission/src/mission-store.js';
+
+function clock() {
+  let index = 0;
+  return () => `2026-08-23T12:00:0${index++}.000Z`;
+}
+
+function passingExecutor() {
+  return {
+    async inspect() {
+      return { package: { name: 'athere-titan', version: '0.1.0' }, sourceFiles: 12, testFiles: 60 };
+    },
+    async runTests() {
+      return {
+        command: 'node --test', exitCode: 0, tests: 60, passed: 60, failed: 0, skipped: 0,
+        stdout: 'ℹ tests 60\nℹ pass 60\nℹ fail 0\nℹ skipped 0', stderr: '',
+      };
+    },
+  };
+}
+
+async function workspace() {
+  return mkdtemp(path.join(tmpdir(), 'titan-mission-orchestrator-'));
+}
+
+test('golden Titan test mission persists accepted running and completed states with verified proof', async () => {
+  const root = await workspace();
+  const bus = createMemoryResonanceBus();
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    bus,
+    executor: passingExecutor(),
+    clock: clock(),
+    idFactory: () => '{11111111-1111-4111-8111-111111111111}',
+  });
+
+  const result = await orchestrator.execute({ profile: 'owner', text: 'Run every Titan test.' });
+
+  assert.equal(result.revision, 3);
+  assert.equal(result.mission.id, 'mission-11111111-1111-4111-8111-111111111111');
+  assert.equal(result.mission.status, 'completed');
+  assert.deepEqual(result.mission.signals.map(({ type }) => type), ['accepted', 'running', 'completed']);
+  assert.deepEqual(result.tests, { tests: 60, passed: 60, failed: 0, skipped: 0 });
+  assert.equal(result.mission.proof.verified, true);
+  assert.match(result.mission.proof.sha256, /^[a-f0-9]{64}$/);
+  assert.equal((await orchestrator.getMission({ missionId: result.mission.id })).revision, 3);
+  assert.deepEqual(
+    (await bus.read({ missionId: result.mission.id })).map(({ agent }) => agent),
+    ['titan', 'miss-vale-prime', 'nyx', 'rune', 'qra_emerge_audit'],
+  );
+});
+
+test('failed executor stores a blocked mission with its real failure and no proof completion', async () => {
+  const root = await workspace();
+  const bus = createMemoryResonanceBus();
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    bus,
+    clock: clock(),
+    idFactory: () => '22222222-2222-4222-8222-222222222222',
+    executor: {
+      async inspect() { return { package: { name: 'athere-titan', version: '0.1.0' }, sourceFiles: 1, testFiles: 1 }; },
+      async runTests() {
+        return { command: 'node --test', exitCode: 1, tests: 3, passed: 2, failed: 1, skipped: 0, stdout: 'failed', stderr: 'real runner failure' };
+      },
+    },
+  });
+
+  const result = await orchestrator.execute({ profile: 'owner', text: 'test all of Titan' });
+
+  assert.equal(result.revision, 3);
+  assert.equal(result.mission.status, 'blocked');
+  assert.equal(result.mission.proof, undefined);
+  assert.match(result.mission.signals.at(-1).detail, /exit code 1.*failed 1/i);
+  assert.equal(result.mission.signals.at(-1).agent, 'qra_recovery_driver');
+  assert.equal((await bus.read({ missionId: result.mission.id })).at(-1).agent, 'qra_recovery_driver');
+});
+
+test('non-execution plans do not create missions or invoke deterministic executors', async () => {
+  const root = await workspace();
+  let calls = 0;
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    executor: {
+      async inspect() { calls += 1; return {}; },
+      async runTests() { calls += 1; return {}; },
+    },
+  });
+
+  assert.equal((await orchestrator.execute({ profile: 'owner', text: 'Make it better over there' })).status, 'needs_clarification');
+  assert.equal((await orchestrator.execute({ profile: 'public', text: 'Inspect Titan logs on Ubuntu through SSH' })).status, 'denied');
+  assert.equal((await orchestrator.execute({ profile: 'owner', text: 'Deploy Vale Prime to the QRA forces and every fleet cluster' })).status, 'needs_approval');
+  assert.deepEqual(
+    await orchestrator.execute({ profile: 'owner', text: 'Build Titan now' }),
+    { status: 'blocked', reason: 'no operational executor for build' },
+  );
+  assert.equal(calls, 0);
+});
+
+test('recovery blocks interrupted missions without rerunning a deterministic executor', async () => {
+  const root = await workspace();
+  await saveMission({ root, mission: createMission({ id: 'mission-interrupted', intent: 'Run all Titan tests', clock: clock() }) });
+  let executions = 0;
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    executor: {
+      async inspect() { executions += 1; return {}; },
+      async runTests() { executions += 1; return {}; },
+    },
+  });
+
+  assert.deepEqual(await orchestrator.recover(), {
+    recovered: [{ missionId: 'mission-interrupted', revision: 2 }],
+    blocked: [],
+    corrupt: [],
+  });
+  const record = await orchestrator.getMission({ missionId: 'mission-interrupted' });
+  assert.equal(record.mission.status, 'blocked');
+  assert.equal(record.mission.signals.at(-1).agent, 'qra_recovery_driver');
+  assert.equal(executions, 0);
+});
