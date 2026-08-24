@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runFunctionalTeamSmoke } from '../../scripts/smoke-functional-team.js';
 
+const OWNER_TOKEN = 'test-owner-token-0123456789abcdef0123456789';
+
 function response(status, body) {
   return {
     status,
@@ -14,6 +16,15 @@ test('functional smoke proves health, team, normal-language command, and stored 
   const writes = [];
   const missionId = 'mission-smoke-1';
   const proof = { path: `proofs/${missionId}.json`, sha256: 'a'.repeat(64), verified: true };
+  const tests = { tests: 12, passed: 12, failed: 0, skipped: 0 };
+  const result = {
+    tests,
+    proofSha256: proof.sha256,
+    agentEvidence: [
+      { agent: 'nyx', executor: 'repository-inspector', result: { sourceFilesOnDisk: 12, testFilesOnDisk: 12 } },
+      { agent: 'rune', executor: 'node-test-runner', result: { command: 'node --test', exitCode: 0, ...tests } },
+    ],
+  };
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url, options });
     const pathname = new URL(url).pathname;
@@ -31,17 +42,18 @@ test('functional smoke proves health, team, normal-language command, and stored 
     });
     if (pathname === '/api/commands') return response(200, {
       mission: { id: missionId, status: 'completed', proof },
-      tests: { tests: 12, passed: 12, failed: 0, skipped: 0 },
+      tests,
     });
     if (pathname === `/api/missions/${missionId}`) return response(200, {
-      revision: 3,
-      mission: { id: missionId, status: 'completed', proof },
+      revision: 5,
+      mission: { id: missionId, status: 'completed', proof, result },
     });
     throw new Error(`unexpected request: ${url}`);
   };
 
   const evidence = await runFunctionalTeamSmoke({
     baseUrl: 'http://127.0.0.1:5050',
+    authToken: OWNER_TOKEN,
     fetchImpl,
     write: (line) => writes.push(line),
   });
@@ -51,7 +63,13 @@ test('functional smoke proves health, team, normal-language command, and stored 
   ]);
   assert.ok(calls.every(({ options }) => options.signal instanceof AbortSignal));
   assert.equal(calls[2].options.method, 'POST');
-  assert.deepEqual(calls[2].options.headers, { 'content-type': 'text/plain; charset=utf-8' });
+  assert.deepEqual(calls[2].options.headers, {
+    authorization: `Bearer ${OWNER_TOKEN}`,
+    'content-type': 'text/plain; charset=utf-8',
+  });
+  assert.deepEqual(calls[3].options.headers, {
+    authorization: `Bearer ${OWNER_TOKEN}`,
+  });
   assert.equal(calls[2].options.body, 'test all of Titan');
   assert.equal(evidence.missionId, missionId);
   assert.equal(evidence.proof.path, proof.path);
@@ -88,7 +106,7 @@ test('functional smoke refuses unverified or malformed stored proof evidence', a
   };
 
   await assert.rejects(
-    () => runFunctionalTeamSmoke({ baseUrl: 'http://127.0.0.1:5050', fetchImpl, write() {} }),
+    () => runFunctionalTeamSmoke({ baseUrl: 'http://127.0.0.1:5050', authToken: OWNER_TOKEN, fetchImpl, write() {} }),
     /SHA-256/,
   );
 });
@@ -104,6 +122,7 @@ test('functional smoke bounds stalled requests, aborts them, and prints no evide
   await assert.rejects(
     () => runFunctionalTeamSmoke({
       baseUrl: 'http://127.0.0.1:5050',
+      authToken: OWNER_TOKEN,
       fetchImpl,
       write: (line) => writes.push(line),
       quickTimeoutMs: 10,
@@ -128,6 +147,7 @@ test('functional smoke bounds a stalled JSON body with the same contextual deadl
   const result = await Promise.race([
     runFunctionalTeamSmoke({
       baseUrl: 'http://127.0.0.1:5050',
+      authToken: OWNER_TOKEN,
       fetchImpl,
       write: (line) => writes.push(line),
       quickTimeoutMs: 10,

@@ -97,37 +97,42 @@ export function createMissionOrchestrator({
 
       try {
         const inspection = await testExecutor.inspect({ repositoryRoot });
-        await publish({
-          missionId: record.mission.id,
+        const nyxEvidence = Object.freeze({ executor: 'repository-inspector', result: inspection });
+        const inspected = transitionMission(record.mission, {
           type: 'running',
           agent: 'nyx',
-          at: clock(),
           detail: 'repository inspection completed',
-        });
+          evidence: nyxEvidence,
+        }, { clock });
+        record = await persist(inspected, record.revision);
         const result = await testExecutor.runTests({ repositoryRoot });
-        await publish({
-          missionId: record.mission.id,
+        const validatedCounts = testCounts(result);
+        const runeResult = Object.freeze({ command: result.command, exitCode: result.exitCode, ...validatedCounts });
+        const runeEvidence = Object.freeze({ executor: 'node-test-runner', result: runeResult });
+        const executed = transitionMission(record.mission, {
           type: 'running',
           agent: 'rune',
-          at: clock(),
           detail: 'node test execution completed',
-        });
+          evidence: runeEvidence,
+        }, { clock });
+        record = await persist(executed, record.revision);
         if (result.exitCode !== 0 || result.failed !== 0) throw new Error(failureMessage(result));
 
+        const agentEvidence = Object.freeze([
+          Object.freeze({ agent: 'nyx', ...nyxEvidence }),
+          Object.freeze({ agent: 'rune', ...runeEvidence }),
+        ]);
         const ref = await writeProof({
           root: workspaceRoot,
           missionId: record.mission.id,
           payload: {
             command: result.command,
             exitCode: result.exitCode,
-            tests: testCounts(result),
+            tests: validatedCounts,
             stdout: result.stdout,
             stderr: result.stderr,
             inspection,
-            agentEvidence: [
-              { agent: 'nyx', executor: 'repository-inspector', result: inspection },
-              { agent: 'rune', executor: 'node-test-runner', result: { command: result.command, exitCode: result.exitCode, ...testCounts(result) } },
-            ],
+            agentEvidence,
           },
         });
         const verification = await verifyProof({ root: workspaceRoot, ref });
@@ -136,9 +141,14 @@ export function createMissionOrchestrator({
           type: 'completed',
           agent: 'qra_emerge_audit',
           proof: { ...ref, verified: verification.verified },
+          result: {
+            tests: validatedCounts,
+            agentEvidence,
+            proofSha256: ref.sha256,
+          },
         }, { clock });
         record = await persist(completed, record.revision);
-        return Object.freeze({ revision: record.revision, mission: record.mission, tests: testCounts(result) });
+        return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });
       } catch (error) {
         return block(record.mission, record.revision, error instanceof Error ? error.message : String(error));
       }

@@ -90,8 +90,8 @@ test('node test executor inspects repository metadata and source and test files 
 
   assert.deepEqual(await executor.inspect(), {
     package: { name: 'test-repository', version: '1.2.3' },
-    sourceFiles: 1,
-    testFiles: 1,
+    sourceFilesOnDisk: 1,
+    testFilesOnDisk: 1,
   });
 });
 

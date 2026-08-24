@@ -1,11 +1,14 @@
 import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { hostname as systemHostname } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const TRANSIENT_SHARING_CODES = new Set(['EACCES', 'EBUSY', 'EPERM']);
 const DEFAULT_FILESYSTEM = Object.freeze({ mkdir, open, readFile, rename, rm, writeFile });
+const LOCK_VERSION = 1;
+const DEFAULT_LEASE_MS = 30_000;
 
 function requireMissionId(missionId) {
   if (typeof missionId !== 'string' || !MISSION_ID.test(missionId)) {
@@ -49,11 +52,106 @@ async function retryTransientSharing(operation, { retryDelay, maxTransientAttemp
   throw new Error('unreachable transient filesystem retry');
 }
 
+function requireClock(clock) {
+  if (typeof clock !== 'function') throw new TypeError('clock must be a function');
+  return clock;
+}
+
+function requireOwner({ hostname, pid }) {
+  if (typeof hostname !== 'string' || hostname.trim().length === 0) throw new TypeError('hostname must be non-empty');
+  if (!Number.isSafeInteger(pid) || pid < 1) throw new TypeError('pid must be a positive integer');
+  return Object.freeze({ hostname, pid });
+}
+
+function requireLeaseMs(value) {
+  if (!Number.isSafeInteger(value) || value < 1 || value > 3_600_000) throw new TypeError('leaseMs must be between 1 and 3600000');
+  return value;
+}
+
+function requireToken(value) {
+  if (typeof value !== 'string' || value.length < 16 || value.length > 256 || /\s/.test(value)) {
+    throw new TypeError('lock token must be a non-empty opaque value');
+  }
+  return value;
+}
+
+function lockMetadata({ owner, token, clock, leaseMs }) {
+  const acquiredAt = clock();
+  const acquiredAtMs = Date.parse(acquiredAt);
+  if (typeof acquiredAt !== 'string' || Number.isNaN(acquiredAtMs)) throw new TypeError('clock must return an ISO timestamp');
+  return Object.freeze({
+    version: LOCK_VERSION,
+    owner: Object.freeze({ ...owner, token }),
+    lease: Object.freeze({ acquiredAt, expiresAt: new Date(acquiredAtMs + leaseMs).toISOString() }),
+  });
+}
+
+function parseLockMetadata(content) {
+  let metadata;
+  try {
+    metadata = JSON.parse(content);
+  } catch {
+    return undefined;
+  }
+  const acquiredAt = Date.parse(metadata?.lease?.acquiredAt);
+  const expiresAt = Date.parse(metadata?.lease?.expiresAt);
+  if (metadata?.version !== LOCK_VERSION
+    || typeof metadata?.owner?.hostname !== 'string'
+    || !Number.isSafeInteger(metadata?.owner?.pid)
+    || metadata.owner.pid < 1
+    || typeof metadata?.owner?.token !== 'string'
+    || metadata.owner.token.length < 16
+    || Number.isNaN(acquiredAt)
+    || Number.isNaN(expiresAt)
+    || expiresAt <= acquiredAt) return undefined;
+  return metadata;
+}
+
+async function readLockMetadata(operations, lock) {
+  try {
+    return parseLockMetadata(await operations.readFile(lock, 'utf8'));
+  } catch (error) {
+    if (error?.code === 'ENOENT') return undefined;
+    throw error;
+  }
+}
+
+async function defaultIsProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code !== 'ESRCH';
+  }
+}
+
+async function reclaimDeadOwnerLock({ operations, lock, owner, isProcessAlive }) {
+  const candidate = await readLockMetadata(operations, lock);
+  if (!candidate || candidate.owner.hostname !== owner.hostname) return false;
+  if (await isProcessAlive(candidate.owner.pid) !== false) return false;
+  const confirmed = await readLockMetadata(operations, lock);
+  if (!confirmed || confirmed.owner.token !== candidate.owner.token) return false;
+
+  const quarantine = `${lock}.stale-${randomUUID()}`;
+  try {
+    await operations.rename(lock, quarantine);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return true;
+    throw error;
+  }
+  const claimed = await readLockMetadata(operations, quarantine);
+  if (!claimed || claimed.owner.token !== candidate.owner.token) {
+    throw new Error('mission lock changed during stale-owner reclamation');
+  }
+  await operations.rm(quarantine, { force: true });
+  return true;
+}
+
 function expectedCleanupError(operation, error) {
   return error?.code === 'ENOENT' || (operation === 'close' && error?.code === 'EBADF');
 }
 
-async function cleanupMissionWrite({ operations, temporary, lockHandle, lock }) {
+async function cleanupMissionWrite({ operations, temporary, lockHandle, lock, lockToken, metadataWritten }) {
   const failures = [];
   const attempt = async (operation, work) => {
     try {
@@ -66,7 +164,20 @@ async function cleanupMissionWrite({ operations, temporary, lockHandle, lock }) 
   };
   await attempt('temporary', () => operations.rm(temporary, { force: true }));
   await attempt('close', () => lockHandle.close());
-  await attempt('lock', () => operations.rm(lock, { force: true }));
+  await attempt('lock', async () => {
+    if (metadataWritten) {
+      let content;
+      try {
+        content = await operations.readFile(lock, 'utf8');
+      } catch (error) {
+        if (error?.code === 'ENOENT') return;
+        throw error;
+      }
+      const metadata = parseLockMetadata(content);
+      if (!metadata || metadata.owner.token !== lockToken) throw new Error('mission lock ownership changed');
+    }
+    await operations.rm(lock, { force: true });
+  });
   return failures.length === 0 ? undefined : new AggregateError(failures, 'mission cleanup failed');
 }
 
@@ -96,10 +207,21 @@ export function createMissionStore({
   filesystem = DEFAULT_FILESYSTEM,
   retryDelay = delay,
   maxTransientAttempts = 4,
+  hostname = systemHostname(),
+  pid = process.pid,
+  clock = () => new Date().toISOString(),
+  tokenFactory = randomUUID,
+  isProcessAlive = defaultIsProcessAlive,
+  leaseMs = DEFAULT_LEASE_MS,
 } = {}) {
   const operations = requireFilesystem(filesystem);
   if (typeof retryDelay !== 'function') throw new TypeError('retryDelay must be a function');
   const attempts = requireAttempts(maxTransientAttempts);
+  const owner = requireOwner({ hostname, pid });
+  const lockClock = requireClock(clock);
+  if (typeof tokenFactory !== 'function') throw new TypeError('tokenFactory must be a function');
+  if (typeof isProcessAlive !== 'function') throw new TypeError('isProcessAlive must be a function');
+  const lockLeaseMs = requireLeaseMs(leaseMs);
 
   async function load({ root, missionId }) {
     const { snapshot } = locations(root, missionId);
@@ -112,10 +234,26 @@ export function createMissionStore({
     await operations.mkdir(directory, { recursive: true });
 
     let lockHandle;
+    for (let acquisitionAttempt = 0; acquisitionAttempt < attempts; acquisitionAttempt += 1) {
+      try {
+        lockHandle = await retryTransientSharing(() => operations.open(lock, 'wx'), { retryDelay, maxTransientAttempts: attempts });
+        break;
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+        const reclaimed = await reclaimDeadOwnerLock({ operations, lock, owner, isProcessAlive });
+        if (!reclaimed) throw new Error('mission write already in progress');
+      }
+    }
+    if (!lockHandle) throw new Error('mission write already in progress');
+
+    const lockToken = requireToken(tokenFactory());
+    let metadataWritten = false;
     try {
-      lockHandle = await retryTransientSharing(() => operations.open(lock, 'wx'), { retryDelay, maxTransientAttempts: attempts });
+      const metadata = lockMetadata({ owner, token: lockToken, clock: lockClock, leaseMs: lockLeaseMs });
+      await operations.writeFile(lock, `${JSON.stringify(metadata)}\n`, { encoding: 'utf8', flag: 'w' });
+      metadataWritten = true;
     } catch (error) {
-      if (error.code === 'EEXIST') throw new Error('mission write already in progress');
+      await cleanupMissionWrite({ operations, temporary: `${lock}.metadata`, lockHandle, lock, lockToken, metadataWritten });
       throw error;
     }
 
@@ -139,7 +277,7 @@ export function createMissionStore({
     } catch (error) {
       writeFailure = error;
     }
-    const cleanupFailure = await cleanupMissionWrite({ operations, temporary, lockHandle, lock });
+    const cleanupFailure = await cleanupMissionWrite({ operations, temporary, lockHandle, lock, lockToken, metadataWritten });
     if (writeFailure && cleanupFailure) {
       throw new AggregateError([writeFailure, cleanupFailure], 'mission write and cleanup failed');
     }

@@ -45,11 +45,12 @@ The first executable command is Titan testing. Existing build, SSH-read, and Val
 
 ### HTTP API
 
-- `GET /health` returns service readiness, enabled-team count, and startup-recovery summary.
-- `GET /api/team` returns registered identities and whether each has a real executor.
-- `POST /api/commands` accepts plain text and returns the resulting stored mission or a clarification/approval/denial response.
-- `GET /api/missions/:id` returns the durable mission snapshot.
-- `POST /api/chat` remains advisory. If its text is a recognized executable command, it returns HTTP 409 and directs the caller to `/api/commands`; it never sends that request to the model.
+- `GET /health` returns public non-sensitive service readiness, enabled-team count, and startup-recovery summary.
+- `GET /api/team` returns public registered identities and whether each has a real executor.
+- Owner command, mission-read, and chat requests require a strong reusable bearer credential configured once by the client. Loopback transport alone does not establish caller authority, and untrusted browser origin/fetch metadata is rejected before work.
+- `POST /api/commands` accepts authenticated plain text and returns the resulting stored mission or a clarification/approval/denial response. Only one command execution is admitted at a time; concurrent execution receives HTTP 429 with `Retry-After`.
+- `GET /api/missions/:id` returns the authenticated durable mission snapshot.
+- `POST /api/chat` remains authenticated and advisory. If its text is a recognized executable command, it returns HTTP 409 and directs the caller to `/api/commands`; it never sends that request to the model.
 
 ### Golden test mission
 
@@ -57,12 +58,13 @@ For an owner request containing `test` and `Titan`:
 
 1. Titan creates and stores an accepted mission.
 2. Miss Vale Prime records supervision.
-3. NYX inspects the repository using deterministic filesystem/package metadata.
+3. NYX inspects current on-disk matching source/test files using deterministic filesystem/package metadata; it does not claim Git-tracked counts.
 4. RUNE executes `node --test` through `execFile`, never a shell.
 5. QRA Audit writes a canonical proof containing the command, exit code, parsed test totals, bounded stdout/stderr, and repository inspection.
 6. Titan independently verifies the proof file hash.
 7. Titan completes the mission only when exit code is zero, failed tests are zero, and proof verification passes.
-8. Any tool or proof failure stores a blocked mission with the real error and no fabricated completion.
+8. Agent-attributed NYX/RUNE evidence and validated test totals are revisioned into the mission before completion and bound to the verified proof so restart retrieval reproduces the final result.
+9. Any tool or proof failure stores a blocked mission with the real error and no fabricated completion.
 
 The API response includes the mission ID, status, actual test counts, proof path, and SHA-256 from the stored mission.
 
@@ -81,7 +83,7 @@ The first functional slice uses the existing atomic filesystem mission and proof
 
 ## Service deployment
 
-Provide a user-level systemd unit pointing at `/home/the_founder/athere-titan-reconstruction`. It runs `node scripts/start-agent-api.js`, restarts on failure, uses the existing optional `.env.local`, and avoids sudo. Deployment must install the unit under `~/.config/systemd/user`, enable it, stop the unmanaged reconstruction process, start the unit, and verify `/health` plus a golden mission. Redis/S24 and UI are explicitly outside this slice.
+Provide a user-level systemd unit pointing at `/home/the_founder/athere-titan-reconstruction`. It runs `node scripts/start-agent-api.js`, restarts on failure, uses the existing optional `.env.local` for the owner bearer credential, avoids sudo, and applies task/memory/CPU bounds sized for one Titan suite. Deployment must install the unit under `~/.config/systemd/user`, enable it, stop the unmanaged reconstruction process, start the unit, and verify `/health` plus a golden mission. Redis/S24 and UI are explicitly outside this slice.
 
 ## Acceptance gates
 

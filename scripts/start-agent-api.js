@@ -44,6 +44,7 @@ export async function createTitanService({
   if (!environment || typeof environment !== 'object') throw new TypeError('environment is required');
   const resolvedRepositoryRoot = path.resolve(repositoryRoot);
   const resolvedWorkspaceRoot = workspaceRoot(environment, resolvedRepositoryRoot);
+  const authToken = nonEmptyEnvironment(environment, 'TITAN_API_BEARER_TOKEN');
   validateOperationalFleet();
   await mkdir(resolvedWorkspaceRoot, { recursive: true });
   const recovery = await recoverInterruptedMissions({ root: resolvedWorkspaceRoot });
@@ -55,7 +56,7 @@ export async function createTitanService({
     timeoutMs: Number.parseInt(environment.OLLAMA_TIMEOUT_MS ?? '120000', 10),
   });
   const runtime = createAgentRuntime({ complete });
-  return createTitanApi({ runtime, profile: 'owner', orchestrator, team: fleetRegistry, recovery });
+  return createTitanApi({ runtime, profile: 'owner', authToken, orchestrator, team: fleetRegistry, recovery });
 }
 
 export async function startTitanService({ environment = process.env, repositoryRoot = scriptRoot } = {}) {

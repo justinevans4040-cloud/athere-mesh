@@ -1,14 +1,68 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createMission, transitionMission } from '../../packages/contracts/src/mission.js';
-import { saveMission } from '../../packages/mission/src/mission-store.js';
+import { createMissionStore, saveMission } from '../../packages/mission/src/mission-store.js';
 import { inspectRecovery, recoverInterruptedMissions } from '../../packages/recovery/src/recovery-coordinator.js';
 import { loadMission } from '../../packages/mission/src/mission-store.js';
 
 const clock = (value) => () => value;
+
+function lockMetadata({ pid, token, acquiredAt = '2026-08-23T10:00:00.000Z', expiresAt = '2026-08-23T10:00:30.000Z' }) {
+  return `${JSON.stringify({
+    version: 1,
+    owner: { hostname: 'titan-host', pid, token },
+    lease: { acquiredAt, expiresAt },
+  })}\n`;
+}
+
+function deterministicMissionStore({ activePids = new Set() } = {}) {
+  let tokenSequence = 0;
+  return createMissionStore({
+    hostname: 'titan-host',
+    pid: 9001,
+    clock: clock('2026-08-23T10:01:00.000Z'),
+    tokenFactory: () => `current-owner-token-${++tokenSequence}-0123456789`,
+    isProcessAlive: async (pid) => activePids.has(pid),
+  });
+}
+
+test('startup recovery reclaims a demonstrably dead-owner lease and blocks the interrupted mission', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
+  const missionId = 'mission-dead-owner-lock';
+  await saveMission({ root, mission: createMission({ id: missionId, intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
+  const lockPath = join(root, 'missions', `.${missionId}.lock`);
+  await writeFile(lockPath, lockMetadata({ pid: 40404, token: 'dead-owner-token-0123456789abcdef' }), 'utf8');
+  const missionStore = deterministicMissionStore();
+
+  assert.deepEqual(
+    await recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:02:00.000Z') }),
+    { recovered: [missionId], blocked: [], corrupt: [] },
+  );
+  const record = await missionStore.loadMission({ root, missionId });
+  assert.equal(record.mission.status, 'blocked');
+  assert.equal(record.mission.signals.at(-1).agent, 'qra_recovery_driver');
+  await assert.rejects(() => readFile(lockPath, 'utf8'), (error) => error.code === 'ENOENT');
+});
+
+test('startup recovery refuses to steal a genuinely active owner lease', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
+  const missionId = 'mission-active-owner-lock';
+  await saveMission({ root, mission: createMission({ id: missionId, intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
+  const lockPath = join(root, 'missions', `.${missionId}.lock`);
+  const activeMetadata = lockMetadata({ pid: 50505, token: 'active-owner-token-0123456789abcdef' });
+  await writeFile(lockPath, activeMetadata, 'utf8');
+  const missionStore = deterministicMissionStore({ activePids: new Set([50505]) });
+
+  await assert.rejects(
+    () => recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:02:00.000Z') }),
+    /mission write already in progress/,
+  );
+  assert.equal((await missionStore.loadMission({ root, missionId })).mission.status, 'accepted');
+  assert.equal(await readFile(lockPath, 'utf8'), activeMetadata);
+});
 
 test('restart recovery assigns interrupted running missions to the recovery driver', async () => {
   const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));

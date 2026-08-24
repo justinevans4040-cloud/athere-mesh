@@ -7,8 +7,17 @@ import { loadMission, saveMission } from '../../mission/src/mission-store.js';
 const SNAPSHOT = /^([A-Za-z0-9][A-Za-z0-9_-]{0,127})\.json$/;
 const RECOVERY_DETAIL = 'interrupted execution requires operator retry';
 const RECOVERY_ATTEMPTS = 8;
+const DEFAULT_MISSION_STORE = Object.freeze({ loadMission, saveMission });
 
-export async function inspectRecovery({ root }) {
+function requireMissionStore(missionStore) {
+  if (!missionStore || typeof missionStore.loadMission !== 'function' || typeof missionStore.saveMission !== 'function') {
+    throw new TypeError('missionStore must provide loadMission and saveMission');
+  }
+  return missionStore;
+}
+
+export async function inspectRecovery({ root, missionStore = DEFAULT_MISSION_STORE }) {
+  const store = requireMissionStore(missionStore);
   const result = { resumable: [], blocked: [], corrupt: [] };
   let entries;
   try {
@@ -24,7 +33,7 @@ export async function inspectRecovery({ root }) {
     const missionId = match[1];
     let record;
     try {
-      record = await loadMission({ root, missionId });
+      record = await store.loadMission({ root, missionId });
     } catch (error) {
       result.corrupt.push({ missionId, reason: error.message });
       continue;
@@ -51,9 +60,9 @@ function retryableRecoveryConflict(error) {
   return error?.message === 'mission write already in progress' || /^revision conflict: /.test(error?.message);
 }
 
-async function convergeInterruptedMission({ root, missionId, clock }) {
+async function convergeInterruptedMission({ root, missionId, clock, missionStore }) {
   for (let attempt = 0; attempt < RECOVERY_ATTEMPTS; attempt += 1) {
-    const record = await loadMission({ root, missionId });
+    const record = await missionStore.loadMission({ root, missionId });
     if (recoveryBlocked(record)) return true;
     if (record.mission.status !== 'accepted' && record.mission.status !== 'running') return false;
     const blocked = transitionMission(record.mission, {
@@ -62,7 +71,7 @@ async function convergeInterruptedMission({ root, missionId, clock }) {
       detail: RECOVERY_DETAIL,
     }, { clock });
     try {
-      await saveMission({ root, mission: blocked, expectedRevision: record.revision });
+      await missionStore.saveMission({ root, mission: blocked, expectedRevision: record.revision });
       return true;
     } catch (error) {
       if (!retryableRecoveryConflict(error) || attempt === RECOVERY_ATTEMPTS - 1) throw error;
@@ -72,11 +81,12 @@ async function convergeInterruptedMission({ root, missionId, clock }) {
   return false;
 }
 
-export async function recoverInterruptedMissions({ root, clock = () => new Date().toISOString() } = {}) {
-  const inspection = await inspectRecovery({ root });
+export async function recoverInterruptedMissions({ root, clock = () => new Date().toISOString(), missionStore = DEFAULT_MISSION_STORE } = {}) {
+  const store = requireMissionStore(missionStore);
+  const inspection = await inspectRecovery({ root, missionStore: store });
   const recovered = [];
   for (const item of inspection.resumable) {
-    if (await convergeInterruptedMission({ root, missionId: item.missionId, clock })) recovered.push(item.missionId);
+    if (await convergeInterruptedMission({ root, missionId: item.missionId, clock, missionStore: store })) recovered.push(item.missionId);
   }
   return Object.freeze({
     recovered: Object.freeze(recovered),

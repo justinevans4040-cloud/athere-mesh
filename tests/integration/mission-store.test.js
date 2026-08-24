@@ -180,3 +180,36 @@ test('mission store tolerates only absent cleanup files and already-closed handl
     1,
   );
 });
+
+test('mission cleanup never removes a successor lock owned by another token', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-mission-'));
+  const missionId = 'mission-successor-lock';
+  const successor = `${JSON.stringify({
+    version: 1,
+    owner: { hostname: 'titan-host', pid: 7777, token: 'successor-owner-token-0123456789' },
+    lease: { acquiredAt: '2026-08-23T12:00:00.000Z', expiresAt: '2026-08-23T12:00:30.000Z' },
+  })}\n`;
+  const store = createMissionStore({
+    hostname: 'titan-host',
+    pid: 7001,
+    clock: clock('2026-08-23T12:00:00.000Z'),
+    tokenFactory: () => 'original-owner-token-0123456789',
+    filesystem: {
+      ...filesystem,
+      async rename(from, to) {
+        await filesystem.rename(from, to);
+        if (String(to).endsWith(`${missionId}.json`)) {
+          await filesystem.writeFile(join(root, 'missions', `.${missionId}.lock`), successor, 'utf8');
+        }
+      },
+    },
+  });
+
+  await assert.rejects(
+    () => store.saveMission({ root, mission: createMission({ id: missionId, intent: 'Preserve successor ownership' }) }),
+    (error) => error instanceof AggregateError
+      && error.message === 'mission cleanup failed'
+      && error.errors[0].cause?.message === 'mission lock ownership changed',
+  );
+  assert.equal(await filesystem.readFile(join(root, 'missions', `.${missionId}.lock`), 'utf8'), successor);
+});

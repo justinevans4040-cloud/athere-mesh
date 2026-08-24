@@ -6,7 +6,7 @@
 
 Titan accepts ordinary-language commands. Operators do not need to provide JSON.
 
-The first executable command is `test all of Titan` (and equivalent owner test wording). It creates a durable mission, records supervision, repository inspection, real Node test output, and a SHA-256-verified proof. Completion comes from deterministic tool output and stored proof—not from a model response.
+The first executable command is `test all of Titan` (and equivalent owner test wording). It creates a durable mission, records supervision, current on-disk source/test file counts, real Node test output, and a SHA-256-verified proof. NYX/RUNE evidence and exact validated test totals are persisted in the mission before completion and remain available after restart. Completion comes from deterministic tool output and stored proof—not from a model response.
 
 The operational team is deliberately limited to implemented executors:
 
@@ -23,23 +23,24 @@ Every other recovered registry entry remains preserved and disabled until it has
 
 ## API boundary
 
-The owner API binds to loopback. Its functional endpoints are:
+The owner API binds to loopback and requires a reusable bearer credential from `TITAN_API_BEARER_TOKEN`. Loopback is the transport boundary, not caller authentication. The client configures the credential once and reuses it; this does not add per-command human approval.
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /health` | Readiness, enabled-team count, and startup-recovery summary |
-| `GET /api/team` | Registered team with executor/operational status |
-| `POST /api/commands` | Plain UTF-8 text command execution |
-| `GET /api/missions/:id` | Durable stored mission result |
-| `POST /api/chat` | Advisory model chat only |
+| `GET /health` | Public non-sensitive readiness, enabled-team count, and startup-recovery summary |
+| `GET /api/team` | Public registered team with executor/operational status |
+| `POST /api/commands` | Authenticated plain UTF-8 text command execution |
+| `GET /api/missions/:id` | Authenticated durable stored mission result |
+| `POST /api/chat` | Authenticated advisory model chat only |
 
-Recognized execution requests sent to `/api/chat` return `409` before reaching Ollama. They must use `/api/commands`. A request that is unclear, denied, or lacks an executor returns a truthful non-completion result.
+Protected requests use `Authorization: Bearer <TITAN_API_BEARER_TOKEN>`. Missing/invalid credentials are rejected before request bodies, executors, stored missions, or Ollama are reached. Cross-site browser fetch metadata/origins are rejected as defense in depth. Recognized execution requests sent to `/api/chat` return `409` before reaching Ollama. They must use `/api/commands`. A request that is unclear, denied, or lacks an executor returns a truthful non-completion result. Only one command execution is admitted at a time; a concurrent request receives `429` with `Retry-After: 1`.
 
 ## Local verification
 
 Start the API:
 
 ```sh
+export TITAN_API_BEARER_TOKEN='<strong random bearer credential of at least 32 bytes>'
 corepack pnpm start:agent-api
 ```
 
@@ -49,11 +50,11 @@ In a second shell, run the end-to-end functional smoke:
 corepack pnpm smoke:functional-team
 ```
 
-The smoke checks `/health`, `/api/team`, sends the normal-language test command, retrieves the stored mission, requires zero failed tests, and requires a matching `proofs/<mission-id>.json` reference with a lowercase 64-character SHA-256. It prints one JSON evidence object only after those checks pass.
+The smoke reuses `TITAN_API_BEARER_TOKEN`, checks `/health`, `/api/team`, sends the normal-language test command, retrieves the stored mission, requires zero failed tests, and requires a matching `proofs/<mission-id>.json` reference with a lowercase 64-character SHA-256. It prints one JSON evidence object only after those checks pass.
 
 ## Ichabod user service
 
-The deployable unit is [athere-titan.service](../../deploy/systemd-user/athere-titan.service). It is a **user** service rooted at `/home/the_founder/athere-titan-reconstruction`; it does not require sudo and may read an optional `.env.local` in that directory.
+The deployable unit is [athere-titan.service](../../deploy/systemd-user/athere-titan.service). It is a **user** service rooted at `/home/the_founder/athere-titan-reconstruction`; it does not require sudo and may read an optional `.env.local` in that directory. That file must supply a strong `TITAN_API_BEARER_TOKEN`. The unit bounds one admitted suite with `TasksMax=256`, `MemoryMax=2G`, and `CPUQuota=200%`; these limits permit the normal Titan suite while bounding runaway process, memory, and CPU use.
 
 After reviewed code has been copied to that exact path, install and start it as `the_founder`:
 

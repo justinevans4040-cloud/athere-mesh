@@ -16,7 +16,7 @@ function clock() {
 function passingExecutor() {
   return {
     async inspect() {
-      return { package: { name: 'athere-titan', version: '0.1.0' }, sourceFiles: 12, testFiles: 60 };
+      return { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 12, testFilesOnDisk: 60 };
     },
     async runTests() {
       return {
@@ -26,6 +26,47 @@ function passingExecutor() {
     },
   };
 }
+
+test('restart retrieval preserves NYX and RUNE evidence plus proof-bound validated totals', async () => {
+  const root = await workspace();
+  const executor = passingExecutor();
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    bus: createMemoryResonanceBus(),
+    executor,
+    clock: clock(),
+    idFactory: () => 'restart-evidence-1111',
+  });
+
+  const immediate = await orchestrator.execute({ profile: 'owner', text: 'test all of Titan' });
+  const fresh = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    bus: createMemoryResonanceBus(),
+    executor,
+  });
+  const stored = await fresh.getMission({ missionId: immediate.mission.id });
+
+  assert.deepEqual(stored.mission.signals.map(({ agent }) => agent), [
+    'titan', 'miss-vale-prime', 'nyx', 'rune', 'qra_emerge_audit',
+  ]);
+  assert.deepEqual(stored.mission.signals[2].evidence, {
+    executor: 'repository-inspector',
+    result: { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 12, testFilesOnDisk: 60 },
+  });
+  assert.deepEqual(stored.mission.signals[3].evidence, {
+    executor: 'node-test-runner',
+    result: { command: 'node --test', exitCode: 0, tests: 60, passed: 60, failed: 0, skipped: 0 },
+  });
+  assert.deepEqual(stored.mission.result.tests, { tests: 60, passed: 60, failed: 0, skipped: 0 });
+  assert.deepEqual(stored.mission.result.agentEvidence, [
+    { agent: 'nyx', executor: 'repository-inspector', result: stored.mission.signals[2].evidence.result },
+    { agent: 'rune', executor: 'node-test-runner', result: stored.mission.signals[3].evidence.result },
+  ]);
+  assert.equal(stored.mission.result.proofSha256, stored.mission.proof.sha256);
+  assert.deepEqual(immediate.tests, stored.mission.result.tests);
+});
 
 async function workspace() {
   return mkdtemp(path.join(tmpdir(), 'titan-mission-orchestrator-'));
@@ -45,14 +86,14 @@ test('golden Titan test mission persists accepted running and completed states w
 
   const result = await orchestrator.execute({ profile: 'owner', text: 'Run every Titan test.' });
 
-  assert.equal(result.revision, 3);
+  assert.equal(result.revision, 5);
   assert.equal(result.mission.id, 'mission-11111111-1111-4111-8111-111111111111');
   assert.equal(result.mission.status, 'completed');
-  assert.deepEqual(result.mission.signals.map(({ type }) => type), ['accepted', 'running', 'completed']);
+  assert.deepEqual(result.mission.signals.map(({ type }) => type), ['accepted', 'running', 'running', 'running', 'completed']);
   assert.deepEqual(result.tests, { tests: 60, passed: 60, failed: 0, skipped: 0 });
   assert.equal(result.mission.proof.verified, true);
   assert.match(result.mission.proof.sha256, /^[a-f0-9]{64}$/);
-  assert.equal((await orchestrator.getMission({ missionId: result.mission.id })).revision, 3);
+  assert.equal((await orchestrator.getMission({ missionId: result.mission.id })).revision, 5);
   assert.deepEqual(
     (await bus.read({ missionId: result.mission.id })).map(({ agent }) => agent),
     ['titan', 'miss-vale-prime', 'nyx', 'rune', 'qra_emerge_audit'],
@@ -66,7 +107,7 @@ test('golden Titan test mission persists accepted running and completed states w
   const reloaded = await freshOrchestrator.getMission({ missionId: result.mission.id });
   const proof = JSON.parse(await readFile(path.join(root, reloaded.mission.proof.path), 'utf8'));
   assert.deepEqual(proof.agentEvidence.map(({ agent }) => agent), ['nyx', 'rune']);
-  assert.deepEqual(proof.agentEvidence[0].result, { package: { name: 'athere-titan', version: '0.1.0' }, sourceFiles: 12, testFiles: 60 });
+  assert.deepEqual(proof.agentEvidence[0].result, { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 12, testFilesOnDisk: 60 });
   assert.deepEqual(proof.agentEvidence[1].result, {
     command: 'node --test', exitCode: 0, tests: 60, passed: 60, failed: 0, skipped: 0,
   });
@@ -82,7 +123,7 @@ test('failed executor stores a blocked mission with its real failure and no proo
     clock: clock(),
     idFactory: () => '22222222-2222-4222-8222-222222222222',
     executor: {
-      async inspect() { return { package: { name: 'athere-titan', version: '0.1.0' }, sourceFiles: 1, testFiles: 1 }; },
+      async inspect() { return { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 1, testFilesOnDisk: 1 }; },
       async runTests() {
         return { command: 'node --test', exitCode: 1, tests: 3, passed: 2, failed: 1, skipped: 0, stdout: 'failed', stderr: 'real runner failure' };
       },
@@ -91,7 +132,7 @@ test('failed executor stores a blocked mission with its real failure and no proo
 
   const result = await orchestrator.execute({ profile: 'owner', text: 'test all of Titan' });
 
-  assert.equal(result.revision, 3);
+  assert.equal(result.revision, 5);
   assert.equal(result.mission.status, 'blocked');
   assert.equal(result.mission.proof, undefined);
   assert.match(result.mission.signals.at(-1).detail, /exit code 1.*failed 1/i);
@@ -159,7 +200,7 @@ test('telemetry publishing failures cannot overturn a durably completed mission'
 
   const result = await orchestrator.execute({ profile: 'owner', text: 'Run every Titan test.' });
 
-  assert.equal(result.revision, 3);
+  assert.equal(result.revision, 5);
   assert.equal(result.mission.status, 'completed');
   const freshOrchestrator = createMissionOrchestrator({
     root,

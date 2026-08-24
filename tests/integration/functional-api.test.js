@@ -10,6 +10,8 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+const OWNER_TOKEN = 'test-owner-token-0123456789abcdef0123456789';
+
 function createOrchestrator() {
   const missions = new Map();
   let sequence = 0;
@@ -35,11 +37,12 @@ function createOrchestrator() {
   };
 }
 
-async function startFunctionalApi({ maxRequestBytes, orchestrator = createOrchestrator(), logger } = {}) {
+async function startFunctionalApi({ maxRequestBytes, orchestrator = createOrchestrator(), logger, authToken = OWNER_TOKEN } = {}) {
   const runtime = createAgentRuntime({ complete: async () => ({ content: 'advisory only' }) });
   const api = createTitanApi({
     runtime,
     profile: 'owner',
+    authToken,
     orchestrator,
     team: fleetRegistry,
     recovery: { recovered: ['mission-recovered'], blocked: [], corrupt: [] },
@@ -50,13 +53,146 @@ async function startFunctionalApi({ maxRequestBytes, orchestrator = createOrches
   return api;
 }
 
-async function request(api, pathname, { method = 'GET', body } = {}) {
+async function request(api, pathname, { method = 'GET', body, headers = {} } = {}) {
   const response = await fetch(`${api.url}${pathname}`, {
     method,
-    ...(body === undefined ? {} : { headers: { 'content-type': 'text/plain; charset=utf-8' }, body }),
+    headers: {
+      authorization: `Bearer ${OWNER_TOKEN}`,
+      ...(body === undefined ? {} : { 'content-type': 'text/plain; charset=utf-8' }),
+      ...headers,
+    },
+    ...(body === undefined ? {} : { body }),
   });
   return { status: response.status, body: await response.json() };
 }
+
+test('owner routes require bearer authentication and reject cross-site browser requests before work begins', async () => {
+  let executionCalls = 0;
+  let retrievalCalls = 0;
+  let completionCalls = 0;
+  const runtime = createAgentRuntime({
+    complete: async () => {
+      completionCalls += 1;
+      return { content: 'must not run' };
+    },
+  });
+  const api = createTitanApi({
+    runtime,
+    profile: 'owner',
+    authToken: OWNER_TOKEN,
+    orchestrator: {
+      async execute() { executionCalls += 1; return { status: 'blocked' }; },
+      async getMission() { retrievalCalls += 1; throw new Error('mission snapshot not found'); },
+    },
+    team: fleetRegistry,
+    recovery: { recovered: [], blocked: [], corrupt: [] },
+  });
+  await api.listen({ host: '127.0.0.1', port: 0 });
+  try {
+    const health = await fetch(`${api.url}/health`);
+    const team = await fetch(`${api.url}/api/team`);
+    const command = await fetch(`${api.url}/api/commands`, {
+      method: 'POST', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: 'test all of Titan',
+    });
+    const mission = await fetch(`${api.url}/api/missions/mission-secret`);
+    const chat = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
+      method: 'POST', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: 'hello Titan',
+    });
+    const crossSite = await fetch(`${api.url}/api/commands`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${OWNER_TOKEN}`,
+        'content-type': 'text/plain; charset=utf-8',
+        origin: 'https://attacker.example',
+        'sec-fetch-site': 'cross-site',
+      },
+      body: 'test all of Titan',
+    });
+
+    assert.deepEqual(
+      [health.status, team.status, command.status, mission.status, chat.status, crossSite.status],
+      [200, 200, 401, 401, 401, 403],
+    );
+    assert.match(command.headers.get('www-authenticate') ?? '', /^Bearer\b/);
+    assert.deepEqual({ executionCalls, retrievalCalls, completionCalls }, { executionCalls: 0, retrievalCalls: 0, completionCalls: 0 });
+  } finally {
+    await api.close();
+  }
+});
+
+test('command admission is single-flight and releases after blocked results and thrown errors', async () => {
+  let releaseFirst;
+  let markStarted;
+  const started = new Promise((resolve) => { markStarted = resolve; });
+  const calls = [];
+  const api = await startFunctionalApi({
+    authToken: OWNER_TOKEN,
+    orchestrator: {
+      async execute({ text }) {
+        calls.push(text);
+        if (text === 'hold') {
+          markStarted();
+          await new Promise((resolve) => { releaseFirst = resolve; });
+          return { status: 'blocked', reason: 'held command released' };
+        }
+        if (text === 'throw') throw new Error('simulated executor failure');
+        return { status: 'blocked', reason: 'retry admitted' };
+      },
+      async getMission() { throw new Error('mission snapshot not found'); },
+    },
+    logger: { error() {} },
+  });
+  try {
+    const first = fetch(`${api.url}/api/commands`, {
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: 'hold',
+    });
+    await started;
+    const concurrent = await fetch(`${api.url}/api/commands`, {
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: 'concurrent',
+    });
+    releaseFirst();
+    assert.equal((await first).status, 200);
+    assert.equal(concurrent.status, 429);
+    assert.equal(concurrent.headers.get('retry-after'), '1');
+
+    const thrown = await fetch(`${api.url}/api/commands`, {
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: 'throw',
+    });
+    const retry = await fetch(`${api.url}/api/commands`, {
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: 'retry',
+    });
+    assert.deepEqual([thrown.status, retry.status], [500, 200]);
+    assert.deepEqual(calls, ['hold', 'throw', 'retry']);
+  } finally {
+    await api.close();
+  }
+});
+
+test('advisory client errors use stable non-500 public responses', async () => {
+  const runtime = createAgentRuntime({ complete: async () => ({ content: 'must not run' }) });
+  const api = createTitanApi({ runtime, profile: 'owner', authToken: OWNER_TOKEN });
+  await api.listen({ host: '127.0.0.1', port: 0 });
+  try {
+    const empty = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: '   ',
+    });
+    const disabled = await fetch(`${api.url}/api/chat?agent=loom`, {
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: 'hello',
+    });
+    assert.deepEqual(
+      [
+        { status: empty.status, body: await empty.json() },
+        { status: disabled.status, body: await disabled.json() },
+      ],
+      [
+        { status: 400, body: { error: 'text must be non-empty' } },
+        { status: 409, body: { error: 'agent is not operational' } },
+      ],
+    );
+  } finally {
+    await api.close();
+  }
+});
 
 test('functional API exposes health, operational team, durable command result, and mission retrieval', async () => {
   const api = await startFunctionalApi();
@@ -122,7 +258,7 @@ test('startup composition validates the fleet and recovers interrupted missions 
     mission: createMission({ id: 'mission-startup-recovery', intent: 'test all of Titan', clock: () => '2026-08-23T12:00:00.000Z' }),
   });
   const api = await createTitanService({
-    environment: { OLLAMA_BASE_URL: 'http://127.0.0.1:11434', OLLAMA_MODEL: 'test-model' },
+    environment: { TITAN_API_BEARER_TOKEN: OWNER_TOKEN, OLLAMA_BASE_URL: 'http://127.0.0.1:11434', OLLAMA_MODEL: 'test-model' },
     repositoryRoot,
   });
   await api.listen({ host: '127.0.0.1', port: 0 });
@@ -141,7 +277,7 @@ test('startup composition rejects absolute and traversal workspace roots', async
   for (const TITAN_WORKSPACE_ROOT of [join(tmpdir(), 'titan-escape'), '../titan-escape', 'workspace/../titan-escape']) {
     await assert.rejects(
       () => createTitanService({
-        environment: { TITAN_WORKSPACE_ROOT, OLLAMA_BASE_URL: 'http://127.0.0.1:11434', OLLAMA_MODEL: 'test-model' },
+        environment: { TITAN_API_BEARER_TOKEN: OWNER_TOKEN, TITAN_WORKSPACE_ROOT, OLLAMA_BASE_URL: 'http://127.0.0.1:11434', OLLAMA_MODEL: 'test-model' },
         repositoryRoot,
       }),
       /TITAN_WORKSPACE_ROOT must stay within repository workspace/,
@@ -153,17 +289,17 @@ test('command and chat routes require UTF-8 text/plain bodies', async () => {
   const api = await startFunctionalApi();
   try {
     const unsupported = await fetch(`${api.url}/api/commands`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'application/json' }, body: '{}',
     });
     assert.deepEqual({ status: unsupported.status, body: await unsupported.json() }, { status: 415, body: { error: 'unsupported media type' } });
 
     const missing = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
-      method: 'POST', body: new Uint8Array([0x68, 0x69]),
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}` }, body: new Uint8Array([0x68, 0x69]),
     });
     assert.deepEqual({ status: missing.status, body: await missing.json() }, { status: 415, body: { error: 'unsupported media type' } });
 
     const malformed = await fetch(`${api.url}/api/commands`, {
-      method: 'POST', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: new Uint8Array([0xc3, 0x28]),
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: new Uint8Array([0xc3, 0x28]),
     });
     assert.deepEqual({ status: malformed.status, body: await malformed.json() }, { status: 400, body: { error: 'malformed UTF-8 request body' } });
   } finally {

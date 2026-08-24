@@ -11,6 +11,9 @@ ExecStart=/usr/bin/node scripts/start-agent-api.js
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
+TasksMax=256
+MemoryMax=2G
+CPUQuota=200%
 KillSignal=SIGTERM
 TimeoutStopSec=30
 

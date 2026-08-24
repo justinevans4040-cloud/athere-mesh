@@ -17,5 +17,8 @@ test('the Titan user service starts the functional team API from the reconstruct
   assert.match(unit, /^Restart=on-failure$/m);
   assert.match(unit, /^RestartSec=3$/m);
   assert.match(unit, /^NoNewPrivileges=true$/m);
+  assert.match(unit, /^TasksMax=256$/m);
+  assert.match(unit, /^MemoryMax=2G$/m);
+  assert.match(unit, /^CPUQuota=200%$/m);
   assert.match(unit, /^WantedBy=default\.target$/m);
 });

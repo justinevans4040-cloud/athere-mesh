@@ -16,7 +16,7 @@
 - Model prose is advisory and cannot establish execution, proof, or completion.
 - Preserve all recovered registry entries; enable only agents with implemented executor contracts.
 - Completion requires real zero-failure tool output plus independent proof-file SHA-256 verification.
-- Owner API and Ollama remain loopback-only.
+- Owner API and Ollama remain loopback-only; owner command/chat/mission reads also require a strong reusable bearer credential rather than per-command approval.
 - Redis/S24, UI, and Odin are outside this implementation.
 - No removals of existing project artifacts.
 
@@ -125,7 +125,7 @@ Expected: FAIL because the executor module does not exist.
 
 - [ ] **Step 3: Implement the deterministic executor**
 
-Use `promisify(execFile)` by default. `inspect()` reads and parses `package.json` plus counts tracked source/test files without a shell. `runTests()` calls Node directly, limits output to 1 MiB, uses a 300-second timeout, and returns `{ command: 'node --test', exitCode, tests, passed, failed, skipped, stdout, stderr }`. Parse the `ℹ tests`, `ℹ pass`, `ℹ fail`, and `ℹ skipped` lines; reject missing summaries.
+Use `promisify(execFile)` by default. `inspect()` reads and parses `package.json` plus counts current on-disk matching source/test files without a shell; it does not claim Git-tracked counts. `runTests()` calls Node directly, limits output to 1 MiB, uses a 300-second timeout, and returns `{ command: 'node --test', exitCode, tests, passed, failed, skipped, stdout, stderr }`. Parse the `ℹ tests`, `ℹ pass`, `ℹ fail`, and `ℹ skipped` lines; reject missing summaries.
 
 - [ ] **Step 4: Write failing orchestrator success and failure tests**
 
@@ -241,7 +241,7 @@ git commit -m "feat: expose recoverable Titan mission API"
 
 - [ ] **Step 1: Write failing service and smoke tests**
 
-Assert the unit has the exact working directory, `ExecStart=/usr/bin/node scripts/start-agent-api.js`, restart policy, optional `.env.local`, and `WantedBy=default.target`. Inject `fetch` into the smoke and assert it calls `/health`, `/api/team`, `/api/commands`, and `/api/missions/:id`, then validates proof path and 64-character lowercase SHA-256.
+Assert the unit has the exact working directory, `ExecStart=/usr/bin/node scripts/start-agent-api.js`, restart policy, optional `.env.local`, bounded `TasksMax`/`MemoryMax`/`CPUQuota`, and `WantedBy=default.target`. Inject `fetch` into the smoke and assert it calls `/health`, `/api/team`, authenticated `/api/commands`, and authenticated `/api/missions/:id`, then validates proof path and 64-character lowercase SHA-256.
 
 - [ ] **Step 2: Run tests and verify RED**
 

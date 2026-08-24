@@ -89,10 +89,10 @@ export function createNodeTestExecutor({ repositoryRoot, execFileImpl = defaultE
       const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
       return Object.freeze({
         package: Object.freeze({ name: packageJson.name, version: packageJson.version }),
-        sourceFiles: await countFiles(path.join(root, 'packages'), (relativePath) => {
+        sourceFilesOnDisk: await countFiles(path.join(root, 'packages'), (relativePath) => {
           return relativePath.split(path.sep).includes('src') && CODE_FILE.test(relativePath);
         }),
-        testFiles: await countFiles(path.join(root, 'tests'), (relativePath) => TEST_FILE.test(relativePath)),
+        testFilesOnDisk: await countFiles(path.join(root, 'tests'), (relativePath) => TEST_FILE.test(relativePath)),
       });
     },
 

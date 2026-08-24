@@ -3,14 +3,16 @@ import assert from 'node:assert/strict';
 import { createAgentRuntime } from '../../packages/agent/src/agent-runtime.js';
 import { createTitanApi } from '../../packages/api/src/titan-api.js';
 
+const OWNER_TOKEN = 'test-owner-token-0123456789abcdef0123456789';
+
 test('chat API accepts normal text without requiring JSON', async () => {
   const runtime = createAgentRuntime({ complete: async () => ({ content: 'A live Titan response.' }) });
-  const api = createTitanApi({ runtime });
+  const api = createTitanApi({ runtime, authToken: OWNER_TOKEN });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
     const response = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
       method: 'POST',
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
+      headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' },
       body: 'Tell me the current mission status.',
     });
     assert.equal(response.status, 200);
@@ -22,11 +24,11 @@ test('chat API accepts normal text without requiring JSON', async () => {
 
 test('chat API rejects oversized text before model execution', async () => {
   const runtime = createAgentRuntime({ complete: async () => ({ content: 'should not run' }) });
-  const api = createTitanApi({ runtime, maxRequestBytes: 32 });
+  const api = createTitanApi({ runtime, authToken: OWNER_TOKEN, maxRequestBytes: 32 });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
     const response = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
-      method: 'POST', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: 'x'.repeat(33),
+      method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: 'x'.repeat(33),
     });
     assert.equal(response.status, 413);
   } finally {
@@ -42,12 +44,12 @@ test('chat API directs recognized execution requests to the command endpoint', a
       return { content: 'should not run' };
     },
   });
-  const api = createTitanApi({ runtime });
+  const api = createTitanApi({ runtime, authToken: OWNER_TOKEN });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
     const postChat = async (text) => {
       const response = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
-        method: 'POST', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: text,
+        method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: text,
       });
       return response.status;
     };

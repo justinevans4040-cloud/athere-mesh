@@ -89,13 +89,13 @@ function validateTeam(team) {
   }
 }
 
-function validateTests(value) {
-  const tests = requireObject(value, 'command tests');
+function validateTests(value, label = 'command tests') {
+  const tests = requireObject(value, label);
   const counts = Object.freeze({
-    tests: requireNonNegativeInteger(tests.tests, 'command tests.tests'),
-    passed: requireNonNegativeInteger(tests.passed, 'command tests.passed'),
-    failed: requireNonNegativeInteger(tests.failed, 'command tests.failed'),
-    skipped: requireNonNegativeInteger(tests.skipped, 'command tests.skipped'),
+    tests: requireNonNegativeInteger(tests.tests, `${label}.tests`),
+    passed: requireNonNegativeInteger(tests.passed, `${label}.passed`),
+    failed: requireNonNegativeInteger(tests.failed, `${label}.failed`),
+    skipped: requireNonNegativeInteger(tests.skipped, `${label}.skipped`),
   });
   if (counts.tests < counts.passed + counts.failed + counts.skipped) throw new Error('command test totals are inconsistent');
   if (counts.failed !== 0) throw new Error(`command reported ${counts.failed} failed tests`);
@@ -104,12 +104,17 @@ function validateTests(value) {
 
 export async function runFunctionalTeamSmoke({
   baseUrl = process.env.TITAN_API_URL ?? 'http://127.0.0.1:5050',
+  authToken = process.env.TITAN_API_BEARER_TOKEN,
   fetchImpl = globalThis.fetch,
   write = (line) => process.stdout.write(line),
   quickTimeoutMs = DEFAULT_QUICK_TIMEOUT_MS,
   commandTimeoutMs = DEFAULT_COMMAND_TIMEOUT_MS,
 } = {}) {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+  if (typeof authToken !== 'string' || Buffer.byteLength(authToken, 'utf8') < 32 || /\s/.test(authToken)) {
+    throw new TypeError('authToken must be a strong bearer credential');
+  }
+  const authorization = `Bearer ${authToken}`;
   if (typeof fetchImpl !== 'function') throw new TypeError('fetchImpl must be a function');
   if (typeof write !== 'function') throw new TypeError('write must be a function');
   const quickTimeout = requireTimeoutMs(quickTimeoutMs, 'quickTimeoutMs');
@@ -126,7 +131,7 @@ export async function runFunctionalTeamSmoke({
   const command = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/api/commands'), 'command', {
     timeoutMs: commandTimeout,
     method: 'POST',
-    headers: { 'content-type': 'text/plain; charset=utf-8' },
+    headers: { authorization, 'content-type': 'text/plain; charset=utf-8' },
     body: 'test all of Titan',
   });
   const commandMission = requireObject(command.mission, 'command mission');
@@ -139,7 +144,7 @@ export async function runFunctionalTeamSmoke({
     fetchImpl,
     endpoint(normalizedBaseUrl, `/api/missions/${encodeURIComponent(commandMission.id)}`),
     'mission retrieval',
-    { timeoutMs: quickTimeout },
+    { timeoutMs: quickTimeout, headers: { authorization } },
   );
   const storedMission = requireObject(stored.mission, 'stored mission');
   if (storedMission.id !== commandMission.id) throw new Error('stored mission id does not match command mission id');
@@ -147,6 +152,20 @@ export async function runFunctionalTeamSmoke({
   const storedProof = requireProof(storedMission.proof, commandMission.id, 'stored mission proof');
   if (storedProof.path !== commandProof.path || storedProof.sha256 !== commandProof.sha256) {
     throw new Error('stored mission proof does not match command proof');
+  }
+  const storedResult = requireObject(storedMission.result, 'stored mission result');
+  const storedTests = validateTests(storedResult.tests, 'stored mission result tests');
+  if (Object.keys(tests).some((key) => storedTests[key] !== tests[key])) {
+    throw new Error('stored mission test totals do not match command totals');
+  }
+  if (storedResult.proofSha256 !== storedProof.sha256) throw new Error('stored mission result is not bound to its proof');
+  if (!Array.isArray(storedResult.agentEvidence)
+    || storedResult.agentEvidence.length !== 2
+    || storedResult.agentEvidence[0]?.agent !== 'nyx'
+    || storedResult.agentEvidence[0]?.executor !== 'repository-inspector'
+    || storedResult.agentEvidence[1]?.agent !== 'rune'
+    || storedResult.agentEvidence[1]?.executor !== 'node-test-runner') {
+    throw new Error('stored mission result lacks NYX/RUNE evidence');
   }
 
   const evidence = Object.freeze({

@@ -1,7 +1,7 @@
 const SIGNAL_TYPES = new Set(['accepted', 'running', 'blocked', 'completed']);
 const TRANSITIONS = Object.freeze({
   accepted: new Set(['running', 'blocked']),
-  running: new Set(['blocked', 'completed']),
+  running: new Set(['running', 'blocked', 'completed']),
   blocked: new Set(['running']),
   completed: new Set()
 });
@@ -29,7 +29,9 @@ function signalRecord(missionId, signal, at) {
     agent: requiredText(signal.agent, 'signal agent'),
     at,
     ...(signal.detail ? { detail: requiredText(signal.detail, 'signal detail') } : {}),
-    ...(signal.proof ? { proof: Object.freeze({ ...signal.proof }) } : {})
+    ...(signal.proof ? { proof: Object.freeze({ ...signal.proof }) } : {}),
+    ...(signal.evidence ? { evidence: Object.freeze({ ...signal.evidence }) } : {}),
+    ...(signal.result ? { result: Object.freeze({ ...signal.result }) } : {})
   });
 }
 
@@ -68,6 +70,9 @@ export function transitionMission(mission, signal, { clock = () => new Date().to
     coms: signal.type === 'completed' ? 'DONE' : signal.type === 'blocked' ? 'BLOCK' : 'PLAN',
     updatedAt,
     signals: Object.freeze([...mission.signals, record]),
-    ...(signal.type === 'completed' ? { proof: record.proof } : {})
+    ...(signal.type === 'completed' ? {
+      proof: record.proof,
+      ...(record.result ? { result: record.result } : {}),
+    } : {})
   });
 }
