@@ -36,22 +36,15 @@ function responseStatus(response, label) {
 
 async function fetchJson(fetchImpl, url, label, options) {
   const { timeoutMs, ...requestOptions } = options;
-  const response = await fetchWithTimeout(fetchImpl, url, label, requestOptions, timeoutMs);
-  responseStatus(response, label);
-  if (typeof response.json !== 'function') throw new Error(`${label} did not return JSON`);
-  return requireObject(await response.json(), `${label} response`);
-}
-
-function requireTimeoutMs(value, label) {
-  if (!Number.isSafeInteger(value) || value < 1) throw new TypeError(`${label} must be a positive integer`);
-  return value;
-}
-
-async function fetchWithTimeout(fetchImpl, url, label, options, timeoutMs) {
   const controller = new AbortController();
   let timedOut = false;
   let timer;
-  const request = Promise.resolve().then(() => fetchImpl(url, { ...options, signal: controller.signal }));
+  const request = Promise.resolve().then(async () => {
+    const response = await fetchImpl(url, { ...requestOptions, signal: controller.signal });
+    responseStatus(response, label);
+    if (typeof response.json !== 'function') throw new Error(`${label} did not return JSON`);
+    return requireObject(await response.json(), `${label} response`);
+  });
   const timeout = new Promise((_resolve, reject) => {
     timer = setTimeout(() => {
       timedOut = true;
@@ -67,6 +60,11 @@ async function fetchWithTimeout(fetchImpl, url, label, options, timeoutMs) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function requireTimeoutMs(value, label) {
+  if (!Number.isSafeInteger(value) || value < 1) throw new TypeError(`${label} must be a positive integer`);
+  return value;
 }
 
 function endpoint(baseUrl, pathname) {

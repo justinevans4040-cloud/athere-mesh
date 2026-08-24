@@ -114,3 +114,33 @@ test('functional smoke bounds stalled requests, aborts them, and prints no evide
   assert.equal(signal.aborted, true);
   assert.deepEqual(writes, []);
 });
+
+test('functional smoke bounds a stalled JSON body with the same contextual deadline', async () => {
+  const writes = [];
+  let signal;
+  const fetchImpl = async (_url, options) => {
+    signal = options.signal;
+    return {
+      status: 200,
+      async json() { return new Promise(() => {}); },
+    };
+  };
+  const result = await Promise.race([
+    runFunctionalTeamSmoke({
+      baseUrl: 'http://127.0.0.1:5050',
+      fetchImpl,
+      write: (line) => writes.push(line),
+      quickTimeoutMs: 10,
+      commandTimeoutMs: 20,
+    }).then(
+      () => ({ error: undefined }),
+      (error) => ({ error }),
+    ),
+    new Promise((resolve) => setTimeout(() => resolve({ guardExpired: true }), 50)),
+  ]);
+
+  assert.equal(result.guardExpired, undefined);
+  assert.match(result.error?.message ?? '', /^health request timed out$/);
+  assert.equal(signal.aborted, true);
+  assert.deepEqual(writes, []);
+});
