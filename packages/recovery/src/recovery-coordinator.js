@@ -1,9 +1,12 @@
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { transitionMission } from '../../contracts/src/mission.js';
 import { loadMission, saveMission } from '../../mission/src/mission-store.js';
 
 const SNAPSHOT = /^([A-Za-z0-9][A-Za-z0-9_-]{0,127})\.json$/;
+const RECOVERY_DETAIL = 'interrupted execution requires operator retry';
+const RECOVERY_ATTEMPTS = 8;
 
 export async function inspectRecovery({ root }) {
   const result = { resumable: [], blocked: [], corrupt: [] };
@@ -37,18 +40,43 @@ export async function inspectRecovery({ root }) {
   return result;
 }
 
+function recoveryBlocked(record) {
+  const signal = record.mission.signals.at(-1);
+  return record.mission.status === 'blocked'
+    && signal?.agent === 'qra_recovery_driver'
+    && signal.detail === RECOVERY_DETAIL;
+}
+
+function retryableRecoveryConflict(error) {
+  return error?.message === 'mission write already in progress' || /^revision conflict: /.test(error?.message);
+}
+
+async function convergeInterruptedMission({ root, missionId, clock }) {
+  for (let attempt = 0; attempt < RECOVERY_ATTEMPTS; attempt += 1) {
+    const record = await loadMission({ root, missionId });
+    if (recoveryBlocked(record)) return true;
+    if (record.mission.status !== 'accepted' && record.mission.status !== 'running') return false;
+    const blocked = transitionMission(record.mission, {
+      type: 'blocked',
+      agent: 'qra_recovery_driver',
+      detail: RECOVERY_DETAIL,
+    }, { clock });
+    try {
+      await saveMission({ root, mission: blocked, expectedRevision: record.revision });
+      return true;
+    } catch (error) {
+      if (!retryableRecoveryConflict(error) || attempt === RECOVERY_ATTEMPTS - 1) throw error;
+      await delay(1);
+    }
+  }
+  return false;
+}
+
 export async function recoverInterruptedMissions({ root, clock = () => new Date().toISOString() } = {}) {
   const inspection = await inspectRecovery({ root });
   const recovered = [];
   for (const item of inspection.resumable) {
-    const record = await loadMission({ root, missionId: item.missionId });
-    const blocked = transitionMission(record.mission, {
-      type: 'blocked',
-      agent: 'qra_recovery_driver',
-      detail: 'interrupted execution requires operator retry',
-    }, { clock });
-    await saveMission({ root, mission: blocked, expectedRevision: record.revision });
-    recovered.push(item.missionId);
+    if (await convergeInterruptedMission({ root, missionId: item.missionId, clock })) recovered.push(item.missionId);
   }
   return Object.freeze({
     recovered: Object.freeze(recovered),

@@ -23,18 +23,32 @@ function nonEmptyEnvironment(environment, name, fallback) {
   return value;
 }
 
+function workspaceRoot(environment, repositoryRoot) {
+  const requested = environment.TITAN_WORKSPACE_ROOT ?? 'workspace/titan';
+  const base = path.resolve(repositoryRoot, 'workspace');
+  const segments = typeof requested === 'string' ? requested.split(/[\\/]+/) : [];
+  if (typeof requested !== 'string' || requested.trim().length === 0 || path.isAbsolute(requested) || segments.includes('..')) {
+    throw new Error('TITAN_WORKSPACE_ROOT must stay within repository workspace');
+  }
+  const resolved = path.resolve(repositoryRoot, requested);
+  if (resolved !== base && !resolved.startsWith(`${base}${path.sep}`)) {
+    throw new Error('TITAN_WORKSPACE_ROOT must stay within repository workspace');
+  }
+  return resolved;
+}
+
 export async function createTitanService({
   environment = process.env,
   repositoryRoot = scriptRoot,
 } = {}) {
   if (!environment || typeof environment !== 'object') throw new TypeError('environment is required');
   const resolvedRepositoryRoot = path.resolve(repositoryRoot);
-  const workspaceRoot = path.resolve(resolvedRepositoryRoot, environment.TITAN_WORKSPACE_ROOT ?? 'workspace/titan');
+  const resolvedWorkspaceRoot = workspaceRoot(environment, resolvedRepositoryRoot);
   validateOperationalFleet();
-  await mkdir(workspaceRoot, { recursive: true });
-  const recovery = await recoverInterruptedMissions({ root: workspaceRoot });
+  await mkdir(resolvedWorkspaceRoot, { recursive: true });
+  const recovery = await recoverInterruptedMissions({ root: resolvedWorkspaceRoot });
   const executor = createNodeTestExecutor({ repositoryRoot: resolvedRepositoryRoot });
-  const orchestrator = createMissionOrchestrator({ root: workspaceRoot, repositoryRoot: resolvedRepositoryRoot, executor });
+  const orchestrator = createMissionOrchestrator({ root: resolvedWorkspaceRoot, repositoryRoot: resolvedRepositoryRoot, executor });
   const complete = createOllamaCompletion({
     baseUrl: nonEmptyEnvironment(environment, 'OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
     model: nonEmptyEnvironment(environment, 'OLLAMA_MODEL', 'llama3.2:3b'),

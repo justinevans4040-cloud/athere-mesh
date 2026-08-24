@@ -91,3 +91,29 @@ test('startup recovery blocks accepted and running missions without changing ter
   assert.equal((await loadMission({ root, missionId: 'blocked-3' })).revision, 1);
   assert.equal((await loadMission({ root, missionId: 'completed-4' })).revision, 1);
 });
+
+test('startup recovery is idempotent after it has converged an interrupted mission', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
+  await saveMission({ root, mission: createMission({ id: 'mission-repeat', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
+  const first = await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:00.000Z') });
+  const second = await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:02:00.000Z') });
+  assert.deepEqual(first, { recovered: ['mission-repeat'], blocked: [], corrupt: [] });
+  assert.deepEqual(second, { recovered: [], blocked: [{ missionId: 'mission-repeat', revision: 2, detail: 'interrupted execution requires operator retry' }], corrupt: [] });
+  assert.equal((await loadMission({ root, missionId: 'mission-repeat' })).revision, 2);
+});
+
+test('concurrent startup recovery callers converge on one durable recovery block', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
+  await saveMission({ root, mission: createMission({ id: 'mission-concurrent', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
+  const [left, right] = await Promise.all([
+    recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:00.000Z') }),
+    recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:01.000Z') }),
+  ]);
+  assert.deepEqual(left, { recovered: ['mission-concurrent'], blocked: [], corrupt: [] });
+  assert.deepEqual(right, { recovered: ['mission-concurrent'], blocked: [], corrupt: [] });
+  const record = await loadMission({ root, missionId: 'mission-concurrent' });
+  assert.equal(record.revision, 2);
+  assert.equal(record.mission.status, 'blocked');
+  assert.equal(record.mission.signals.at(-1).agent, 'qra_recovery_driver');
+  assert.equal(record.mission.signals.at(-1).detail, 'interrupted execution requires operator retry');
+});

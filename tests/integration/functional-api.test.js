@@ -35,15 +35,16 @@ function createOrchestrator() {
   };
 }
 
-async function startFunctionalApi({ maxRequestBytes } = {}) {
+async function startFunctionalApi({ maxRequestBytes, orchestrator = createOrchestrator(), logger } = {}) {
   const runtime = createAgentRuntime({ complete: async () => ({ content: 'advisory only' }) });
   const api = createTitanApi({
     runtime,
     profile: 'owner',
-    orchestrator: createOrchestrator(),
+    orchestrator,
     team: fleetRegistry,
     recovery: { recovered: ['mission-recovered'], blocked: [], corrupt: [] },
     ...(maxRequestBytes === undefined ? {} : { maxRequestBytes }),
+    ...(logger === undefined ? {} : { logger }),
   });
   await api.listen({ host: '127.0.0.1', port: 0 });
   return api;
@@ -114,14 +115,15 @@ test('functional API rejects invalid mission routes, unknown routes, and oversiz
 });
 
 test('startup composition validates the fleet and recovers interrupted missions before serving health', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'titan-functional-startup-'));
+  const repositoryRoot = await mkdtemp(join(tmpdir(), 'titan-functional-startup-'));
+  const root = join(repositoryRoot, 'workspace', 'titan');
   await saveMission({
     root,
     mission: createMission({ id: 'mission-startup-recovery', intent: 'test all of Titan', clock: () => '2026-08-23T12:00:00.000Z' }),
   });
   const api = await createTitanService({
-    environment: { TITAN_WORKSPACE_ROOT: root, OLLAMA_BASE_URL: 'http://127.0.0.1:11434', OLLAMA_MODEL: 'test-model' },
-    repositoryRoot: process.cwd(),
+    environment: { OLLAMA_BASE_URL: 'http://127.0.0.1:11434', OLLAMA_MODEL: 'test-model' },
+    repositoryRoot,
   });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
@@ -129,6 +131,60 @@ test('startup composition validates the fleet and recovers interrupted missions 
     const record = await loadMission({ root, missionId: 'mission-startup-recovery' });
     assert.equal(record.mission.status, 'blocked');
     assert.equal(record.mission.signals.at(-1).detail, 'interrupted execution requires operator retry');
+  } finally {
+    await api.close();
+  }
+});
+
+test('startup composition rejects absolute and traversal workspace roots', async () => {
+  const repositoryRoot = await mkdtemp(join(tmpdir(), 'titan-functional-workspace-'));
+  for (const TITAN_WORKSPACE_ROOT of [join(tmpdir(), 'titan-escape'), '../titan-escape', 'workspace/../titan-escape']) {
+    await assert.rejects(
+      () => createTitanService({
+        environment: { TITAN_WORKSPACE_ROOT, OLLAMA_BASE_URL: 'http://127.0.0.1:11434', OLLAMA_MODEL: 'test-model' },
+        repositoryRoot,
+      }),
+      /TITAN_WORKSPACE_ROOT must stay within repository workspace/,
+    );
+  }
+});
+
+test('command and chat routes require UTF-8 text/plain bodies', async () => {
+  const api = await startFunctionalApi();
+  try {
+    const unsupported = await fetch(`${api.url}/api/commands`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    assert.deepEqual({ status: unsupported.status, body: await unsupported.json() }, { status: 415, body: { error: 'unsupported media type' } });
+
+    const missing = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
+      method: 'POST', body: new Uint8Array([0x68, 0x69]),
+    });
+    assert.deepEqual({ status: missing.status, body: await missing.json() }, { status: 415, body: { error: 'unsupported media type' } });
+
+    const malformed = await fetch(`${api.url}/api/commands`, {
+      method: 'POST', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: new Uint8Array([0xc3, 0x28]),
+    });
+    assert.deepEqual({ status: malformed.status, body: await malformed.json() }, { status: 400, body: { error: 'malformed UTF-8 request body' } });
+  } finally {
+    await api.close();
+  }
+});
+
+test('API returns a stable generic response instead of exposing unexpected internal errors', async () => {
+  const errors = [];
+  const api = await startFunctionalApi({
+    orchestrator: {
+      async execute() { throw new Error('secret filesystem path C:\\private\\mission.json'); },
+      async getMission() { throw new Error('not used'); },
+    },
+    logger: { error(...args) { errors.push(args); } },
+  });
+  try {
+    const response = await request(api, '/api/commands', { method: 'POST', body: 'test all of Titan' });
+    assert.deepEqual(response, { status: 500, body: { error: 'internal server error' } });
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0][1].message, 'secret filesystem path C:\\private\\mission.json');
   } finally {
     await api.close();
   }

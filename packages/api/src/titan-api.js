@@ -4,20 +4,37 @@ import { planCommand } from '../../command/src/command-planner.js';
 const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
+function publicError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.publicMessage = message;
+  return error;
+}
+
+function requireTextPlainUtf8(request) {
+  const contentType = request.headers['content-type'];
+  if (typeof contentType !== 'string' || !/^\s*text\/plain\s*;\s*charset\s*=\s*utf-8\s*$/i.test(contentType)) {
+    throw publicError(415, 'unsupported media type');
+  }
+}
+
 async function readText(request, maxBytes) {
+  requireTextPlainUtf8(request);
   const chunks = [];
   let bytes = 0;
   for await (const chunk of request) {
     bytes += chunk.length;
     if (bytes > maxBytes) {
       request.resume();
-      const error = new Error('request body too large');
-      error.statusCode = 413;
-      throw error;
+      throw publicError(413, 'request body too large');
     }
     chunks.push(chunk);
   }
-  return Buffer.concat(chunks).toString('utf8');
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks));
+  } catch {
+    throw publicError(400, 'malformed UTF-8 request body');
+  }
 }
 
 function json(response, statusCode, payload) {
@@ -30,19 +47,19 @@ function missionIdFromPath(pathname) {
   const prefix = '/api/missions/';
   if (!pathname.startsWith(prefix)) return undefined;
   const encodedId = pathname.slice(prefix.length);
-  if (encodedId.length === 0 || encodedId.includes('/')) throw new Error('invalid mission id');
+  if (encodedId.length === 0 || encodedId.includes('/')) throw publicError(400, 'invalid mission id');
   let missionId;
   try {
     missionId = decodeURIComponent(encodedId);
   } catch {
-    throw new Error('invalid mission id');
+    throw publicError(400, 'invalid mission id');
   }
-  if (!MISSION_ID.test(missionId)) throw new Error('invalid mission id');
+  if (!MISSION_ID.test(missionId)) throw publicError(400, 'invalid mission id');
   return missionId;
 }
 
 function teamView(team) {
-  if (!team || !Array.isArray(team.agents)) throw new Error('operational team is unavailable');
+  if (!team || !Array.isArray(team.agents)) throw publicError(503, 'service unavailable');
   const agents = team.agents.map((agent) => Object.freeze({
     id: agent.id,
     name: agent.name,
@@ -61,26 +78,29 @@ function teamView(team) {
 
 function operationalDependencies(orchestrator, team, recovery) {
   if (!orchestrator || typeof orchestrator.execute !== 'function' || typeof orchestrator.getMission !== 'function') {
-    throw new Error('mission orchestrator is unavailable');
+    throw publicError(503, 'service unavailable');
   }
-  if (!team || !Array.isArray(team.agents)) throw new Error('operational team is unavailable');
+  if (!team || !Array.isArray(team.agents)) throw publicError(503, 'service unavailable');
   if (!recovery || !Array.isArray(recovery.recovered) || !Array.isArray(recovery.blocked) || !Array.isArray(recovery.corrupt)) {
-    throw new Error('startup recovery summary is unavailable');
+    throw publicError(503, 'service unavailable');
   }
 }
 
-function errorStatus(error) {
-  if (error.statusCode) return error.statusCode;
-  if (/owner-only/.test(error.message)) return 403;
-  if (/invalid mission id|unknown agent|non-empty text/.test(error.message)) return 400;
-  if (/mission snapshot not found/.test(error.message)) return 404;
-  if (/is unavailable/.test(error.message)) return 503;
-  return 502;
+function publicErrorResponse(error) {
+  if (typeof error?.publicMessage === 'string' && Number.isSafeInteger(error.statusCode)) {
+    return { statusCode: error.statusCode, payload: { error: error.publicMessage }, log: false };
+  }
+  if (error?.message === 'mission snapshot not found') return { statusCode: 404, payload: { error: 'mission not found' }, log: false };
+  if (error?.message === 'unknown agent') return { statusCode: 400, payload: { error: 'unknown agent' }, log: false };
+  if (error?.message === 'text must be non-empty') return { statusCode: 400, payload: { error: 'text must be non-empty' }, log: false };
+  if (/owner-only/.test(error?.message)) return { statusCode: 403, payload: { error: 'forbidden' }, log: false };
+  return { statusCode: 500, payload: { error: 'internal server error' }, log: true };
 }
 
-export function createTitanApi({ runtime, profile = 'owner', maxRequestBytes = 16_384, orchestrator, team, recovery } = {}) {
+export function createTitanApi({ runtime, profile = 'owner', maxRequestBytes = 16_384, orchestrator, team, recovery, logger = console } = {}) {
   if (!runtime || typeof runtime.respond !== 'function') throw new TypeError('agent runtime is required');
   if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes < 1) throw new TypeError('maxRequestBytes must be positive');
+  if (!logger || typeof logger.error !== 'function') throw new TypeError('logger must provide error');
   let server;
   let baseUrl;
 
@@ -127,7 +147,9 @@ export function createTitanApi({ runtime, profile = 'owner', maxRequestBytes = 1
           }
           json(response, 404, { error: 'not found' });
         } catch (error) {
-          json(response, errorStatus(error), { error: error.message });
+          const responseError = publicErrorResponse(error);
+          if (responseError.log) logger.error('Titan API request failed', error);
+          json(response, responseError.statusCode, responseError.payload);
         }
       });
       await new Promise((resolve, reject) => {
