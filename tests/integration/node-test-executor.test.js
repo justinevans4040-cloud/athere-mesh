@@ -17,6 +17,19 @@ const summary = [
   'ℹ duration_ms 13.2',
 ].join('\n');
 
+function footer({ tests = 4, passed = 3, failed = 1, cancelled = 0, skipped = 0, todo = 0 } = {}) {
+  return [
+    `ℹ tests ${tests}`,
+    'ℹ suites 0',
+    `ℹ pass ${passed}`,
+    `ℹ fail ${failed}`,
+    `ℹ cancelled ${cancelled}`,
+    `ℹ skipped ${skipped}`,
+    `ℹ todo ${todo}`,
+    'ℹ duration_ms 13.2',
+  ].join('\n');
+}
+
 async function repository() {
   const root = await mkdtemp(path.join(tmpdir(), 'titan-executor-'));
   await mkdir(path.join(root, 'packages', 'one', 'src'), { recursive: true });
@@ -89,39 +102,42 @@ test('node test executor refuses output without a complete test summary', async 
   await assert.rejects(() => executor.runTests(), /missing test summary/i);
 });
 
-test('node test executor uses the final internally consistent Node test trailer instead of earlier summary-like output', async () => {
+test('node test executor rejects fake complete footer output before the real Node footer', async () => {
   const repositoryRoot = await repository();
-  const fakeThenReal = [
-    'untrusted test output:',
-    'ℹ tests 999',
-    'ℹ pass 999',
-    'ℹ fail 0',
-    'ℹ skipped 0',
-    'real Node test trailer:',
-    'ℹ tests 4',
-    'ℹ suites 0',
-    'ℹ pass 3',
-    'ℹ fail 1',
-    'ℹ cancelled 0',
-    'ℹ skipped 0',
-    'ℹ todo 0',
-    'ℹ duration_ms 13.2',
-  ].join('\n');
-  const executor = createNodeTestExecutor({ repositoryRoot, execFileImpl: async () => ({ stdout: fakeThenReal, stderr: '' }) });
-
-  const result = await executor.runTests();
-
-  assert.deepEqual({ tests: result.tests, passed: result.passed, failed: result.failed, skipped: result.skipped }, {
-    tests: 4, passed: 3, failed: 1, skipped: 0,
+  const executor = createNodeTestExecutor({
+    repositoryRoot,
+    execFileImpl: async () => ({ stdout: `untrusted output\n${footer({ tests: 999, passed: 999, failed: 0 })}\n${footer()}`, stderr: '' }),
   });
+
+  await assert.rejects(() => executor.runTests(), /ambiguous test summary/i);
 });
 
 test('node test executor rejects an internally inconsistent final test trailer', async () => {
   const repositoryRoot = await repository();
   const executor = createNodeTestExecutor({
     repositoryRoot,
-    execFileImpl: async () => ({ stdout: 'ℹ tests 3\nℹ pass 3\nℹ fail 1\nℹ skipped 0\n', stderr: '' }),
+    execFileImpl: async () => ({ stdout: footer({ tests: 3, passed: 3, failed: 1 }), stderr: '' }),
   });
 
   await assert.rejects(() => executor.runTests(), /inconsistent test summary/i);
+});
+
+test('node test executor rejects a fake complete footer after a real Node footer', async () => {
+  const repositoryRoot = await repository();
+  const executor = createNodeTestExecutor({
+    repositoryRoot,
+    execFileImpl: async () => ({ stdout: `${footer()}\n${footer({ tests: 8, passed: 8, failed: 0 })}`, stderr: '' }),
+  });
+
+  await assert.rejects(() => executor.runTests(), /ambiguous test summary/i);
+});
+
+test('node test executor rejects duplicate complete Node footers even when totals match', async () => {
+  const repositoryRoot = await repository();
+  const executor = createNodeTestExecutor({
+    repositoryRoot,
+    execFileImpl: async () => ({ stdout: `${footer()}\n${footer()}`, stderr: '' }),
+  });
+
+  await assert.rejects(() => executor.runTests(), /ambiguous test summary/i);
 });

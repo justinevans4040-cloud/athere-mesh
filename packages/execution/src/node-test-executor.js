@@ -20,28 +20,33 @@ function text(value) {
 }
 
 function parseSummary(stdout) {
-  const lines = stdout.split(/\r?\n/);
-  const summaryLine = /^\s*(?:#|ℹ)\s*(tests|pass|fail|cancelled|skipped|todo)\s+(\d+)\s*$/i;
-  const testStarts = lines.flatMap((line, index) => summaryLine.exec(line)?.[1].toLowerCase() === 'tests' ? [index] : []);
-  if (testStarts.length === 0) throw new Error('missing test summary: tests');
+  const marker = '[ \\t]*(?:#|ℹ)[ \\t]*';
+  const line = '\\r?\\n';
+  const footer = new RegExp(
+    `(?:^|${line})${marker}tests[ \\t]+(\\d+)[ \\t]*${line}`
+    + `${marker}suites[ \\t]+(\\d+)[ \\t]*${line}`
+    + `${marker}pass[ \\t]+(\\d+)[ \\t]*${line}`
+    + `${marker}fail[ \\t]+(\\d+)[ \\t]*${line}`
+    + `${marker}cancelled[ \\t]+(\\d+)[ \\t]*${line}`
+    + `${marker}skipped[ \\t]+(\\d+)[ \\t]*${line}`
+    + `${marker}todo[ \\t]+(\\d+)[ \\t]*${line}`
+    + `${marker}duration_ms[ \\t]+(\\d+(?:\\.\\d+)?)[ \\t]*`,
+    'gi',
+  );
+  const candidates = [...stdout.matchAll(footer)];
+  if (candidates.length === 0) throw new Error('missing test summary: complete terminal footer');
+  if (candidates.length !== 1) throw new Error('ambiguous test summary');
+  const candidate = candidates[0];
+  const end = candidate.index + candidate[0].length;
+  if (!/^(?:\r?\n)?$/.test(stdout.slice(end))) throw new Error('test summary must be terminal');
 
-  const finalStart = testStarts.at(-1);
-  const values = new Map();
-  for (const line of lines.slice(finalStart)) {
-    const match = summaryLine.exec(line);
-    if (!match) continue;
-    const name = match[1].toLowerCase();
-    if (!values.has(name)) values.set(name, Number.parseInt(match[2], 10));
-  }
-  for (const name of ['tests', 'pass', 'fail', 'skipped']) {
-    if (!values.has(name)) throw new Error(`missing test summary: ${name}`);
-  }
-  const tests = values.get('tests');
-  const passed = values.get('pass');
-  const failed = values.get('fail');
-  const skipped = values.get('skipped');
-  const cancelled = values.get('cancelled') ?? 0;
-  const todo = values.get('todo') ?? 0;
+  const [, testsText, , passedText, failedText, cancelledText, skippedText, todoText] = candidate;
+  const tests = Number.parseInt(testsText, 10);
+  const passed = Number.parseInt(passedText, 10);
+  const failed = Number.parseInt(failedText, 10);
+  const cancelled = Number.parseInt(cancelledText, 10);
+  const skipped = Number.parseInt(skippedText, 10);
+  const todo = Number.parseInt(todoText, 10);
   if (tests !== passed + failed + skipped + cancelled + todo) {
     throw new Error('inconsistent test summary');
   }
