@@ -46,7 +46,7 @@ export function createTitanApi({ runtime, profile = 'owner', maxRequestBytes = 1
           const agentId = url.searchParams.get('agent') || 'agent-vale';
           const text = await readText(request, maxRequestBytes);
           const plan = planCommand({ profile, text });
-          if (plan.status === 'ready' || plan.status === 'needs_approval') {
+          if (plan.status === 'ready' || plan.status === 'needs_approval' || plan.status === 'denied') {
             json(response, 409, { error: 'execution request must use /api/commands' });
             return;
           }

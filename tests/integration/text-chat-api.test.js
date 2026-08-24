@@ -53,3 +53,23 @@ test('chat API directs recognized execution requests to the command endpoint', a
     await api.close();
   }
 });
+
+test('chat API never sends denied recognized execution requests to the advisory model', async () => {
+  let completionCalls = 0;
+  const runtime = createAgentRuntime({
+    complete: async () => {
+      completionCalls += 1;
+      return { content: 'should not run' };
+    },
+  });
+  const api = createTitanApi({ runtime, profile: 'public' });
+  await api.listen({ host: '127.0.0.1', port: 0 });
+  try {
+    const response = await fetch(`${api.url}/api/chat?agent=agent-vale`, { method: 'POST', body: 'Run all Titan tests' });
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { error: 'execution request must use /api/commands' });
+    assert.equal(completionCalls, 0);
+  } finally {
+    await api.close();
+  }
+});
