@@ -49,11 +49,10 @@ test('functional smoke proves health, team, normal-language command, and stored 
   assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), [
     '/health', '/api/team', '/api/commands', `/api/missions/${missionId}`,
   ]);
-  assert.deepEqual(calls[2].options, {
-    method: 'POST',
-    headers: { 'content-type': 'text/plain; charset=utf-8' },
-    body: 'test all of Titan',
-  });
+  assert.ok(calls.every(({ options }) => options.signal instanceof AbortSignal));
+  assert.equal(calls[2].options.method, 'POST');
+  assert.deepEqual(calls[2].options.headers, { 'content-type': 'text/plain; charset=utf-8' });
+  assert.equal(calls[2].options.body, 'test all of Titan');
   assert.equal(evidence.missionId, missionId);
   assert.equal(evidence.proof.path, proof.path);
   assert.equal(evidence.proof.sha256, proof.sha256);
@@ -92,4 +91,26 @@ test('functional smoke refuses unverified or malformed stored proof evidence', a
     () => runFunctionalTeamSmoke({ baseUrl: 'http://127.0.0.1:5050', fetchImpl, write() {} }),
     /SHA-256/,
   );
+});
+
+test('functional smoke bounds stalled requests, aborts them, and prints no evidence', async () => {
+  const writes = [];
+  let signal;
+  const fetchImpl = async (_url, options) => {
+    signal = options.signal;
+    return new Promise(() => {});
+  };
+
+  await assert.rejects(
+    () => runFunctionalTeamSmoke({
+      baseUrl: 'http://127.0.0.1:5050',
+      fetchImpl,
+      write: (line) => writes.push(line),
+      quickTimeoutMs: 10,
+      commandTimeoutMs: 20,
+    }),
+    /^Error: health request timed out$/,
+  );
+  assert.equal(signal.aborted, true);
+  assert.deepEqual(writes, []);
 });

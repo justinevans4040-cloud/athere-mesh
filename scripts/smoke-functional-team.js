@@ -1,5 +1,7 @@
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
+const DEFAULT_QUICK_TIMEOUT_MS = 10_000;
+const DEFAULT_COMMAND_TIMEOUT_MS = 310_000;
 const OPERATIONAL_AGENT_IDS = Object.freeze([
   'miss-vale-prime',
   'agent-vale',
@@ -33,10 +35,38 @@ function responseStatus(response, label) {
 }
 
 async function fetchJson(fetchImpl, url, label, options) {
-  const response = await fetchImpl(url, options);
+  const { timeoutMs, ...requestOptions } = options;
+  const response = await fetchWithTimeout(fetchImpl, url, label, requestOptions, timeoutMs);
   responseStatus(response, label);
   if (typeof response.json !== 'function') throw new Error(`${label} did not return JSON`);
   return requireObject(await response.json(), `${label} response`);
+}
+
+function requireTimeoutMs(value, label) {
+  if (!Number.isSafeInteger(value) || value < 1) throw new TypeError(`${label} must be a positive integer`);
+  return value;
+}
+
+async function fetchWithTimeout(fetchImpl, url, label, options, timeoutMs) {
+  const controller = new AbortController();
+  let timedOut = false;
+  let timer;
+  const request = Promise.resolve().then(() => fetchImpl(url, { ...options, signal: controller.signal }));
+  const timeout = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+      reject(new Error(`${label} request timed out`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([request, timeout]);
+  } catch (error) {
+    if (timedOut) throw new Error(`${label} request timed out`);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function endpoint(baseUrl, pathname) {
@@ -78,20 +108,25 @@ export async function runFunctionalTeamSmoke({
   baseUrl = process.env.TITAN_API_URL ?? 'http://127.0.0.1:5050',
   fetchImpl = globalThis.fetch,
   write = (line) => process.stdout.write(line),
+  quickTimeoutMs = DEFAULT_QUICK_TIMEOUT_MS,
+  commandTimeoutMs = DEFAULT_COMMAND_TIMEOUT_MS,
 } = {}) {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
   if (typeof fetchImpl !== 'function') throw new TypeError('fetchImpl must be a function');
   if (typeof write !== 'function') throw new TypeError('write must be a function');
+  const quickTimeout = requireTimeoutMs(quickTimeoutMs, 'quickTimeoutMs');
+  const commandTimeout = requireTimeoutMs(commandTimeoutMs, 'commandTimeoutMs');
 
-  const health = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/health'), 'health');
+  const health = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/health'), 'health', { timeoutMs: quickTimeout });
   if (health.ready !== true || health.enabledAgents !== OPERATIONAL_AGENT_IDS.length) {
     throw new Error('health did not report a ready functional team');
   }
 
-  const team = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/api/team'), 'team');
+  const team = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/api/team'), 'team', { timeoutMs: quickTimeout });
   validateTeam(team);
 
   const command = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/api/commands'), 'command', {
+    timeoutMs: commandTimeout,
     method: 'POST',
     headers: { 'content-type': 'text/plain; charset=utf-8' },
     body: 'test all of Titan',
@@ -106,6 +141,7 @@ export async function runFunctionalTeamSmoke({
     fetchImpl,
     endpoint(normalizedBaseUrl, `/api/missions/${encodeURIComponent(commandMission.id)}`),
     'mission retrieval',
+    { timeoutMs: quickTimeout },
   );
   const storedMission = requireObject(stored.mission, 'stored mission');
   if (storedMission.id !== commandMission.id) throw new Error('stored mission id does not match command mission id');
