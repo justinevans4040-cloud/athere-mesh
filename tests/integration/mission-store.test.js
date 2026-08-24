@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as filesystem from 'node:fs/promises';
 import { mkdtemp, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createMission, transitionMission } from '../../packages/contracts/src/mission.js';
-import { loadMission, saveMission } from '../../packages/mission/src/mission-store.js';
+import { createMissionStore, loadMission, saveMission } from '../../packages/mission/src/mission-store.js';
 
 const clock = (value) => () => value;
 
@@ -45,4 +46,57 @@ test('mission store rejects unsafe ids and corrupted snapshots', async () => {
   await saveMission({ root, mission: createMission({ id: 'mission-4', intent: 'Detect corruption' }) });
   await writeFile(join(root, 'missions', 'mission-4.json'), '{not-json', 'utf8');
   await assert.rejects(() => loadMission({ root, missionId: 'mission-4' }), /corrupt mission snapshot/i);
+});
+
+function transientError(code) {
+  const error = new Error(`simulated ${code}`);
+  error.code = code;
+  return error;
+}
+
+test('mission store retries only transient lock-open and rename sharing failures', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-mission-'));
+  let lockOpenAttempts = 0;
+  let renameAttempts = 0;
+  let retryDelays = 0;
+  const store = createMissionStore({
+    filesystem: {
+      ...filesystem,
+      async open(file, flags, ...args) {
+        if (flags === 'wx' && String(file).endsWith('.lock') && lockOpenAttempts++ === 0) throw transientError('EPERM');
+        return filesystem.open(file, flags, ...args);
+      },
+      async rename(...args) {
+        if (renameAttempts++ === 0) throw transientError('EPERM');
+        return filesystem.rename(...args);
+      },
+    },
+    retryDelay: async () => { retryDelays += 1; },
+  });
+  const record = await store.saveMission({
+    root,
+    mission: createMission({ id: 'mission-transient-sharing', intent: 'Persist through Windows sharing contention' }),
+  });
+  assert.equal(record.revision, 1);
+  assert.equal(lockOpenAttempts, 2);
+  assert.equal(renameAttempts, 2);
+  assert.equal(retryDelays, 2);
+  assert.equal((await store.loadMission({ root, missionId: 'mission-transient-sharing' })).revision, 1);
+});
+
+test('mission store does not retry non-transient filesystem failures', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'titan-mission-'));
+  let retryDelays = 0;
+  const store = createMissionStore({
+    filesystem: {
+      ...filesystem,
+      async rename() { throw transientError('EIO'); },
+    },
+    retryDelay: async () => { retryDelays += 1; },
+  });
+  await assert.rejects(
+    () => store.saveMission({ root, mission: createMission({ id: 'mission-nontransient', intent: 'Preserve real disk errors' }) }),
+    (error) => error.code === 'EIO',
+  );
+  assert.equal(retryDelays, 0);
 });
