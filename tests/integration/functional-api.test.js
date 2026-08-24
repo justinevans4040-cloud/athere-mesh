@@ -37,7 +37,13 @@ function createOrchestrator() {
   };
 }
 
-async function startFunctionalApi({ maxRequestBytes, orchestrator = createOrchestrator(), logger, authToken = OWNER_TOKEN } = {}) {
+async function startFunctionalApi({
+  maxRequestBytes,
+  orchestrator = createOrchestrator(),
+  logger,
+  authToken = OWNER_TOKEN,
+  recovery = { recovered: ['mission-recovered'], blocked: [], corrupt: [] },
+} = {}) {
   const runtime = createAgentRuntime({ complete: async () => ({ content: 'advisory only' }) });
   const api = createTitanApi({
     runtime,
@@ -45,13 +51,23 @@ async function startFunctionalApi({ maxRequestBytes, orchestrator = createOrches
     authToken,
     orchestrator,
     team: fleetRegistry,
-    recovery: { recovered: ['mission-recovered'], blocked: [], corrupt: [] },
+    recovery,
     ...(maxRequestBytes === undefined ? {} : { maxRequestBytes }),
     ...(logger === undefined ? {} : { logger }),
   });
   await api.listen({ host: '127.0.0.1', port: 0 });
   return api;
 }
+
+test('owner bearer credentials are 32-512 visible printable ASCII bytes', () => {
+  const runtime = createAgentRuntime({ complete: async () => ({ content: 'not used' }) });
+  for (const invalidToken of ['é'.repeat(32), 'x'.repeat(513)]) {
+    assert.throws(
+      () => createTitanApi({ runtime, profile: 'owner', authToken: invalidToken }),
+      /strong bearer credential/,
+    );
+  }
+});
 
 async function request(api, pathname, { method = 'GET', body, headers = {} } = {}) {
   const response = await fetch(`${api.url}${pathname}`, {
@@ -202,7 +218,7 @@ test('functional API exposes health, operational team, durable command result, a
     assert.deepEqual(health.body, {
       ready: true,
       enabledAgents: 6,
-      recovery: { recovered: ['mission-recovered'], blocked: [], corrupt: [] },
+      recovery: { recovered: 1, blocked: 0, corrupt: 0 },
     });
 
     const team = await request(api, '/api/team');
@@ -238,6 +254,23 @@ test('functional API exposes health, operational team, durable command result, a
   }
 });
 
+test('public health exposes recovery categories and counts without mission identifiers or failure details', async () => {
+  const api = await startFunctionalApi({
+    recovery: {
+      recovered: ['mission-public-secret'],
+      blocked: [{ missionId: 'mission-blocked-secret', revision: 4, detail: 'private host detail' }],
+      corrupt: [{ missionId: 'mission-corrupt-secret', reason: 'private filesystem detail' }],
+    },
+  });
+  try {
+    const health = await request(api, '/health');
+    assert.deepEqual(health.body.recovery, { recovered: 1, blocked: 1, corrupt: 1 });
+    assert.doesNotMatch(JSON.stringify(health.body), /mission-public-secret|mission-blocked-secret|mission-corrupt-secret|private host detail|private filesystem detail/);
+  } finally {
+    await api.close();
+  }
+});
+
 test('functional API rejects invalid mission routes, unknown routes, and oversized command bodies', async () => {
   const api = await startFunctionalApi({ maxRequestBytes: 16 });
   try {
@@ -263,7 +296,7 @@ test('startup composition validates the fleet and recovers interrupted missions 
   });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
-    assert.deepEqual((await request(api, '/health')).body.recovery.recovered, ['mission-startup-recovery']);
+    assert.equal((await request(api, '/health')).body.recovery.recovered, 1);
     const record = await loadMission({ root, missionId: 'mission-startup-recovery' });
     assert.equal(record.mission.status, 'blocked');
     assert.equal(record.mission.signals.at(-1).detail, 'interrupted execution requires operator retry');

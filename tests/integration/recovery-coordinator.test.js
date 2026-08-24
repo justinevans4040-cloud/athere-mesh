@@ -47,6 +47,27 @@ test('startup recovery reclaims a demonstrably dead-owner lease and blocks the i
   await assert.rejects(() => readFile(lockPath, 'utf8'), (error) => error.code === 'ENOENT');
 });
 
+for (const [label, partialMetadata] of [
+  ['empty', ''],
+  ['truncated', '{"version":1,"owner":'],
+]) {
+  test(`startup recovery repairs a crash-point ${label} lock artifact`, async () => {
+    const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
+    const missionId = `mission-${label}-lock`;
+    await saveMission({ root, mission: createMission({ id: missionId, intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
+    const lockPath = join(root, 'missions', `.${missionId}.lock`);
+    await writeFile(lockPath, partialMetadata, 'utf8');
+    const missionStore = deterministicMissionStore();
+
+    assert.deepEqual(
+      await recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:02:00.000Z') }),
+      { recovered: [missionId], blocked: [], corrupt: [] },
+    );
+    assert.equal((await missionStore.loadMission({ root, missionId })).mission.status, 'blocked');
+    await assert.rejects(() => readFile(lockPath, 'utf8'), (error) => error.code === 'ENOENT');
+  });
+}
+
 test('startup recovery refuses to steal a genuinely active owner lease', async () => {
   const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
   const missionId = 'mission-active-owner-lock';

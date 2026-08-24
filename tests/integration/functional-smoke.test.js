@@ -28,7 +28,7 @@ test('functional smoke proves health, team, normal-language command, and stored 
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url, options });
     const pathname = new URL(url).pathname;
-    if (pathname === '/health') return response(200, { ready: true, enabledAgents: 6, recovery: { recovered: [], blocked: [], corrupt: [] } });
+    if (pathname === '/health') return response(200, { ready: true, enabledAgents: 6, recovery: { recovered: 0, blocked: 0, corrupt: 0 } });
     if (pathname === '/api/team') return response(200, {
       enabledAgents: 6,
       agents: [
@@ -77,6 +77,22 @@ test('functional smoke proves health, team, normal-language command, and stored 
   assert.equal(evidence.tests.failed, 0);
   assert.equal(writes.length, 1);
   assert.deepEqual(JSON.parse(writes[0]), evidence);
+});
+
+test('functional smoke rejects non-ASCII and overlong bearer credentials before network access', async () => {
+  for (const invalidToken of ['é'.repeat(32), 'x'.repeat(513)]) {
+    let fetchCalls = 0;
+    await assert.rejects(
+      () => runFunctionalTeamSmoke({
+        baseUrl: 'http://127.0.0.1:5050',
+        authToken: invalidToken,
+        async fetchImpl() { fetchCalls += 1; throw new Error('network must not be reached'); },
+        write() {},
+      }),
+      /strong bearer credential/,
+    );
+    assert.equal(fetchCalls, 0);
+  }
 });
 
 test('functional smoke refuses unverified or malformed stored proof evidence', async () => {

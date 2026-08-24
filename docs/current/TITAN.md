@@ -23,11 +23,11 @@ Every other recovered registry entry remains preserved and disabled until it has
 
 ## API boundary
 
-The owner API binds to loopback and requires a reusable bearer credential from `TITAN_API_BEARER_TOKEN`. Loopback is the transport boundary, not caller authentication. The client configures the credential once and reuses it; this does not add per-command human approval.
+The owner API binds to loopback and requires a reusable 32–512 byte visible-printable-ASCII bearer credential from `TITAN_API_BEARER_TOKEN`. Loopback is the transport boundary, not caller authentication. The client configures the credential once and reuses it; this does not add per-command human approval.
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /health` | Public non-sensitive readiness, enabled-team count, and startup-recovery summary |
+| `GET /health` | Public non-sensitive readiness, enabled-team count, and recovery category counts only |
 | `GET /api/team` | Public registered team with executor/operational status |
 | `POST /api/commands` | Authenticated plain UTF-8 text command execution |
 | `GET /api/missions/:id` | Authenticated durable stored mission result |
@@ -40,7 +40,7 @@ Protected requests use `Authorization: Bearer <TITAN_API_BEARER_TOKEN>`. Missing
 Start the API:
 
 ```sh
-export TITAN_API_BEARER_TOKEN='<strong random bearer credential of at least 32 bytes>'
+export TITAN_API_BEARER_TOKEN='<strong random visible-ASCII bearer credential, 32-512 bytes>'
 corepack pnpm start:agent-api
 ```
 
@@ -55,6 +55,8 @@ The smoke reuses `TITAN_API_BEARER_TOKEN`, checks `/health`, `/api/team`, sends 
 ## Ichabod user service
 
 The deployable unit is [athere-titan.service](../../deploy/systemd-user/athere-titan.service). It is a **user** service rooted at `/home/the_founder/athere-titan-reconstruction`; it does not require sudo and may read an optional `.env.local` in that directory. That file must supply a strong `TITAN_API_BEARER_TOKEN`. The unit bounds one admitted suite with `TasksMax=256`, `MemoryMax=2G`, and `CPUQuota=200%`; these limits permit the normal Titan suite while bounding runaway process, memory, and CPU use.
+
+Mission ownership is published only after complete versioned metadata is prepared, using an atomic same-filesystem hard link. Stale takeover is serialized inside the service and checks stable file identity, token, hostname, PID, and—on Linux—boot ID plus process-start ticks before replacement. Node does not provide a portable cross-process conditional pathname replacement, so this guard is intentionally process-local. The operational cross-process boundary is one systemd-managed Titan service process; do not run an unmanaged second API/writer alongside it. A unique incomplete prepared-file artifact can remain after a crash, but it is never the canonical lock and does not block recovery.
 
 After reviewed code has been copied to that exact path, install and start it as `the_founder`:
 
@@ -75,6 +77,7 @@ Deployment proof is not complete until the service is active, the functional smo
 - Postgres remains optional; the functional acceptance path uses the atomic filesystem mission/proof store.
 - UI work is not part of this functional slice.
 - Ubuntu Ollama loopback hardening remains unproven; do not treat the current Ollama listener as loopback-only without fresh service, listener, and API evidence.
+- Cross-process stale-lock takeover depends on the documented single systemd service instance; the in-process keyed guard is not a distributed lock.
 
 ## Historical reconstruction material
 

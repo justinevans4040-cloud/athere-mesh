@@ -45,7 +45,7 @@ The first executable command is Titan testing. Existing build, SSH-read, and Val
 
 ### HTTP API
 
-- `GET /health` returns public non-sensitive service readiness, enabled-team count, and startup-recovery summary.
+- `GET /health` returns public non-sensitive service readiness, enabled-team count, and only recovered/blocked/corrupt category counts; mission IDs and failure details are not public.
 - `GET /api/team` returns public registered identities and whether each has a real executor.
 - Owner command, mission-read, and chat requests require a strong reusable bearer credential configured once by the client. Loopback transport alone does not establish caller authority, and untrusted browser origin/fetch metadata is rejected before work.
 - `POST /api/commands` accepts authenticated plain text and returns the resulting stored mission or a clarification/approval/denial response. Only one command execution is admitted at a time; concurrent execution receives HTTP 429 with `Retry-After`.
@@ -79,7 +79,7 @@ The API response includes the mission ID, status, actual test counts, proof path
 
 ## Persistence and recovery
 
-The first functional slice uses the existing atomic filesystem mission and proof stores under `TITAN_WORKSPACE_ROOT`. Postgres remains available but is not required for this acceptance gate. On startup, accepted or running missions left by an interruption are transitioned to blocked by `qra_recovery_driver`; completed missions remain unchanged and retrievable.
+The first functional slice uses the existing atomic filesystem mission and proof stores under `TITAN_WORKSPACE_ROOT`. Postgres remains available but is not required for this acceptance gate. Canonical lock ownership is atomically published from complete prepared metadata. In-process takeover is keyed by lock path and validates stable file identity/token plus Linux boot/process-start identity; the single systemd-managed service process is the cross-process boundary because Node has no portable conditional pathname replacement. On startup, accepted or running missions left by an interruption are transitioned to blocked by `qra_recovery_driver`; completed missions remain unchanged and retrievable.
 
 ## Service deployment
 

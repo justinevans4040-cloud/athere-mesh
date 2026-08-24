@@ -1,3 +1,5 @@
+import { requireBearerCredential } from '../packages/api/src/bearer-token.js';
+
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const DEFAULT_QUICK_TIMEOUT_MS = 10_000;
@@ -111,10 +113,7 @@ export async function runFunctionalTeamSmoke({
   commandTimeoutMs = DEFAULT_COMMAND_TIMEOUT_MS,
 } = {}) {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
-  if (typeof authToken !== 'string' || Buffer.byteLength(authToken, 'utf8') < 32 || /\s/.test(authToken)) {
-    throw new TypeError('authToken must be a strong bearer credential');
-  }
-  const authorization = `Bearer ${authToken}`;
+  const authorization = `Bearer ${requireBearerCredential(authToken)}`;
   if (typeof fetchImpl !== 'function') throw new TypeError('fetchImpl must be a function');
   if (typeof write !== 'function') throw new TypeError('write must be a function');
   const quickTimeout = requireTimeoutMs(quickTimeoutMs, 'quickTimeoutMs');

@@ -1,14 +1,16 @@
-import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { hostname as systemHostname } from 'node:os';
+import { hostname as systemHostname, platform as systemPlatform } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const TRANSIENT_SHARING_CODES = new Set(['EACCES', 'EBUSY', 'EPERM']);
-const DEFAULT_FILESYSTEM = Object.freeze({ mkdir, open, readFile, rename, rm, writeFile });
-const LOCK_VERSION = 1;
+const DEFAULT_FILESYSTEM = Object.freeze({ link, mkdir, open, readFile, rename, rm, stat, writeFile });
+const LEGACY_LOCK_VERSION = 1;
+const LOCK_VERSION = 2;
 const DEFAULT_LEASE_MS = 30_000;
+const keyedLockTails = new Map();
 
 function requireMissionId(missionId) {
   if (typeof missionId !== 'string' || !MISSION_ID.test(missionId)) {
@@ -29,7 +31,7 @@ function locations(root, missionId) {
 }
 
 function requireFilesystem(filesystem) {
-  for (const method of ['mkdir', 'open', 'readFile', 'rename', 'rm', 'writeFile']) {
+  for (const method of ['link', 'mkdir', 'open', 'readFile', 'rename', 'rm', 'stat', 'writeFile']) {
     if (typeof filesystem?.[method] !== 'function') throw new TypeError(`filesystem must provide ${method}`);
   }
   return filesystem;
@@ -75,13 +77,37 @@ function requireToken(value) {
   return value;
 }
 
-function lockMetadata({ owner, token, clock, leaseMs }) {
+async function withKeyedLock(key, work) {
+  const previous = keyedLockTails.get(key) ?? Promise.resolve();
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const tail = previous.then(() => gate);
+  keyedLockTails.set(key, tail);
+  await previous;
+  try {
+    return await work();
+  } finally {
+    release();
+    if (keyedLockTails.get(key) === tail) keyedLockTails.delete(key);
+  }
+}
+
+function identityFields(identity) {
+  const bootId = typeof identity?.bootId === 'string' && identity.bootId.length > 0 ? identity.bootId : undefined;
+  const processStartTicks = typeof identity?.processStartTicks === 'string' && /^\d+$/.test(identity.processStartTicks)
+    ? identity.processStartTicks
+    : undefined;
+  return bootId && processStartTicks ? { bootId, processStartTicks } : {};
+}
+
+async function lockMetadata({ owner, token, clock, leaseMs, readProcessIdentity }) {
   const acquiredAt = clock();
   const acquiredAtMs = Date.parse(acquiredAt);
   if (typeof acquiredAt !== 'string' || Number.isNaN(acquiredAtMs)) throw new TypeError('clock must return an ISO timestamp');
+  const processIdentity = await readProcessIdentity(owner.pid);
   return Object.freeze({
     version: LOCK_VERSION,
-    owner: Object.freeze({ ...owner, token }),
+    owner: Object.freeze({ ...owner, token, ...identityFields(processIdentity) }),
     lease: Object.freeze({ acquiredAt, expiresAt: new Date(acquiredAtMs + leaseMs).toISOString() }),
   });
 }
@@ -95,7 +121,7 @@ function parseLockMetadata(content) {
   }
   const acquiredAt = Date.parse(metadata?.lease?.acquiredAt);
   const expiresAt = Date.parse(metadata?.lease?.expiresAt);
-  if (metadata?.version !== LOCK_VERSION
+  if (![LEGACY_LOCK_VERSION, LOCK_VERSION].includes(metadata?.version)
     || typeof metadata?.owner?.hostname !== 'string'
     || !Number.isSafeInteger(metadata?.owner?.pid)
     || metadata.owner.pid < 1
@@ -104,12 +130,44 @@ function parseLockMetadata(content) {
     || Number.isNaN(acquiredAt)
     || Number.isNaN(expiresAt)
     || expiresAt <= acquiredAt) return undefined;
+  if (metadata.version === LOCK_VERSION) {
+    const bootId = metadata.owner.bootId;
+    const processStartTicks = metadata.owner.processStartTicks;
+    const hasBootId = typeof bootId === 'string' && bootId.length > 0 && bootId.length <= 256;
+    const hasProcessStart = typeof processStartTicks === 'string' && /^\d+$/.test(processStartTicks);
+    const hasIdentityProperty = bootId !== undefined || processStartTicks !== undefined;
+    if (hasIdentityProperty && (!hasBootId || !hasProcessStart)) return undefined;
+  }
   return metadata;
 }
 
-async function readLockMetadata(operations, lock) {
+function fileIdentity(value) {
+  return Object.freeze({
+    dev: String(value.dev),
+    ino: String(value.ino),
+    size: value.size,
+    mtimeMs: value.mtimeMs,
+  });
+}
+
+function sameFileIdentity(left, right) {
+  return left?.dev === right?.dev
+    && left?.ino === right?.ino
+    && left?.size === right?.size
+    && left?.mtimeMs === right?.mtimeMs;
+}
+
+function sameObservation(left, right) {
+  return sameFileIdentity(left?.identity, right?.identity) && left?.content === right?.content;
+}
+
+async function readLockObservation(operations, lock) {
   try {
-    return parseLockMetadata(await operations.readFile(lock, 'utf8'));
+    const before = fileIdentity(await operations.stat(lock));
+    const content = await operations.readFile(lock, 'utf8');
+    const after = fileIdentity(await operations.stat(lock));
+    if (!sameFileIdentity(before, after)) return undefined;
+    return Object.freeze({ identity: after, content, metadata: parseLockMetadata(content) });
   } catch (error) {
     if (error?.code === 'ENOENT') return undefined;
     throw error;
@@ -125,33 +183,107 @@ async function defaultIsProcessAlive(pid) {
   }
 }
 
-async function reclaimDeadOwnerLock({ operations, lock, owner, isProcessAlive }) {
-  const candidate = await readLockMetadata(operations, lock);
-  if (!candidate || candidate.owner.hostname !== owner.hostname) return false;
-  if (await isProcessAlive(candidate.owner.pid) !== false) return false;
-  const confirmed = await readLockMetadata(operations, lock);
-  if (!confirmed || confirmed.owner.token !== candidate.owner.token) return false;
+function processStartTicks(content) {
+  const commandEnd = content.lastIndexOf(')');
+  if (commandEnd < 0) return undefined;
+  const fieldsAfterCommand = content.slice(commandEnd + 1).trim().split(/\s+/);
+  const value = fieldsAfterCommand[19];
+  return typeof value === 'string' && /^\d+$/.test(value) ? value : undefined;
+}
 
-  const quarantine = `${lock}.stale-${randomUUID()}`;
+async function defaultReadProcessIdentity(pid) {
+  if (systemPlatform() !== 'linux') return Object.freeze({ alive: await defaultIsProcessAlive(pid) });
+  let bootId;
   try {
-    await operations.rename(lock, quarantine);
+    bootId = (await readFile('/proc/sys/kernel/random/boot_id', 'utf8')).trim();
   } catch (error) {
-    if (error?.code === 'ENOENT') return true;
+    return Object.freeze({ alive: await defaultIsProcessAlive(pid) });
+  }
+  try {
+    const start = processStartTicks(await readFile(`/proc/${pid}/stat`, 'utf8'));
+    if (!start) return Object.freeze({ alive: true, bootId });
+    return Object.freeze({ alive: true, bootId, processStartTicks: start });
+  } catch (error) {
+    if (error?.code === 'ENOENT') return Object.freeze({ alive: false, bootId });
+    return Object.freeze({ alive: await defaultIsProcessAlive(pid), bootId });
+  }
+}
+
+async function ownerIsDead(metadata, { owner, isProcessAlive, readProcessIdentity }) {
+  if (!metadata || metadata.owner.hostname !== owner.hostname) return metadata === undefined;
+  if (metadata.version === LEGACY_LOCK_VERSION) return await isProcessAlive(metadata.owner.pid) === false;
+  const current = await readProcessIdentity(metadata.owner.pid);
+  if (current?.bootId && metadata.owner.bootId && current.bootId !== metadata.owner.bootId) return true;
+  if (current?.alive === false) return true;
+  if (current?.processStartTicks && metadata.owner.processStartTicks
+    && current.processStartTicks !== metadata.owner.processStartTicks) return true;
+  return false;
+}
+
+async function removePrepared(operations, prepared) {
+  try {
+    await operations.rm(prepared, { force: true });
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+}
+
+async function publishPreparedLock({ operations, prepared, lock, retryDelay, maxTransientAttempts }) {
+  await retryTransientSharing(() => operations.link(prepared, lock), { retryDelay, maxTransientAttempts });
+  try {
+    await removePrepared(operations, prepared);
+    return await operations.open(lock, 'r');
+  } catch (error) {
+    error.lockOwnershipPublished = true;
     throw error;
   }
-  const claimed = await readLockMetadata(operations, quarantine);
-  if (!claimed || claimed.owner.token !== candidate.owner.token) {
-    throw new Error('mission lock changed during stale-owner reclamation');
-  }
-  await operations.rm(quarantine, { force: true });
-  return true;
+}
+
+async function reclaimAndPublish({
+  operations,
+  prepared,
+  lock,
+  owner,
+  observed,
+  isProcessAlive,
+  readProcessIdentity,
+  retryDelay,
+  maxTransientAttempts,
+}) {
+  if (!observed || !await ownerIsDead(observed.metadata, { owner, isProcessAlive, readProcessIdentity })) return undefined;
+  const confirmed = await readLockObservation(operations, lock);
+  if (!sameObservation(observed, confirmed)) return undefined;
+
+  return withKeyedLock(lock, async () => {
+    const current = await readLockObservation(operations, lock);
+    if (!sameObservation(confirmed, current)) return undefined;
+    if (!await ownerIsDead(current.metadata, { owner, isProcessAlive, readProcessIdentity })) return undefined;
+    const quarantine = `${lock}.stale-${randomUUID()}`;
+    try {
+      await operations.rename(lock, quarantine);
+    } catch (error) {
+      if (error?.code === 'ENOENT') return undefined;
+      throw error;
+    }
+    const quarantined = await readLockObservation(operations, quarantine);
+    if (!sameObservation(current, quarantined)) {
+      throw new Error('mission lock changed during stale-owner reclamation');
+    }
+    await operations.rm(quarantine, { force: true });
+    try {
+      return await publishPreparedLock({ operations, prepared, lock, retryDelay, maxTransientAttempts });
+    } catch (error) {
+      if (error?.code === 'EEXIST') return undefined;
+      throw error;
+    }
+  });
 }
 
 function expectedCleanupError(operation, error) {
   return error?.code === 'ENOENT' || (operation === 'close' && error?.code === 'EBADF');
 }
 
-async function cleanupMissionWrite({ operations, temporary, lockHandle, lock, lockToken, metadataWritten }) {
+async function cleanupMissionWrite({ operations, temporary, lockHandle, lock, lockToken, ownershipPublished }) {
   const failures = [];
   const attempt = async (operation, work) => {
     try {
@@ -162,21 +294,16 @@ async function cleanupMissionWrite({ operations, temporary, lockHandle, lock, lo
       }
     }
   };
-  await attempt('temporary', () => operations.rm(temporary, { force: true }));
-  await attempt('close', () => lockHandle.close());
+  if (temporary) await attempt('temporary', () => operations.rm(temporary, { force: true }));
+  await attempt('close', async () => lockHandle?.close());
   await attempt('lock', async () => {
-    if (metadataWritten) {
-      let content;
-      try {
-        content = await operations.readFile(lock, 'utf8');
-      } catch (error) {
-        if (error?.code === 'ENOENT') return;
-        throw error;
-      }
-      const metadata = parseLockMetadata(content);
-      if (!metadata || metadata.owner.token !== lockToken) throw new Error('mission lock ownership changed');
-    }
-    await operations.rm(lock, { force: true });
+    if (!ownershipPublished) return;
+    await withKeyedLock(lock, async () => {
+      const observed = await readLockObservation(operations, lock);
+      if (!observed) return;
+      if (!observed.metadata || observed.metadata.owner.token !== lockToken) throw new Error('mission lock ownership changed');
+      await operations.rm(lock, { force: true });
+    });
   });
   return failures.length === 0 ? undefined : new AggregateError(failures, 'mission cleanup failed');
 }
@@ -212,6 +339,7 @@ export function createMissionStore({
   clock = () => new Date().toISOString(),
   tokenFactory = randomUUID,
   isProcessAlive = defaultIsProcessAlive,
+  readProcessIdentity,
   leaseMs = DEFAULT_LEASE_MS,
 } = {}) {
   const operations = requireFilesystem(filesystem);
@@ -221,6 +349,11 @@ export function createMissionStore({
   const lockClock = requireClock(clock);
   if (typeof tokenFactory !== 'function') throw new TypeError('tokenFactory must be a function');
   if (typeof isProcessAlive !== 'function') throw new TypeError('isProcessAlive must be a function');
+  if (readProcessIdentity !== undefined && typeof readProcessIdentity !== 'function') throw new TypeError('readProcessIdentity must be a function');
+  const processIdentityReader = readProcessIdentity
+    ?? (isProcessAlive === defaultIsProcessAlive
+      ? defaultReadProcessIdentity
+      : async (ownerPid) => Object.freeze({ alive: await isProcessAlive(ownerPid) }));
   const lockLeaseMs = requireLeaseMs(leaseMs);
 
   async function load({ root, missionId }) {
@@ -232,28 +365,62 @@ export function createMissionStore({
     if (!mission || typeof mission !== 'object') throw new TypeError('mission is required');
     const { directory, snapshot, lock } = locations(root, mission.id);
     await operations.mkdir(directory, { recursive: true });
-
-    let lockHandle;
-    for (let acquisitionAttempt = 0; acquisitionAttempt < attempts; acquisitionAttempt += 1) {
-      try {
-        lockHandle = await retryTransientSharing(() => operations.open(lock, 'wx'), { retryDelay, maxTransientAttempts: attempts });
-        break;
-      } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
-        const reclaimed = await reclaimDeadOwnerLock({ operations, lock, owner, isProcessAlive });
-        if (!reclaimed) throw new Error('mission write already in progress');
-      }
-    }
-    if (!lockHandle) throw new Error('mission write already in progress');
-
     const lockToken = requireToken(tokenFactory());
-    let metadataWritten = false;
+    const prepared = `${lock}.candidate-${randomUUID()}`;
+    let lockHandle;
+    let ownershipPublished = false;
     try {
-      const metadata = lockMetadata({ owner, token: lockToken, clock: lockClock, leaseMs: lockLeaseMs });
-      await operations.writeFile(lock, `${JSON.stringify(metadata)}\n`, { encoding: 'utf8', flag: 'w' });
-      metadataWritten = true;
+      const metadata = await lockMetadata({
+        owner,
+        token: lockToken,
+        clock: lockClock,
+        leaseMs: lockLeaseMs,
+        readProcessIdentity: processIdentityReader,
+      });
+      await operations.writeFile(prepared, `${JSON.stringify(metadata)}\n`, { encoding: 'utf8', flag: 'wx' });
+      try {
+        lockHandle = await publishPreparedLock({
+          operations,
+          prepared,
+          lock,
+          retryDelay,
+          maxTransientAttempts: attempts,
+        });
+      } catch (error) {
+        if (error?.code !== 'EEXIST') throw error;
+        const observed = await readLockObservation(operations, lock);
+        lockHandle = await reclaimAndPublish({
+          operations,
+          prepared,
+          lock,
+          owner,
+          observed,
+          isProcessAlive,
+          readProcessIdentity: processIdentityReader,
+          retryDelay,
+          maxTransientAttempts: attempts,
+        });
+        if (!lockHandle) throw new Error('mission write already in progress');
+      }
+      ownershipPublished = true;
     } catch (error) {
-      await cleanupMissionWrite({ operations, temporary: `${lock}.metadata`, lockHandle, lock, lockToken, metadataWritten });
+      if (error?.lockOwnershipPublished) ownershipPublished = true;
+      let preparedFailure;
+      try {
+        await removePrepared(operations, prepared);
+      } catch (cleanupError) {
+        preparedFailure = new Error('mission cleanup failed: prepared lock', { cause: cleanupError });
+      }
+      const cleanupFailure = await cleanupMissionWrite({
+        operations,
+        temporary: undefined,
+        lockHandle,
+        lock,
+        lockToken,
+        ownershipPublished,
+      });
+      const cleanupFailures = [error, preparedFailure, cleanupFailure].filter(Boolean);
+      if (cleanupFailures.length > 1) throw new AggregateError(cleanupFailures, 'mission lock acquisition and cleanup failed');
       throw error;
     }
 
@@ -277,7 +444,14 @@ export function createMissionStore({
     } catch (error) {
       writeFailure = error;
     }
-    const cleanupFailure = await cleanupMissionWrite({ operations, temporary, lockHandle, lock, lockToken, metadataWritten });
+    const cleanupFailure = await cleanupMissionWrite({
+      operations,
+      temporary,
+      lockHandle,
+      lock,
+      lockToken,
+      ownershipPublished,
+    });
     if (writeFailure && cleanupFailure) {
       throw new AggregateError([writeFailure, cleanupFailure], 'mission write and cleanup failed');
     }

@@ -2,6 +2,7 @@ import http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { AgentRuntimeError } from '../../agent/src/agent-runtime.js';
 import { planCommand } from '../../command/src/command-planner.js';
+import { isValidBearerCredential, requireBearerCredential } from './bearer-token.js';
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -14,13 +15,6 @@ function publicError(statusCode, message, headers) {
   return error;
 }
 
-function requireBearerToken(value) {
-  if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') < 32 || Buffer.byteLength(value, 'utf8') > 512 || /\s/.test(value)) {
-    throw new TypeError('owner authToken must be a strong bearer credential');
-  }
-  return value;
-}
-
 function sameCredential(received, expected) {
   const left = Buffer.from(received, 'utf8');
   const right = Buffer.from(expected, 'utf8');
@@ -29,8 +23,8 @@ function sameCredential(received, expected) {
 
 function requireTrustedOwnerRequest(request, authToken) {
   const authorization = request.headers.authorization;
-  const match = typeof authorization === 'string' ? /^Bearer ([!-~]+)$/i.exec(authorization) : undefined;
-  if (!match || !sameCredential(match[1], authToken)) {
+  const match = typeof authorization === 'string' ? /^Bearer (.+)$/i.exec(authorization) : undefined;
+  if (!match || !isValidBearerCredential(match[1]) || !sameCredential(match[1], authToken)) {
     throw publicError(401, 'authentication required', { 'www-authenticate': 'Bearer realm="titan-owner"' });
   }
 
@@ -125,6 +119,14 @@ function operationalDependencies(orchestrator, team, recovery) {
   }
 }
 
+function publicRecoverySummary(recovery) {
+  return Object.freeze({
+    recovered: recovery.recovered.length,
+    blocked: recovery.blocked.length,
+    corrupt: recovery.corrupt.length,
+  });
+}
+
 function publicErrorResponse(error) {
   if (typeof error?.publicMessage === 'string' && Number.isSafeInteger(error.statusCode)) {
     return { statusCode: error.statusCode, payload: { error: error.publicMessage }, headers: error.publicHeaders, log: false };
@@ -147,7 +149,7 @@ function publicErrorResponse(error) {
 
 export function createTitanApi({ runtime, profile = 'owner', authToken, maxRequestBytes = 16_384, orchestrator, team, recovery, logger = console } = {}) {
   if (!runtime || typeof runtime.respond !== 'function') throw new TypeError('agent runtime is required');
-  const ownerAuthToken = profile === 'owner' ? requireBearerToken(authToken) : undefined;
+  const ownerAuthToken = profile === 'owner' ? requireBearerCredential(authToken, 'owner authToken') : undefined;
   if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes < 1) throw new TypeError('maxRequestBytes must be positive');
   if (!logger || typeof logger.error !== 'function') throw new TypeError('logger must provide error');
   let server;
@@ -164,7 +166,7 @@ export function createTitanApi({ runtime, profile = 'owner', authToken, maxReque
           const url = new URL(request.url, 'http://titan.local');
           if (request.method === 'GET' && url.pathname === '/health') {
             operationalDependencies(orchestrator, team, recovery);
-            json(response, 200, { ready: true, enabledAgents: teamView(team).enabledAgents, recovery });
+            json(response, 200, { ready: true, enabledAgents: teamView(team).enabledAgents, recovery: publicRecoverySummary(recovery) });
             return;
           }
           if (request.method === 'GET' && url.pathname === '/api/team') {
