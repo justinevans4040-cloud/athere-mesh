@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { planCommand } from '../../command/src/command-planner.js';
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
 
@@ -44,6 +45,11 @@ export function createTitanApi({ runtime, profile = 'owner', maxRequestBytes = 1
           }
           const agentId = url.searchParams.get('agent') || 'agent-vale';
           const text = await readText(request, maxRequestBytes);
+          const plan = planCommand({ profile, text });
+          if (plan.status === 'ready' || plan.status === 'needs_approval') {
+            json(response, 409, { error: 'execution request must use /api/commands' });
+            return;
+          }
           json(response, 200, await runtime.respond({ profile, agentId, text }));
         } catch (error) {
           const statusCode = error.statusCode ?? (/owner-only/.test(error.message) ? 403 : /unknown agent|non-empty text/.test(error.message) ? 400 : 502);

@@ -6,22 +6,22 @@ const cluster = (id, name, tier, rank, memberCount) => Object.freeze({
 });
 
 const agents = Object.freeze([
-  agent('miss-vale-prime', 'Miss Vale Prime', 'founder_operator', 100, 'titan', { aliases: ['miss-vale-core', 'val_core', 'val_exec_tier_preview'], provenance: 'drive-recovered-canonical-doctrine', distribution: 'owner-only' }),
-  agent('agent-vale', 'Agent Vale', 'customer_safe_specialist', 76, 'titan', { provenance: 'drive-recovered-separation-contract', distribution: 'public' }),
-  agent('nyx', 'NYX', 'apex_coder', 95, 'houston_bay'),
+  agent('miss-vale-prime', 'Miss Vale Prime', 'founder_operator', 100, 'titan', { aliases: ['miss-vale-core', 'val_core', 'val_exec_tier_preview'], provenance: 'drive-recovered-canonical-doctrine', distribution: 'owner-only', enabled: true, executorId: 'mission-supervisor' }),
+  agent('agent-vale', 'Agent Vale', 'customer_safe_specialist', 76, 'titan', { provenance: 'drive-recovered-separation-contract', distribution: 'public', enabled: true, executorId: 'ollama-chat' }),
+  agent('nyx', 'NYX', 'apex_coder', 95, 'houston_bay', { enabled: true, executorId: 'repository-inspector' }),
   agent('loom', 'LOOM', 'resource_allocator', 95, 'houston_bay'),
-  agent('rune', 'RUNE', 'code_validator', 95, 'houston_bay'),
+  agent('rune', 'RUNE', 'code_validator', 95, 'houston_bay', { enabled: true, executorId: 'node-test-runner' }),
   agent('echo', 'ECHO', 'brand_signal_monitor', 95, 'houston_bay'),
   agent('wake_operator', 'WAKE Operator', 'configuration_engine', 95, 'houston_bay'),
   agent('aether_wlm', 'AETHER', 'execution_kernel', 76, 'houston_bay'),
   agent('qra_emerge_orchestration', 'QRA AI Orchestration Strike', 'system_integration_runner', 76, 'titan'),
   agent('qra_emerge_ai_secops', 'QRA AI SecOps Strike', 'prompt_injection_defense', 76, 'titan'),
-  agent('qra_emerge_audit', 'QRA Audit Evidence Strike', 'evidence_collector', 76, 'titan'),
+  agent('qra_emerge_audit', 'QRA Audit Evidence Strike', 'evidence_collector', 76, 'titan', { enabled: true, executorId: 'proof-verifier' }),
   agent('qra_emerge_context', 'QRA Context Engineering Strike', 'context_memory_lock', 76, 'titan'),
   agent('qra_emerge_ethics_liaison', 'QRA Ethics Stakeholder Strike', 'compliance_liaison', 76, 'titan'),
   agent('qra_emerge_mlops_data', 'QRA ML Data Ops Strike', 'data_pipeline_validator', 76, 'titan'),
   agent('qra_emerge_governance', 'QRA Governance Risk Strike', 'policy_gatekeeper', 76, 'titan'),
-  agent('qra_recovery_driver', 'QRA Recovery Driver', 'recovery_executor', 76, 'titan'),
+  agent('qra_recovery_driver', 'QRA Recovery Driver', 'recovery_executor', 76, 'titan', { enabled: true, executorId: 'recovery-coordinator' }),
   agent('qra_route_controller', 'QRA Route Controller', 'task_cluster_router', 76, 'titan'),
   agent('qra_signal_watch', 'QRA Signal Watch', 'port_watcher', 76, 'titan'),
   agent('sales_hunter', 'Sales Hunter', 'outbound_acquisition', 76, 'titan'),
@@ -57,3 +57,11 @@ const jobs = Object.freeze([
 export const fleetRegistry = Object.freeze({ version: 2, agents, clusters, jobs });
 export const qraForces = () => agents.filter(item => item.id.startsWith('qra_'));
 export const fleetClusters = () => [...clusters];
+export const operationalAgents = () => agents.filter((agent) => agent.enabled);
+export const validateOperationalFleet = () => {
+  for (const agent of operationalAgents()) {
+    if (typeof agent.executorId !== 'string' || agent.executorId.trim().length === 0) {
+      throw new Error(`operational agent requires executor ID: ${agent.id}`);
+    }
+  }
+};

@@ -13,6 +13,7 @@ export function createAgentRuntime({ complete }) {
     async respond({ profile, agentId, text }) {
       const agent = agentById.get(agentId);
       if (!agent) throw new Error('unknown agent');
+      if (!agent.enabled) throw new Error('agent is not operational');
       if (profile === 'public' && agent.distribution !== 'public') throw new Error('agent is owner-only');
       if (profile !== 'owner' && profile !== 'public') throw new Error('unknown runtime profile');
       const prompt = requiredText(text);

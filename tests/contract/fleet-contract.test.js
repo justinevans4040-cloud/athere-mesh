@@ -1,15 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fleetRegistry, qraForces, fleetClusters } from '../../packages/fleet/src/registry.js';
+import { fleetRegistry, qraForces, fleetClusters, operationalAgents, validateOperationalFleet } from '../../packages/fleet/src/registry.js';
 import { planValePrimeDeployment } from '../../packages/fleet/src/vale-deployment.js';
 
-test('fleet registry places every recovered agent and cluster without claiming they are live', () => {
+test('fleet registry preserves every recovered agent and cluster while limiting operational status to implemented executors', () => {
   assert.equal(fleetRegistry.agents.length, 25);
   assert.equal(fleetRegistry.clusters.length, 14);
   assert.equal(qraForces().length, 10);
   assert.equal(fleetClusters().length, 14);
-  assert.ok(fleetRegistry.agents.every(agent => agent.enabled === false));
+  assert.deepEqual(
+    operationalAgents().map(({ id, executorId }) => ({ id, executorId })),
+    [
+      { id: 'miss-vale-prime', executorId: 'mission-supervisor' },
+      { id: 'agent-vale', executorId: 'ollama-chat' },
+      { id: 'nyx', executorId: 'repository-inspector' },
+      { id: 'rune', executorId: 'node-test-runner' },
+      { id: 'qra_emerge_audit', executorId: 'proof-verifier' },
+      { id: 'qra_recovery_driver', executorId: 'recovery-coordinator' },
+    ],
+  );
+  assert.ok(operationalAgents().every(agent => typeof agent.executorId === 'string' && agent.executorId.length > 0));
+  assert.ok(fleetRegistry.agents.filter(agent => !agent.enabled).every(agent => agent.enabled === false));
   assert.ok(fleetRegistry.clusters.every(cluster => cluster.enabled === false));
+  assert.doesNotThrow(() => validateOperationalFleet());
 });
 
 test('Vale Prime is canonical while legacy core remains a compatibility alias', () => {

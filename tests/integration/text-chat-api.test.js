@@ -31,3 +31,25 @@ test('chat API rejects oversized text before model execution', async () => {
     await api.close();
   }
 });
+
+test('chat API directs recognized execution requests to the command endpoint', async () => {
+  let completionCalls = 0;
+  const runtime = createAgentRuntime({
+    complete: async () => {
+      completionCalls += 1;
+      return { content: 'should not run' };
+    },
+  });
+  const api = createTitanApi({ runtime });
+  await api.listen({ host: '127.0.0.1', port: 0 });
+  try {
+    const postChat = async (text) => {
+      const response = await fetch(`${api.url}/api/chat?agent=agent-vale`, { method: 'POST', body: text });
+      return response.status;
+    };
+    assert.equal(await postChat('Run all Titan tests'), 409);
+    assert.equal(completionCalls, 0);
+  } finally {
+    await api.close();
+  }
+});
