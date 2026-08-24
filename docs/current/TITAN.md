@@ -1,6 +1,6 @@
 # Titan — Functional Team Execution (2026-08-23)
 
-**Status:** implementation verified locally; Ichabod deployment and restart proof are pending. Titan is a reconstruction after the original machine loss, not a recovered copy of the original Titan.
+**Status:** functional execution core is hostile-audited, deployed on Ichabod, and restart-proven. Titan is a reconstruction after the original machine loss, not a recovered copy of the original Titan.
 
 ## What this slice provides
 
@@ -58,7 +58,7 @@ The deployable unit is [athere-titan.service](../../deploy/systemd-user/athere-t
 
 Mission ownership is published only after complete versioned metadata is prepared, using an atomic same-filesystem hard link. Stale takeover is serialized inside the service and checks stable file identity, token, hostname, PID, and—on Linux—boot ID plus process-start ticks before replacement. Node does not provide a portable cross-process conditional pathname replacement, so this guard is intentionally process-local. The operational cross-process boundary is one systemd-managed Titan service process; do not run an unmanaged second API/writer alongside it. A unique incomplete prepared-file artifact can remain after a crash, but it is never the canonical lock and does not block recovery.
 
-After reviewed code has been copied to that exact path, install and start it as `the_founder`:
+The reviewed user service is installed and enabled as `the_founder`. The installation commands are:
 
 ```sh
 mkdir -p ~/.config/systemd/user
@@ -67,7 +67,17 @@ systemctl --user daemon-reload
 systemctl --user enable --now athere-titan.service
 ```
 
-Deployment proof is not complete until the service is active, the functional smoke passes against it, the completed mission survives `systemctl --user restart athere-titan.service`, and the proof file hash is independently checked on Ichabod.
+### Verified live evidence
+
+- Runtime source commit: `1c51a65cb1ceed4253779760d069e7a557462788`
+- Deployment root: `/home/the_founder/athere-titan-reconstruction`
+- Service: enabled and active with login linger; listener `127.0.0.1:5050`
+- Ichabod full suite: `109/109` passed; production audit: no known vulnerabilities
+- Functional mission: `mission-86939d12-265d-455f-93d6-c159918c968a`
+- Post-restart revision/status: `5` / `completed`
+- Post-restart result: `109` passed, `0` failed, with durable Titan, Miss Vale, NYX, RUNE, and QRA attribution
+- Proof SHA-256, stored and independently recomputed on Ichabod: `3c0c9b5885b95cad55de5a193c46494cb6711735137a23ed510426ec5301aa17`
+- Post-restart health: ready, six enabled agents, zero recovered/blocked/corrupt startup records
 
 ## Explicit non-goals and unresolved boundaries
 

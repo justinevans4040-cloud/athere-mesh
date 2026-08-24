@@ -1,13 +1,13 @@
 ﻿# ROADMAP
 
-## Now — make the functional core live
+## Completed — functional core live
 
-- Deploy the reviewed functional-team branch to Ichabod without removing recovered material.
-- Run the user-level `athere-titan.service` from `/home/the_founder/athere-titan-reconstruction`.
-- Prove `/health`, `/api/team`, the ordinary-language test mission, stored mission retrieval, proof hash, and service-restart persistence.
-- Record only the resulting live evidence; do not promote local implementation to a live claim before that proof exists.
+- Deployed the hostile-audited runtime to Ichabod without removing recovered material.
+- Enabled the user-level `athere-titan.service` from `/home/the_founder/athere-titan-reconstruction`.
+- Proved `/health`, `/api/team`, ordinary-language execution, stored mission retrieval, independent proof hash, and service-restart persistence.
+- Preserved the live evidence in current Titan documentation and the private Drive programming backup.
 
-## Next — expand real executor coverage
+## Now — expand real executor coverage
 
 - Add an executor contract, deterministic tests, proof format, recovery behavior, and truthful API status for each additional recovered agent before enabling it.
 - Keep Agent Vale advisory unless and until a separately tested action adapter exists.
