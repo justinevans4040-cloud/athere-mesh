@@ -52,15 +52,20 @@ export function createMissionOrchestrator({
   let signalSequence = 0;
   async function publish(signal) {
     signalSequence += 1;
-    await bus.publish({
-      id: `${signal.missionId}-signal-${signalSequence}`,
-      missionId: signal.missionId,
-      type: signal.type,
-      agent: signal.agent,
-      at: signal.at,
-      ...(signal.detail ? { detail: signal.detail } : {}),
-      ...(signal.proof ? { proof: signal.proof } : {}),
-    });
+    try {
+      await bus.publish({
+        id: `${signal.missionId}-signal-${signalSequence}`,
+        missionId: signal.missionId,
+        type: signal.type,
+        agent: signal.agent,
+        at: signal.at,
+        ...(signal.detail ? { detail: signal.detail } : {}),
+        ...(signal.proof ? { proof: signal.proof } : {}),
+      });
+    } catch {
+      return false;
+    }
+    return true;
   }
 
   async function persist(mission, expectedRevision) {
@@ -119,6 +124,10 @@ export function createMissionOrchestrator({
             stdout: result.stdout,
             stderr: result.stderr,
             inspection,
+            agentEvidence: [
+              { agent: 'nyx', executor: 'repository-inspector', result: inspection },
+              { agent: 'rune', executor: 'node-test-runner', result: { command: result.command, exitCode: result.exitCode, ...testCounts(result) } },
+            ],
           },
         });
         const verification = await verifyProof({ root: workspaceRoot, ref });

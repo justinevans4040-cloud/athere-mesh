@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMemoryResonanceBus } from '../../packages/resonance/src/resonance-bus.js';
@@ -57,6 +57,19 @@ test('golden Titan test mission persists accepted running and completed states w
     (await bus.read({ missionId: result.mission.id })).map(({ agent }) => agent),
     ['titan', 'miss-vale-prime', 'nyx', 'rune', 'qra_emerge_audit'],
   );
+  const freshOrchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    bus: createMemoryResonanceBus(),
+    executor: passingExecutor(),
+  });
+  const reloaded = await freshOrchestrator.getMission({ missionId: result.mission.id });
+  const proof = JSON.parse(await readFile(path.join(root, reloaded.mission.proof.path), 'utf8'));
+  assert.deepEqual(proof.agentEvidence.map(({ agent }) => agent), ['nyx', 'rune']);
+  assert.deepEqual(proof.agentEvidence[0].result, { package: { name: 'athere-titan', version: '0.1.0' }, sourceFiles: 12, testFiles: 60 });
+  assert.deepEqual(proof.agentEvidence[1].result, {
+    command: 'node --test', exitCode: 0, tests: 60, passed: 60, failed: 0, skipped: 0,
+  });
 });
 
 test('failed executor stores a blocked mission with its real failure and no proof completion', async () => {
@@ -130,4 +143,29 @@ test('recovery blocks interrupted missions without rerunning a deterministic exe
   assert.equal(record.mission.status, 'blocked');
   assert.equal(record.mission.signals.at(-1).agent, 'qra_recovery_driver');
   assert.equal(executions, 0);
+});
+
+test('telemetry publishing failures cannot overturn a durably completed mission', async () => {
+  const root = await workspace();
+  const throwingBus = { async publish() { throw new Error('telemetry offline'); } };
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    bus: throwingBus,
+    executor: passingExecutor(),
+    clock: clock(),
+    idFactory: () => '33333333-3333-4333-8333-333333333333',
+  });
+
+  const result = await orchestrator.execute({ profile: 'owner', text: 'Run every Titan test.' });
+
+  assert.equal(result.revision, 3);
+  assert.equal(result.mission.status, 'completed');
+  const freshOrchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    bus: createMemoryResonanceBus(),
+    executor: passingExecutor(),
+  });
+  assert.equal((await freshOrchestrator.getMission({ missionId: result.mission.id })).mission.status, 'completed');
 });
