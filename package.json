@@ -12,6 +12,7 @@
     "test:contract": "node --test tests/contract",
     "test:performance": "node --test tests/performance",
     "smoke:postgres": "node scripts/smoke-postgres.js",
+    "smoke:functional-team": "node scripts/smoke-functional-team.js",
     "start:agent-api": "node scripts/start-agent-api.js",
     "chat": "node scripts/chat.js"
   },

@@ -1,0 +1,18 @@
+[Unit]
+Description=Athere Titan functional team API
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/the_founder/athere-titan-reconstruction
+EnvironmentFile=-/home/the_founder/athere-titan-reconstruction/.env.local
+ExecStart=/usr/bin/node scripts/start-agent-api.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target
