@@ -1,18 +1,18 @@
 # Athere Active Run
 
-**Status:** Active — implementing backlog Item 4
+**Status:** Active — backlog Item 4 complete; advancing to Item 5
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: backlog Item 4 implemented and verified; preparing verified commit
-- Current backlog item: PHASE 1 / Item 4 — Turn Athere state into a versioned state-transition system
-- Current action: final diff integrity check and commit
+- State: backlog Item 4 implemented, verified, committed, and pushed
+- Current backlog item: PHASE 1 / Item 5 — Add explicit supersession and state lineage
+- Current action: advancing the ordered backlog to Item 5 — explicit supersession and state lineage
 - Files worked on: `packages/mission/src/mission-state-service.js`, `tests/integration/mission-state-service.test.js`, `docs/current/ATHERE_STATE_TRANSITION_HISTORY.md`, `README.md`, and this checkpoint
 - Verification completed: focused integration suite, complete repository suite, dependency vulnerability audit, diff whitespace check, and two hostile audit passes
 - Test / CI result: 14/14 focused tests passed; 123/123 repository tests passed; `pnpm audit --prod` found no known vulnerabilities
-- Last completed checkpoint: hostile audit found and fixed legacy-recovery compatibility by adding a truthful pre-ledger import boundary; full regression suite is green
+- Last completed checkpoint: pushed verified production commit `408cd9f` to `origin/master`
 - Blockers: none
 
 ## Checkpoint policy
