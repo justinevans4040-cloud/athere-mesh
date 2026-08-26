@@ -113,6 +113,36 @@ test('golden Titan test mission persists accepted running and completed states w
   });
 });
 
+test('orchestrator records the complete mission in the authoritative state service', async () => {
+  const root = await workspace();
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    executor: passingExecutor(),
+    clock: clock(),
+    idFactory: () => 'authoritative-orchestrator-1',
+  });
+
+  const result = await orchestrator.execute({ profile: 'owner', text: 'test all of Titan' });
+  const stored = await orchestrator.getMission({ missionId: result.mission.id });
+
+  assert.equal(stored.mission.objective, 'test all of Titan');
+  assert.deepEqual(stored.mission.goals, [{ id: 'validate-titan', objective: 'Verify the complete Titan runtime' }]);
+  assert.deepEqual(stored.mission.subgoals.map(({ id }) => id), ['inspect-repository', 'run-node-tests', 'verify-proof']);
+  assert.deepEqual(stored.mission.completedWork, ['inspect-repository', 'run-node-tests', 'verify-proof']);
+  assert.deepEqual(stored.mission.pendingWork, []);
+  assert.deepEqual(stored.mission.failedWork, []);
+  assert.deepEqual(stored.mission.activeAgents, []);
+  assert.deepEqual(stored.mission.evidence.map(({ agent }) => agent), ['nyx', 'rune', 'qra_emerge_audit']);
+  assert.deepEqual(stored.mission.artifactReferences, [{ id: 'mission-proof', ...stored.mission.proof }]);
+  assert.equal(stored.mission.currentPlan.version, 1);
+  assert.equal(stored.mission.environmentObservations[0].key, 'repository_root');
+  assert.deepEqual(
+    await orchestrator.selectMissionState({ missionId: result.mission.id, fields: ['objective', 'pendingWork', 'currentPlan'] }),
+    { missionId: result.mission.id, stateVersion: 5, objective: 'test all of Titan', pendingWork: [], currentPlan: stored.mission.currentPlan },
+  );
+});
+
 test('failed executor stores a blocked mission with its real failure and no proof completion', async () => {
   const root = await workspace();
   const bus = createMemoryResonanceBus();

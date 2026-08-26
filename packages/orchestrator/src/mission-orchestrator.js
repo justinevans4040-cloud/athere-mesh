@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { planCommand } from '../../command/src/command-planner.js';
-import { createMission, transitionMission } from '../../contracts/src/mission.js';
-import { loadMission, saveMission } from '../../mission/src/mission-store.js';
+import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 import { writeProof, verifyProof } from '../../proof/src/proof-store.js';
 import { inspectRecovery } from '../../recovery/src/recovery-coordinator.js';
 import { createMemoryResonanceBus } from '../../resonance/src/resonance-bus.js';
@@ -48,6 +47,7 @@ export function createMissionOrchestrator({
   requirePath(repositoryRoot, 'repositoryRoot');
   if (!bus || typeof bus.publish !== 'function') throw new TypeError('bus must provide publish');
   const testExecutor = executorForTests(executor);
+  const missionState = createMissionStateService({ root: workspaceRoot, clock });
 
   let signalSequence = 0;
   async function publish(signal) {
@@ -68,16 +68,53 @@ export function createMissionOrchestrator({
     return true;
   }
 
-  async function persist(mission, expectedRevision) {
-    const record = await saveMission({ root: workspaceRoot, mission, ...(expectedRevision === undefined ? {} : { expectedRevision }) });
-    await publish(mission.signals.at(-1));
+  async function persistTransition(record, signal, update = {}) {
+    const saved = await missionState.transition({
+      missionId: record.mission.id,
+      expectedRevision: record.revision,
+      signal,
+      update,
+    });
+    await publish(saved.mission.signals.at(-1));
+    return saved;
+  }
+
+  async function createAuthoritativeMission({ id, objective }) {
+    const record = await missionState.create({
+      id,
+      objective,
+      goals: [{ id: 'validate-titan', objective: 'Verify the complete Titan runtime' }],
+      subgoals: [
+        { id: 'inspect-repository', objective: 'Inspect the repository state', goalId: 'validate-titan' },
+        { id: 'run-node-tests', objective: 'Execute the Node test suite', goalId: 'validate-titan' },
+        { id: 'verify-proof', objective: 'Verify proof-bound completion', goalId: 'validate-titan' },
+      ],
+      dependencies: [
+        { prerequisite: 'inspect-repository', dependent: 'run-node-tests' },
+        { prerequisite: 'run-node-tests', dependent: 'verify-proof' },
+      ],
+      constraints: ['completion requires independently verified proof', 'model output is advisory only'],
+      permissions: [
+        { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
+        { actor: 'nyx', actions: ['observe_repository'] },
+        { actor: 'rune', actions: ['execute_node_tests'] },
+        { actor: 'qra_emerge_audit', actions: ['verify_proof'] },
+        { actor: 'qra_recovery_driver', actions: ['block_interrupted_mission'] },
+      ],
+      currentPlan: { id: 'titan-test-plan', version: 1, steps: ['inspect-repository', 'run-node-tests', 'verify-proof'] },
+      environmentObservations: [{ source: 'titan', key: 'repository_root', value: repositoryRoot, observedAt: clock() }],
+    });
+    await publish(record.mission.signals.at(-1));
     return record;
   }
 
-  async function block(mission, revision, detail) {
-    const blocked = transitionMission(mission, { type: 'blocked', agent: 'qra_recovery_driver', detail }, { clock });
-    const record = await persist(blocked, revision);
-    return { revision: record.revision, mission: record.mission };
+  async function block(record, detail) {
+    const blocked = await persistTransition(record, { type: 'blocked', agent: 'qra_recovery_driver', detail }, {
+      activeAgents: [],
+      failedWork: record.mission.pendingWork ?? [],
+      pendingWork: [],
+    });
+    return { revision: blocked.revision, mission: blocked.mission };
   }
 
   return Object.freeze({
@@ -88,34 +125,40 @@ export function createMissionOrchestrator({
         return Object.freeze({ status: 'blocked', reason: `no operational executor for ${plan.action.kind}` });
       }
 
-      const accepted = createMission({ id: missionId(idFactory), intent: text, clock });
-      let record = await persist(accepted);
-      const running = transitionMission(record.mission, {
+      let record = await createAuthoritativeMission({ id: missionId(idFactory), objective: text });
+      record = await persistTransition(record, {
         type: 'running', agent: 'miss-vale-prime', detail: 'mission supervision started',
-      }, { clock });
-      record = await persist(running, record.revision);
+      }, { activeAgents: ['miss-vale-prime'] });
 
       try {
         const inspection = await testExecutor.inspect({ repositoryRoot });
         const nyxEvidence = Object.freeze({ executor: 'repository-inspector', result: inspection });
-        const inspected = transitionMission(record.mission, {
+        record = await persistTransition(record, {
           type: 'running',
           agent: 'nyx',
           detail: 'repository inspection completed',
           evidence: nyxEvidence,
-        }, { clock });
-        record = await persist(inspected, record.revision);
+        }, {
+          completedWork: ['inspect-repository'],
+          pendingWork: ['run-node-tests', 'verify-proof'],
+          evidence: [{ agent: 'nyx', ...nyxEvidence }],
+          activeAgents: ['nyx'],
+        });
         const result = await testExecutor.runTests({ repositoryRoot });
         const validatedCounts = testCounts(result);
         const runeResult = Object.freeze({ command: result.command, exitCode: result.exitCode, ...validatedCounts });
         const runeEvidence = Object.freeze({ executor: 'node-test-runner', result: runeResult });
-        const executed = transitionMission(record.mission, {
+        record = await persistTransition(record, {
           type: 'running',
           agent: 'rune',
           detail: 'node test execution completed',
           evidence: runeEvidence,
-        }, { clock });
-        record = await persist(executed, record.revision);
+        }, {
+          completedWork: ['inspect-repository', 'run-node-tests'],
+          pendingWork: ['verify-proof'],
+          evidence: [...record.mission.evidence, { agent: 'rune', ...runeEvidence }],
+          activeAgents: ['rune'],
+        });
         if (result.exitCode !== 0 || result.failed !== 0) throw new Error(failureMessage(result));
 
         const agentEvidence = Object.freeze([
@@ -137,7 +180,7 @@ export function createMissionOrchestrator({
         });
         const verification = await verifyProof({ root: workspaceRoot, ref });
         if (verification.verified !== true) throw new Error(`proof verification failed: ${verification.reason ?? 'unknown'}`);
-        const completed = transitionMission(record.mission, {
+        record = await persistTransition(record, {
           type: 'completed',
           agent: 'qra_emerge_audit',
           proof: { ...ref, verified: verification.verified },
@@ -146,24 +189,34 @@ export function createMissionOrchestrator({
             agentEvidence,
             proofSha256: ref.sha256,
           },
-        }, { clock });
-        record = await persist(completed, record.revision);
+        }, {
+          completedWork: ['inspect-repository', 'run-node-tests', 'verify-proof'],
+          pendingWork: [],
+          failedWork: [],
+          evidence: [...record.mission.evidence, { agent: 'qra_emerge_audit', executor: 'proof-verifier', result: verification }],
+          activeAgents: [],
+          artifactReferences: [{ id: 'mission-proof', ...ref, verified: verification.verified }],
+        });
         return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });
       } catch (error) {
-        return block(record.mission, record.revision, error instanceof Error ? error.message : String(error));
+        return block(record, error instanceof Error ? error.message : String(error));
       }
     },
 
     async getMission({ missionId: id }) {
-      return loadMission({ root: workspaceRoot, missionId: id });
+      return missionState.get({ missionId: id });
+    },
+
+    async selectMissionState({ missionId: id, fields }) {
+      return missionState.select({ missionId: id, fields });
     },
 
     async recover() {
       const inspection = await inspectRecovery({ root: workspaceRoot });
       const recovered = [];
       for (const item of inspection.resumable) {
-        const record = await loadMission({ root: workspaceRoot, missionId: item.missionId });
-        const result = await block(record.mission, record.revision, 'interrupted execution requires operator retry');
+        const record = await missionState.get({ missionId: item.missionId });
+        const result = await block(record, 'interrupted execution requires operator retry');
         recovered.push({ missionId: result.mission.id, revision: result.revision });
       }
       return Object.freeze({ recovered: Object.freeze(recovered), blocked: inspection.blocked, corrupt: inspection.corrupt });
