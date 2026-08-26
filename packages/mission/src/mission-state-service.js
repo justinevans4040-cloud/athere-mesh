@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { createMission, transitionMission } from '../../contracts/src/mission.js';
 import { loadMission, saveMission } from './mission-store.js';
 
@@ -7,6 +8,124 @@ const MUTABLE_FIELDS = new Set([
   'constraints', 'activeAgents', 'artifactReferences', 'currentPlan', 'environmentObservations',
 ]);
 const SELECTABLE_FIELDS = new Set(['objective', 'permissions', ...MUTABLE_FIELDS]);
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+  }
+  return value;
+}
+
+function stateWithoutHistory(mission) {
+  const { transitionHistory: ignored, ...state } = mission;
+  return state;
+}
+
+function stateHash(mission) {
+  return createHash('sha256').update(JSON.stringify(canonicalize(stateWithoutHistory(mission)))).digest('hex');
+}
+
+function hashValue(value) {
+  return createHash('sha256').update(JSON.stringify(canonicalize(value))).digest('hex');
+}
+
+function transitionHash(record) {
+  const { transitionHash: ignored, ...payload } = record;
+  return hashValue(payload);
+}
+
+function stateChanges(before, after) {
+  const changes = {};
+  const beforeState = stateWithoutHistory(before);
+  const afterState = stateWithoutHistory(after);
+  for (const key of new Set([...Object.keys(beforeState), ...Object.keys(afterState)])) {
+    if (JSON.stringify(canonicalize(beforeState[key])) !== JSON.stringify(canonicalize(afterState[key]))) {
+      changes[key] = Object.freeze({ before: structuredClone(beforeState[key]), after: structuredClone(afterState[key]) });
+    }
+  }
+  return Object.freeze(changes);
+}
+
+function transitionRecord({ stateVersion, previousVersion, previousTransitionHash, actor, action, timestamp, input, before, after, authorization, evidence }) {
+  const changes = stateChanges(before, after);
+  const record = {
+    transitionId: `${after.id}-transition-${stateVersion}`,
+    stateVersion,
+    previousVersion,
+    previousTransitionHash: previousTransitionHash ?? null,
+    actor,
+    action,
+    timestamp,
+    input: Object.freeze(structuredClone(input)),
+    output: Object.freeze({ status: after.status, changedFields: Object.freeze(Object.keys(changes).sort()) }),
+    evidence: evidence === undefined ? null : Object.freeze(structuredClone(evidence)),
+    verifier: 'mission-state-service',
+    authorization: Object.freeze(structuredClone(authorization)),
+    previousStateHash: previousVersion === 0 ? null : stateHash(before),
+    stateHash: stateHash(after),
+    changes,
+    transitionResult: 'committed',
+    rollbackTargetVersion: previousVersion === 0 ? null : previousVersion,
+  };
+  return Object.freeze({ ...record, transitionHash: transitionHash(record) });
+}
+
+function legacyImportRecord(mission, revision, timestamp) {
+  const record = {
+    transitionId: `${mission.id}-legacy-import-${revision}`,
+    stateVersion: revision,
+    previousVersion: revision > 1 ? revision - 1 : 0,
+    previousTransitionHash: null,
+    actor: 'mission-state-service',
+    action: 'import_legacy_snapshot',
+    timestamp,
+    input: Object.freeze({ provenance: 'pre-ledger snapshot', priorHistoryAvailable: false }),
+    output: Object.freeze({ status: mission.status, changedFields: Object.freeze([]) }),
+    evidence: null,
+    verifier: 'mission-state-service',
+    authorization: Object.freeze({ actor: 'mission-state-service', actions: Object.freeze(['migrate_mission']), granted: true }),
+    previousStateHash: null,
+    stateHash: stateHash(mission),
+    changes: Object.freeze({}),
+    transitionResult: 'imported',
+    rollbackTargetVersion: null,
+  };
+  return Object.freeze({ ...record, transitionHash: transitionHash(record) });
+}
+
+function verifyTransitionHistory(mission, revision) {
+  const history = mission.transitionHistory ?? [];
+  if (history.length === 0) throw new Error('transition history is missing');
+  let previous = null;
+  for (const record of history) {
+    const isLegacyBoundary = !previous && record.action === 'import_legacy_snapshot' && record.previousStateHash === null;
+    const expectedVersion = previous ? previous.stateVersion + 1 : (isLegacyBoundary ? record.stateVersion : 1);
+    if (record.stateVersion !== expectedVersion || (!isLegacyBoundary && record.previousVersion !== expectedVersion - 1)) {
+      throw new Error(`transition version mismatch at version ${record.stateVersion}`);
+    }
+    if (record.previousTransitionHash !== (previous?.transitionHash ?? null)) {
+      throw new Error(`transition chain mismatch at version ${record.stateVersion}`);
+    }
+    if (previous && record.previousStateHash !== previous.stateHash) {
+      throw new Error(`state hash chain mismatch at version ${record.stateVersion}`);
+    }
+    if (record.transitionHash !== transitionHash(record)) {
+      throw new Error(`transition hash mismatch at version ${record.stateVersion}`);
+    }
+    previous = record;
+  }
+  if (previous.stateVersion !== revision) throw new Error('transition history does not match stored revision');
+  const currentStateHash = stateHash(mission);
+  if (previous.stateHash !== currentStateHash) throw new Error('transition history does not match authoritative state');
+  return Object.freeze({
+    valid: true,
+    missionId: mission.id,
+    stateVersion: revision,
+    transitionCount: history.length,
+    stateHash: currentStateHash,
+  });
+}
 
 function requiredText(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) throw new TypeError(`${label} must be a non-empty string`);
@@ -166,7 +285,20 @@ export function createMissionStateService({ root, clock = () => new Date().toISO
     async create(input) {
       const id = requiredId(input?.id, 'mission id');
       const state = authoritativeState(input);
-      const mission = Object.freeze({ ...createMission({ id, intent: state.objective, clock }), ...state });
+      const created = Object.freeze({ ...createMission({ id, intent: state.objective, clock }), ...state });
+      const lineage = transitionRecord({
+        stateVersion: 1,
+        previousVersion: 0,
+        previousTransitionHash: null,
+        actor: 'titan',
+        action: 'create',
+        timestamp: created.createdAt,
+        input: state,
+        before: Object.freeze({ id }),
+        after: created,
+        authorization: { actor: 'titan', actions: ['create_mission'], granted: true },
+      });
+      const mission = Object.freeze({ ...created, transitionHistory: Object.freeze([lineage]) });
       return store.saveMission({ root, mission });
     },
 
@@ -174,18 +306,50 @@ export function createMissionStateService({ root, clock = () => new Date().toISO
       const id = requiredId(missionId, 'mission id');
       if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) throw new TypeError('revision conflict: expectedRevision must be a positive integer');
       const current = await store.loadMission({ root, missionId: id });
+      const existingHistory = current.mission.transitionHistory ?? [];
+      const history = existingHistory.length > 0
+        ? existingHistory
+        : [legacyImportRecord(current.mission, current.revision, clock())];
       const stateUpdate = validateUpdate(update, current.mission);
       const permittedActors = new Set((current.mission.permissions ?? []).map(({ actor }) => actor));
       if (permittedActors.size > 0 && !permittedActors.has(signal?.agent)) {
         throw new Error(`transition actor lacks mission permission: ${signal?.agent}`);
       }
       const transitioned = transitionMission(current.mission, signal, { clock });
-      const mission = Object.freeze({ ...transitioned, ...stateUpdate });
+      const nextState = Object.freeze({ ...transitioned, ...stateUpdate });
+      const permission = (current.mission.permissions ?? []).find(({ actor }) => actor === signal.agent);
+      const lineage = transitionRecord({
+        stateVersion: expectedRevision + 1,
+        previousVersion: expectedRevision,
+        previousTransitionHash: history.at(-1).transitionHash,
+        actor: signal.agent,
+        action: signal.type,
+        timestamp: nextState.updatedAt,
+        input: { signal, update: stateUpdate },
+        before: current.mission,
+        after: nextState,
+        authorization: { actor: signal.agent, actions: permission?.actions ?? [], granted: permittedActors.size === 0 || Boolean(permission) },
+        evidence: signal.evidence,
+      });
+      const mission = Object.freeze({
+        ...nextState,
+        transitionHistory: Object.freeze([...history, lineage]),
+      });
       return store.saveMission({ root, mission, expectedRevision });
     },
 
     async get({ missionId }) {
       return store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+    },
+
+    async history({ missionId }) {
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      return Object.freeze(structuredClone(record.mission.transitionHistory ?? []));
+    },
+
+    async verifyHistory({ missionId }) {
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      return verifyTransitionHistory(record.mission, record.revision);
     },
 
     async select({ missionId, fields }) {

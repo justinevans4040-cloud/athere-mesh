@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
+import { loadMission, saveMission } from '../../packages/mission/src/mission-store.js';
 
 const clock = () => '2026-08-26T18:00:00.000Z';
 const createInput = () => ({
@@ -56,6 +57,96 @@ test('authoritative mission state survives service reconstruction with every own
   assert.deepEqual(loaded.mission.artifactReferences, [{ id: 'artifact-tree', path: 'evidence/tree.json' }]);
   assert.deepEqual(loaded.mission.currentPlan, { id: 'plan-1', version: 1, steps: ['inspect', 'verify'] });
   assert.deepEqual(loaded.mission.environmentObservations, createInput().environmentObservations);
+});
+
+test('every authoritative mutation appends hash-bound transition lineage', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-state-lineage-'));
+  const service = createMissionStateService({ root, clock });
+  const created = await service.create(createInput());
+  await service.transition({
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    signal: { type: 'running', agent: 'nyx', detail: 'inspection complete', evidence: { path: 'evidence/tree.json' } },
+    update: { completedWork: ['inspect'], pendingWork: ['verify'], activeAgents: ['nyx'] },
+  });
+
+  const history = await service.history({ missionId: created.mission.id });
+
+  assert.equal(history.length, 2);
+  assert.deepEqual(
+    history.map(({ stateVersion, previousVersion, actor, action, transitionResult, rollbackTargetVersion }) => ({ stateVersion, previousVersion, actor, action, transitionResult, rollbackTargetVersion })),
+    [
+      { stateVersion: 1, previousVersion: 0, actor: 'titan', action: 'create', transitionResult: 'committed', rollbackTargetVersion: null },
+      { stateVersion: 2, previousVersion: 1, actor: 'nyx', action: 'running', transitionResult: 'committed', rollbackTargetVersion: 1 },
+    ],
+  );
+  assert.equal(history[1].timestamp, '2026-08-26T18:00:00.000Z');
+  assert.deepEqual(history[1].input.signal, { type: 'running', agent: 'nyx', detail: 'inspection complete', evidence: { path: 'evidence/tree.json' } });
+  assert.deepEqual(history[1].input.update, { completedWork: ['inspect'], pendingWork: ['verify'], activeAgents: ['nyx'] });
+  assert.deepEqual(history[1].evidence, { path: 'evidence/tree.json' });
+  assert.deepEqual(history[1].authorization, { actor: 'nyx', actions: ['observe_repository'], granted: true });
+  assert.equal(history[1].verifier, 'mission-state-service');
+  assert.match(history[1].previousStateHash, /^[a-f0-9]{64}$/);
+  assert.match(history[1].stateHash, /^[a-f0-9]{64}$/);
+  assert.equal(history[0].previousTransitionHash, null);
+  assert.match(history[0].transitionHash, /^[a-f0-9]{64}$/);
+  assert.equal(history[1].previousTransitionHash, history[0].transitionHash);
+  assert.match(history[1].transitionHash, /^[a-f0-9]{64}$/);
+  assert.notEqual(history[1].previousStateHash, history[1].stateHash);
+  assert.deepEqual(Object.keys(history[1].changes).sort(), ['activeAgents', 'completedWork', 'pendingWork', 'signals', 'status', 'coms'].sort());
+  assert.deepEqual(await service.verifyHistory({ missionId: created.mission.id }), {
+    valid: true,
+    missionId: created.mission.id,
+    stateVersion: 2,
+    transitionCount: 2,
+    stateHash: history[1].stateHash,
+  });
+});
+
+test('history verification rejects a tampered transition ledger', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-state-tamper-'));
+  const baseStore = { loadMission, saveMission };
+  let tamper = false;
+  const store = {
+    saveMission: baseStore.saveMission,
+    async loadMission(options) {
+      const record = await baseStore.loadMission(options);
+      if (!tamper) return record;
+      const history = structuredClone(record.mission.transitionHistory);
+      history[0].actor = 'intruder';
+      return { ...record, mission: { ...record.mission, transitionHistory: history } };
+    },
+  };
+  const service = createMissionStateService({ root, clock, store });
+  await service.create(createInput());
+  tamper = true;
+  await assert.rejects(() => service.verifyHistory({ missionId: 'mission-authoritative-1' }), /transition hash mismatch at version 1/);
+});
+
+test('transition marks an explicit provenance boundary for a pre-ledger mission', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-state-legacy-'));
+  const service = createMissionStateService({ root, clock });
+  const created = await service.create(createInput());
+  const legacyMission = structuredClone(created.mission);
+  delete legacyMission.transitionHistory;
+  let saved;
+  const store = {
+    loadMission: async () => ({ mission: legacyMission, revision: created.revision }),
+    saveMission: async ({ mission }) => { saved = mission; return { mission, revision: 2 }; },
+  };
+  const legacyService = createMissionStateService({ root, clock, store });
+
+  await legacyService.transition({
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    signal: { type: 'running', agent: 'nyx', detail: 'legacy mutation' },
+  });
+
+  assert.equal(saved.transitionHistory[0].action, 'import_legacy_snapshot');
+  assert.deepEqual(saved.transitionHistory[0].input, { provenance: 'pre-ledger snapshot', priorHistoryAvailable: false });
+  assert.equal(saved.transitionHistory[0].previousStateHash, null);
+  assert.equal(saved.transitionHistory[0].rollbackTargetVersion, null);
+  assert.equal(saved.transitionHistory[1].previousTransitionHash, saved.transitionHistory[0].transitionHash);
 });
 
 test('agents receive only explicitly selected authoritative state', async () => {
