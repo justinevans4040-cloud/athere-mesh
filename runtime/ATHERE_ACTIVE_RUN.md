@@ -1,18 +1,18 @@
 # Athere Active Run
 
-**Status:** Active — Item 2 verified; preparing commit
+**Status:** Finished — verified backlog Item 2 completed
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: implementation and verification complete
+- State: completed and committed
 - Current backlog item: PHASE 0 / Item 2 — Build the Athere evaluation harness before major redesign
-- Current action: final diff review and verified commit preparation
+- Current action: next ordered backlog item is PHASE 1 / Item 3 — move authoritative mission state completely outside model context
 - Files worked on: `tests/contract/evaluation-harness.test.js`, `packages/evaluation/src/evaluation-harness.js`, evaluation fixtures and runner
 - Verification completed: focused red-green contract cycle, full repository suite, production dependency audit, placeholder scan, and diff check
 - Test / CI result: 115/115 tests passed; production audit found no known vulnerabilities
-- Last completed checkpoint: implemented repeated pinned trials, every backlog metric, immutable SHA-256 controls, measured noise floors, regression-set enforcement, conservative comparison verdicts, and a CI-compatible comparison CLI
+- Last completed checkpoint: commit `687f365` implemented repeated pinned trials, every backlog metric, immutable SHA-256 controls, measured noise floors, regression-set enforcement, conservative comparison verdicts, and a CI-compatible comparison CLI
 - Blockers: none
 
 ## Checkpoint policy
