@@ -1,5 +1,12 @@
 # ATHERE Mesh
 
+Current architecture authority:
+
+- [Strategic directive](docs/current/ATHERE_MESH_STRATEGIC_DIRECTIVE.md)
+- [Frozen architecture baseline](docs/current/ATHERE_ARCHITECTURE_BASELINE_2026-08-26.md)
+- [Evaluation and regression harness](docs/current/ATHERE_EVALUATION_HARNESS.md)
+- [Ordered modification backlog](research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md)
+
 > People keep asking where they can go to find the technology they were promised.  
 > They want to know if there is a *there*.  
 > **There is. It’s called Athere.**
