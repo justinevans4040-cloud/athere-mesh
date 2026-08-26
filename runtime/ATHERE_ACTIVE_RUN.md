@@ -1,19 +1,21 @@
 # Athere Active Run
 
-**Status:** Active
+**Status:** Finished — verified backlog Item 1 completed
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: repository inspection in progress
+- State: finished
 - Current backlog item: PHASE 0 / Item 1 — Freeze and document the current Athere architecture
-- Current action: inspecting the master branch repository tree and current architecture/runtime documentation to establish the exact implemented/partial/designed/experimental/proposed/deprecated baseline
-- Files being worked on: `runtime/ATHERE_ACTIVE_RUN.md`; inspection targets include `README.md`, `STATUS.md`, `docs/ARCHITECTURE.md`, `docs/current/DIRECTION.md`, `docs/current/TITAN.md`, `docs/current/TITAN_OPERATING_MEMORY.md`, `packages/**`, `tests/**`, `deploy/**`, `evidence/**`
-- Verification in progress: repository tree and implementation evidence inspection
-- Last completed checkpoint: run started; backlog Item 1 selected from `research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md`
-- Blockers: none
-- Relevant commit SHA: pending implementation commit
+- Current action: completed architecture baseline and verification; next ordered backlog item is PHASE 0 / Item 2 — Build the Athere evaluation harness before major redesign
+- Files worked on: `docs/current/ATHERE_ARCHITECTURE_BASELINE_2026-08-26.md`, `runtime/ATHERE_ACTIVE_RUN.md`
+- Verification completed: cross-checked the committed baseline against the `master` repository tree, `STATUS.md`, `docs/ARCHITECTURE.md`, `docs/current/DIRECTION.md`, `docs/current/TITAN.md`, `package.json`, mission contract/store, fleet registry, proof store, tracked tests, deployment paths, and evidence inventory; fetched the committed baseline back from `master` successfully
+- Test / CI result: no production code changed in this item. A local checkout/test attempt could not run because the execution sandbox could not resolve `github.com`. GitHub Actions reported no workflow run for baseline commit `51d96f7986c3f64ac22a39e016830d2637bd0115`; no CI result is claimed. The baseline records the last repository-verified functional evidence (109/109) explicitly as historical evidence, not as a fresh run.
+- Last completed checkpoint: backlog Item 1 acceptance condition satisfied by a reconstruction-grade current-state baseline that separates implemented, partial, designed, experimental, proposed, and deprecated architecture
+- Blockers: none for Item 1; fresh executable regression evidence belongs to ordered backlog Item 2
+- Verified production/documentation commit SHA: `51d96f7986c3f64ac22a39e016830d2637bd0115`
+- Runtime checkpoint start commit SHA: `44199c45eb722c7008fa2ffddcbc9d4433e47ed1`
 
 ## Checkpoint policy
 
