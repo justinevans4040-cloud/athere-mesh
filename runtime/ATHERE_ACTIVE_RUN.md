@@ -1,24 +1,23 @@
 # Athere Active Run
 
-**Status:** Waiting for next runtime checkpoint
+**Status:** Active
 
-This file is the live operator view for the scheduled `Athere Daily Implementation` runtime.
-
-During each run, the runtime must update this file at meaningful checkpoints so the current work is visible without waiting for the final commit.
+This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: idle / awaiting next checkpoint
-- Current backlog item: not started
-- Current action: none
-- Files being worked on: none
-- Verification in progress: none
-- Last completed checkpoint: live progress channel initialized
-- Blockers: none recorded
+- State: repository inspection in progress
+- Current backlog item: PHASE 0 / Item 1 — Freeze and document the current Athere architecture
+- Current action: inspecting the master branch repository tree and current architecture/runtime documentation to establish the exact implemented/partial/designed/experimental/proposed/deprecated baseline
+- Files being worked on: `runtime/ATHERE_ACTIVE_RUN.md`; inspection targets include `README.md`, `STATUS.md`, `docs/ARCHITECTURE.md`, `docs/current/DIRECTION.md`, `docs/current/TITAN.md`, `docs/current/TITAN_OPERATING_MEMORY.md`, `packages/**`, `tests/**`, `deploy/**`, `evidence/**`
+- Verification in progress: repository tree and implementation evidence inspection
+- Last completed checkpoint: run started; backlog Item 1 selected from `research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md`
+- Blockers: none
+- Relevant commit SHA: pending implementation commit
 
 ## Checkpoint policy
 
-A run should update this file when it:
+A run updates this file when it:
 1. starts and selects a backlog item;
 2. finishes repository inspection and identifies the exact implementation target;
 3. completes a meaningful implementation step;
@@ -27,4 +26,4 @@ A run should update this file when it:
 6. commits verified production work;
 7. finishes the run.
 
-Each update must state what is actually happening now, not what is merely planned.
+Each update states what is actually happening now, not what is merely planned.
