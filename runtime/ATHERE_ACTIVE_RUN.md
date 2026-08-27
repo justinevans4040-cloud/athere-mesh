@@ -1,19 +1,19 @@
 # Athere Active Run
 
-**Status:** Active — backlog Item 4 complete; advancing to Item 5
+**Status:** Active — implementing backlog Item 5
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: backlog Item 4 implemented, verified, committed, and pushed
+- State: active
 - Current backlog item: PHASE 1 / Item 5 — Add explicit supersession and state lineage
-- Current action: advancing the ordered backlog to Item 5 — explicit supersession and state lineage
-- Files worked on: `packages/mission/src/mission-state-service.js`, `tests/integration/mission-state-service.test.js`, `docs/current/ATHERE_STATE_TRANSITION_HISTORY.md`, `README.md`, and this checkpoint
-- Verification completed: focused integration suite, complete repository suite, dependency vulnerability audit, diff whitespace check, and two hostile audit passes
-- Test / CI result: 14/14 focused tests passed; 123/123 repository tests passed; `pnpm audit --prod` found no known vulnerabilities
-- Last completed checkpoint: pushed verified production commit `408cd9f` to `origin/master`
+- Current action: repository inspection completed; implementing first-class authoritative fact lifecycle and supersession semantics in the mission state service
+- Files being worked on: `packages/mission/src/mission-state-service.js`, `tests/integration/mission-state-service.test.js`, documentation as required, and this checkpoint
+- Verification / check currently running: none yet; implementation target identified from current `master`
+- Last completed checkpoint: confirmed Items 1–4 are already represented in current repository state and commit history; Item 5 is the highest-priority incomplete backlog item
 - Blockers: none
+- Relevant commit SHA: current `master` includes `601683ac8c5f11cd19b87d215b590e596a686dfc` as the latest checkpoint commit observed at run start
 
 ## Checkpoint policy
 
