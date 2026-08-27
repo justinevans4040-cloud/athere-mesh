@@ -3,11 +3,16 @@ import { createMission, transitionMission } from '../../contracts/src/mission.js
 import { loadMission, saveMission } from './mission-store.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+const FACT_STATUSES = new Set(['current', 'superseded', 'revoked', 'corrected', 'historical', 'tentative']);
 const MUTABLE_FIELDS = new Set([
   'goals', 'subgoals', 'dependencies', 'completedWork', 'pendingWork', 'failedWork', 'evidence',
   'constraints', 'activeAgents', 'artifactReferences', 'currentPlan', 'environmentObservations',
+  'authoritativeFacts',
 ]);
-const SELECTABLE_FIELDS = new Set(['objective', 'permissions', ...MUTABLE_FIELDS]);
+const SELECTABLE_FIELDS = new Set([
+  'objective', 'permissions', 'currentFacts',
+  ...[...MUTABLE_FIELDS].filter((field) => field !== 'authoritativeFacts'),
+]);
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -138,6 +143,17 @@ function requiredId(value, label) {
   return id;
 }
 
+function optionalId(value, label) {
+  return value === undefined ? undefined : requiredId(value, label);
+}
+
+function optionalIsoTimestamp(value, label) {
+  if (value === undefined) return undefined;
+  const timestamp = requiredText(value, label);
+  if (Number.isNaN(Date.parse(timestamp))) throw new TypeError(`${label} must be an ISO timestamp`);
+  return timestamp;
+}
+
 function stringArray(value, label) {
   if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`);
   return Object.freeze(value.map((item) => requiredText(item, `${label} entry`)));
@@ -220,6 +236,87 @@ function validateObservations(value) {
   return items;
 }
 
+function normalizeFact(item) {
+  const id = requiredId(item.id, 'fact id');
+  const key = requiredText(item.key, 'fact key');
+  const status = requiredText(item.status, 'fact status');
+  if (!FACT_STATUSES.has(status)) throw new Error(`unsupported fact status: ${status}`);
+  if (!Object.hasOwn(item, 'value')) throw new TypeError('fact value is required');
+  const fact = {
+    ...structuredClone(item),
+    id,
+    key,
+    status,
+    supersedes: optionalId(item.supersedes, 'fact supersedes'),
+    supersededBy: optionalId(item.supersededBy, 'fact supersededBy'),
+    correctedBy: optionalId(item.correctedBy, 'fact correctedBy'),
+    revokedAt: optionalIsoTimestamp(item.revokedAt, 'fact revokedAt'),
+  };
+  if (item.reason !== undefined) fact.reason = requiredText(item.reason, 'fact reason');
+  for (const field of ['supersedes', 'supersededBy', 'correctedBy', 'revokedAt']) {
+    if (fact[field] === undefined) delete fact[field];
+  }
+  return Object.freeze(fact);
+}
+
+function validateFacts(value) {
+  if (!Array.isArray(value)) throw new TypeError('authoritativeFacts must be an array');
+  const items = Object.freeze(value.map((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new TypeError('authoritativeFacts entry must be an object');
+    return normalizeFact(item);
+  }));
+  const ids = uniqueIds(items, 'fact');
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const currentByKey = new Map();
+
+  for (const fact of items) {
+    for (const reference of ['supersedes', 'supersededBy', 'correctedBy']) {
+      if (fact[reference] !== undefined && !ids.has(fact[reference])) {
+        throw new Error(`fact ${fact.id} references unknown ${reference}: ${fact[reference]}`);
+      }
+      if (fact[reference] === fact.id) throw new Error(`fact ${fact.id} cannot reference itself as ${reference}`);
+    }
+    if (fact.status === 'current') {
+      if (currentByKey.has(fact.key)) throw new Error(`multiple current authoritative facts for key: ${fact.key}`);
+      if (fact.supersededBy || fact.correctedBy || fact.revokedAt) throw new Error(`current fact ${fact.id} contains historical-only linkage`);
+      currentByKey.set(fact.key, fact);
+    }
+    if (fact.status === 'revoked' && !fact.revokedAt) throw new Error(`revoked fact ${fact.id} requires revokedAt`);
+    if (fact.status === 'superseded' && !fact.supersededBy) throw new Error(`superseded fact ${fact.id} requires supersededBy`);
+    if (fact.status === 'corrected' && !fact.correctedBy) throw new Error(`corrected fact ${fact.id} requires correctedBy`);
+  }
+
+  for (const fact of items) {
+    const successorId = fact.status === 'superseded' ? fact.supersededBy : fact.status === 'corrected' ? fact.correctedBy : undefined;
+    if (successorId) {
+      const successor = byId.get(successorId);
+      if (successor.key !== fact.key) throw new Error(`fact lineage key mismatch: ${fact.id} -> ${successor.id}`);
+      if (successor.status !== 'current') throw new Error(`fact successor must be current: ${successor.id}`);
+      if (successor.supersedes !== fact.id) throw new Error(`fact successor ${successor.id} must declare supersedes: ${fact.id}`);
+    }
+    if (fact.supersedes) {
+      const predecessor = byId.get(fact.supersedes);
+      if (predecessor.key !== fact.key) throw new Error(`fact lineage key mismatch: ${predecessor.id} -> ${fact.id}`);
+      if (!['superseded', 'corrected'].includes(predecessor.status)) throw new Error(`superseded predecessor must be historical: ${predecessor.id}`);
+      if (![predecessor.supersededBy, predecessor.correctedBy].includes(fact.id)) {
+        throw new Error(`fact predecessor ${predecessor.id} does not point to successor ${fact.id}`);
+      }
+    }
+  }
+
+  return items;
+}
+
+function currentFacts(facts, { key, includeHistorical = false, includeTentative = false } = {}) {
+  const selected = facts.filter((fact) => {
+    if (key !== undefined && fact.key !== key) return false;
+    if (fact.status === 'tentative') return includeTentative;
+    if (fact.status === 'current') return true;
+    return includeHistorical;
+  });
+  return Object.freeze(structuredClone(selected));
+}
+
 function authoritativeState(input) {
   const goals = validateGoals(input.goals);
   const { items: subgoals, ids: subgoalIds } = validateSubgoals(input.subgoals, new Set(goals.map(({ id }) => id)));
@@ -239,6 +336,7 @@ function authoritativeState(input) {
     artifactReferences: Object.freeze([]),
     currentPlan,
     environmentObservations: validateObservations(input.environmentObservations),
+    authoritativeFacts: validateFacts(input.authoritativeFacts ?? []),
   });
 }
 
@@ -256,6 +354,7 @@ function validateUpdate(update, mission) {
       ? validateObservations(update[field])
       : records(update[field], field);
   }
+  if (Object.hasOwn(update, 'authoritativeFacts')) validated.authoritativeFacts = validateFacts(update.authoritativeFacts);
   if (Object.hasOwn(update, 'goals') || Object.hasOwn(update, 'subgoals') || Object.hasOwn(update, 'dependencies') || Object.hasOwn(update, 'currentPlan')) {
     throw new Error('mission graph and currentPlan are immutable in this service version');
   }
@@ -352,13 +451,23 @@ export function createMissionStateService({ root, clock = () => new Date().toISO
       return verifyTransitionHistory(record.mission, record.revision);
     },
 
+    async facts({ missionId, key, includeHistorical = false, includeTentative = false }) {
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      const factKey = key === undefined ? undefined : requiredText(key, 'fact key');
+      if (typeof includeHistorical !== 'boolean') throw new TypeError('includeHistorical must be a boolean');
+      if (typeof includeTentative !== 'boolean') throw new TypeError('includeTentative must be a boolean');
+      return currentFacts(record.mission.authoritativeFacts ?? [], { key: factKey, includeHistorical, includeTentative });
+    },
+
     async select({ missionId, fields }) {
       if (!Array.isArray(fields) || fields.length === 0) throw new TypeError('selected state fields must be a non-empty array');
       const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
       const selected = { missionId: record.mission.id, stateVersion: record.revision };
       for (const field of fields) {
         if (!SELECTABLE_FIELDS.has(field)) throw new Error(`unsupported selected state field: ${field}`);
-        selected[field] = structuredClone(record.mission[field]);
+        selected[field] = field === 'currentFacts'
+          ? currentFacts(record.mission.authoritativeFacts ?? [])
+          : structuredClone(record.mission[field]);
       }
       return Object.freeze(selected);
     },
