@@ -1,19 +1,21 @@
 # Athere Active Run
 
-**Status:** Running — PHASE 1 / Item 6
+**Status:** Finished — PHASE 1 / Item 6 implementation and acceptance behavior verified
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: running
+- State: finished
 - Current backlog item: PHASE 1 / Item 6 — Bind artifacts and evidence to cryptographic hashes
-- Current action: repository inspection completed; implementation target is the authoritative mission-state artifact/evidence records and their transition lineage
-- Files being worked on: `packages/mission/src/mission-state-service.js`, `tests/integration/mission-state-service.test.js`, and this checkpoint
-- Verification status: test-first implementation required; GitHub Actions will not be used
-- Last completed checkpoint: confirmed Item 5 is complete on `master`; confirmed Item 6 is next ordered backlog item; inspected current mission-state service and integration coverage
-- Blocker: connected Lenovo execution device is currently offline, so verification will use an isolated local reconstruction of the exact target modules rather than GitHub Actions
-- Relevant commit SHA: `25f433a176cf16cb6e8f1cbb7aa4a45cbce59b4d` is current pre-run `master` head observed before this checkpoint
+- Current action: artifact proof records now bind exact artifact bytes to SHA-256, predecessor hash, producing agent/action, verifier result, mission-state version, and timestamp; verification re-hashes both the proof record and supplied artifact bytes
+- Files worked on: `packages/proof/src/proof-store.js`, `tests/integration/artifact-proof.test.js`, and this checkpoint
+- Verification completed: test-first RED run failed because `writeArtifactProof` / `verifyArtifactProof` did not exist; after implementation, isolated local verification ran `node --test tests/integration/artifact-proof.test.js tests/integration/proof-integrity.test.js` and reported 7 tests passed, 0 failed; `node --check packages/proof/src/proof-store.js` completed successfully
+- Verification environment: Node `v22.16.0`; repository declares Node `>=24.0.0`; the connected Lenovo execution device was offline, and GitHub Actions were not used
+- Last completed checkpoint: remote `master` was re-read after commit and contains the tested artifact-proof implementation and regression test
+- Blocker: no blocker to Item 6 acceptance behavior; full repository-wide Node 24 regression execution was not available in this run
+- Relevant commit SHAs: artifact provenance implementation `a3e5f3c4ddcd87ad0ae0535dd3ec65c1661483df`; regression coverage `369ee96238ae9dc1f81f6289679b7aefaa29e902`; run-start checkpoint `acba4d5a19c1041cb76e46d683b1eb1f12ec5d28`
+- Next ordered backlog item: PHASE 2 / Item 7 — Finalize the universal Athere agent envelope
 
 ## Checkpoint policy
 
