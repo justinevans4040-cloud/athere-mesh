@@ -1,21 +1,20 @@
 # Athere Active Run
 
-**Status:** Finished — PHASE 1 / Item 6 implementation and acceptance behavior verified
+**Status:** Running — PHASE 2 / Item 7 repository inspection complete
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: finished
-- Current backlog item: PHASE 1 / Item 6 — Bind artifacts and evidence to cryptographic hashes
-- Current action: artifact proof records now bind exact artifact bytes to SHA-256, predecessor hash, producing agent/action, verifier result, mission-state version, and timestamp; verification re-hashes both the proof record and supplied artifact bytes
-- Files worked on: `packages/proof/src/proof-store.js`, `tests/integration/artifact-proof.test.js`, and this checkpoint
-- Verification completed: test-first RED run failed because `writeArtifactProof` / `verifyArtifactProof` did not exist; after implementation, isolated local verification ran `node --test tests/integration/artifact-proof.test.js tests/integration/proof-integrity.test.js` and reported 7 tests passed, 0 failed; `node --check packages/proof/src/proof-store.js` completed successfully
-- Verification environment: Node `v22.16.0`; repository declares Node `>=24.0.0`; the connected Lenovo execution device was offline, and GitHub Actions were not used
-- Last completed checkpoint: remote `master` was re-read after commit and contains the tested artifact-proof implementation and regression test
-- Blocker: no blocker to Item 6 acceptance behavior; full repository-wide Node 24 regression execution was not available in this run
-- Relevant commit SHAs: artifact provenance implementation `a3e5f3c4ddcd87ad0ae0535dd3ec65c1661483df`; regression coverage `369ee96238ae9dc1f81f6289679b7aefaa29e902`; run-start checkpoint `acba4d5a19c1041cb76e46d683b1eb1f12ec5d28`
-- Next ordered backlog item: PHASE 2 / Item 7 — Finalize the universal Athere agent envelope
+- State: running
+- Current backlog item: PHASE 2 / Item 7 — Finalize the universal Athere agent envelope
+- Current action: repository inspection found no existing universal envelope contract; the current agent runtime accepts profile, agentId, and free-form text directly, while mission contracts validate only mission lifecycle state
+- Files being worked on: `packages/contracts/src/agent-envelope.js` (new contract target), `packages/agent/src/agent-runtime.js`, `tests/contract/agent-envelope.test.js` (new regression target), `tests/contract/agent-runtime.test.js`, and this checkpoint
+- Verification/check currently running or just completed: inspected backlog Item 7, `packages/contracts/src/mission.js`, current agent runtime, package scripts, and existing contract tests; no implementation has been claimed complete
+- Last completed checkpoint: exact Item 7 implementation boundary identified from current `master`
+- Blocker: none identified for implementing the envelope contract and enforcing it at the agent runtime boundary
+- Relevant commit SHA: none yet for Item 7 production code
+- Next ordered backlog item after Item 7: PHASE 2 / Item 8 — Make every state-changing operation idempotent
 
 ## Checkpoint policy
 
