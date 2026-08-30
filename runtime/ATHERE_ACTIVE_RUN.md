@@ -1,31 +1,25 @@
 # Athere Active Run
 
-**Status:** Finished — PHASE 2 / Item 7 implementation and targeted acceptance behavior verified
+**Status:** Active — hostile-audit remediation
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: finished
-- Current backlog item: PHASE 2 / Item 7 — Finalize the universal Athere agent envelope
-- Current action: the agent runtime now accepts a strict universal envelope for mission-controlled agent operations; malformed envelopes, capability mismatches, and unauthorized actions are rejected before provider execution; existing human advisory chat is preserved by wrapping it into the same envelope before provider execution
-- Files worked on: `packages/contracts/src/agent-envelope.js`, `packages/agent/src/agent-runtime.js`, `tests/contract/agent-envelope.test.js`, and this checkpoint
-- Verification completed: TDD RED run failed on the pre-change runtime with `UNKNOWN_AGENT` when given the envelope API; fresh post-change targeted run `node --test tests/contract/agent-envelope.test.js tests/contract/agent-runtime-original.test.js` reported 13 tests passed, 0 failed; `node --check packages/contracts/src/agent-envelope.js` and `node --check packages/agent/src/agent-runtime.js` both exited successfully
-- Verification environment: Node `v22.16.0`; repository declares Node `>=24.0.0`; an attempt to obtain Node 24 with `npx -y node@24 --version` timed out, and no connected remote execution device was available; GitHub Actions were not used
-- Last completed checkpoint: committed `master` was re-read and contains the universal envelope contract, runtime enforcement, and regression coverage that were tested locally
-- Blocker: no blocker to Item 7 acceptance behavior; a repository-wide regression run on the declared Node 24 runtime was not available in this run
-- Relevant commit SHAs: run start `d3ff8cf0c01acf348bf2eb0ea9671e7ee478eb3e`; envelope contract `90926519ac2e609e50ff37ac596d1eade8fd0c8a`; runtime enforcement `a58874da860552fa271ca2ca98e63e6dd0e926a9`; regression coverage `b465e9259881588e80f8014f6132a8a2cff592d2`
-- Next ordered backlog item: PHASE 2 / Item 8 — Make every state-changing operation idempotent
+- State: active
+- Current backlog item: PHASE 0 / Item 2 — Build the Athere evaluation harness before major redesign
+- Current action: hostile-audit remediation of evaluation pinning and comparative-evidence guarantees on current `master`
+- Files being worked on: `packages/evaluation/src/evaluation-harness.js`, `tests/contract/evaluation-harness.test.js`, and this checkpoint
+- Verification currently running or just completed: repository inspection completed; current harness validates model and environment consistency inside a cohort but does not pin `systemVersion` inside a cohort and does not reject control/candidate comparisons performed under different model/environment definitions
+- Last completed checkpoint: hostile audit classified Item 2 as partial and identified missing operational control evidence; current `master` re-read confirms the validation gap remains
+- Blocker: connected Lenovo is offline, so the repository-declared Node >=24 environment is not currently available; local targeted verification is available on Node v22.16.0 and will not be represented as Node 24 evidence
+- Commit SHA when available: pending
 
 ## Checkpoint history
 
-1. Run started and selected PHASE 2 / Item 7 after confirming Items 1-6 were already represented by committed implementation history.
-2. Repository inspection identified the existing mission contracts and `packages/agent/src/agent-runtime.js` as the protocol boundary; no universal envelope implementation existed.
-3. TDD RED verification demonstrated the pre-change runtime did not accept the envelope API.
-4. Production implementation added strict envelope validation, immutable normalized protocol records, capability binding, action authorization, and provider-bound envelope propagation while preserving advisory chat behavior through internal envelope wrapping.
-5. Regression coverage was added for normalization/immutability, unknown fields, malformed state versions, duplicate actions, non-JSON schemas, valid execution, pre-execution rejection of malformed/incompatible envelopes, and advisory wrapping.
-6. Fresh targeted verification completed with 13 passed, 0 failed plus successful syntax checks. Node 24 full-suite verification remained unavailable and is recorded above rather than treated as executed evidence.
-7. Production and regression commits were re-read from remote `master`; run finished with Item 8 as the next ordered implementation target.
+1. Run started from the hostile-audit truth boundary rather than prior completion labels.
+2. Current backlog and current evaluation implementation were re-read from `master`.
+3. Item 2 remains the highest-priority incomplete item: `systemVersion` is required but not cohort-pinned, and comparative runs are not constrained to the same model/environment definition.
 
 ## Checkpoint policy
 
