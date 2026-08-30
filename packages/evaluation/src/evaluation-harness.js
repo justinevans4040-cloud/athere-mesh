@@ -63,16 +63,20 @@ export function validateEvaluationCohort(cohort) {
   if (!Array.isArray(cohort.trials) || cohort.trials.length < 2) throw new Error('cohort requires at least 2 repeated trials');
   const trialIds = new Set();
   let suiteId;
+  let pinnedSystemVersion;
   let pinnedEnvironment;
   let pinnedModel;
   for (const trial of cohort.trials) {
     suiteId = validateTrial(trial, suiteId);
     if (trialIds.has(trial.id)) throw new Error(`duplicate trial id: ${trial.id}`);
     trialIds.add(trial.id);
+    const systemVersion = trial.systemVersion;
     const environment = JSON.stringify(trial.environment);
     const model = JSON.stringify(trial.model);
+    if (pinnedSystemVersion && systemVersion !== pinnedSystemVersion) throw new Error('system version changed inside cohort');
     if (pinnedEnvironment && environment !== pinnedEnvironment) throw new Error('environment changed inside cohort');
     if (pinnedModel && model !== pinnedModel) throw new Error('model changed inside cohort');
+    pinnedSystemVersion ??= systemVersion;
     pinnedEnvironment ??= environment;
     pinnedModel ??= model;
   }
@@ -123,6 +127,12 @@ export function compareEvaluationCohorts({ control, candidate }) {
   validateEvaluationCohort(candidate);
   if (control.frozen !== true) throw new Error('control cohort must be frozen');
   if (control.trials[0].suiteId !== candidate.trials[0].suiteId) throw new Error('control and candidate must use the same suite');
+  if (JSON.stringify(control.trials[0].model) !== JSON.stringify(candidate.trials[0].model)) {
+    throw new Error('control and candidate must use the same model definition');
+  }
+  if (JSON.stringify(control.trials[0].environment) !== JSON.stringify(candidate.trials[0].environment)) {
+    throw new Error('control and candidate must use the same environment definition');
+  }
   const controlSummary = summarizeEvaluationCohort(control);
   const candidateSummary = summarizeEvaluationCohort(candidate);
   const regressedTasks = candidateRegressions(controlSummary, candidate);
