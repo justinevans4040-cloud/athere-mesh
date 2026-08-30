@@ -17,9 +17,7 @@ Every trial records:
 - results for every task in the regression set;
 - exact system version, model provider/name/version, environment ID/version, determinism flag, and seed.
 
-A cohort must contain at least two trials. Its suite, system version, model definition, and environment definition are pinned across repetitions. A frozen control is immutable once written and is returned with the SHA-256 of its canonical bytes.
-
-Control and candidate cohorts may represent different Athere system revisions, but comparative claims require the same regression suite, model definition, and environment definition so an architecture change is not confused with model or environment drift.
+A cohort must contain at least two trials. Its suite, system version, model, environment, and regression task set are pinned across repetitions. A frozen control is immutable once written and is returned with the SHA-256 of its canonical bytes.
 
 ## Comparison rule
 
@@ -30,6 +28,8 @@ Control and candidate cohorts may represent different Athere system revisions, b
 - `regression`: quality falls outside noise or a previously solved task fails.
 
 This verdict is deliberately conservative. Passing once or producing a faster anecdotal run is not proof of architectural improvement.
+
+Control and candidate cohorts must use the same suite, regression task set, and canonically equivalent model and environment definitions. The candidate system version may differ because that is the architecture under evaluation; task, model, or environment drift is rejected rather than misreported as a system improvement.
 
 ## Repository interface
 

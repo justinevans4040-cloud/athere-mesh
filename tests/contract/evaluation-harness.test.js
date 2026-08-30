@@ -94,6 +94,71 @@ test('cohort validation rejects drift inside a repeated-trial control', () => {
     }),
     /falseSuccess cannot accompany taskSuccess/,
   );
+
+  const systemDrift = trial('c2');
+  systemDrift.systemVersion = 'commit-def456';
+  assert.throws(
+    () => validateEvaluationCohort({ id: 'system-drift', frozen: true, trials: [trial('c1'), systemDrift] }),
+    /system version changed inside cohort/,
+  );
+
+  assert.throws(
+    () => validateEvaluationCohort({
+      id: 'task-set-drift',
+      frozen: true,
+      trials: [trial('c1'), trial('c2', {}, { lifecycle: true })],
+    }),
+    /regression task set changed inside cohort/,
+  );
+});
+
+test('comparison rejects mismatched model and environment definitions', () => {
+  const control = { id: 'control', frozen: true, trials: [trial('c1'), trial('c2')] };
+  const differentModel = trial('n1');
+  differentModel.model.version = '8b-q8_0';
+  const differentModelAgain = trial('n2');
+  differentModelAgain.model.version = '8b-q8_0';
+  assert.throws(
+    () => compareEvaluationCohorts({ control, candidate: { id: 'candidate-model', frozen: false, trials: [differentModel, differentModelAgain] } }),
+    /control and candidate must use the same model definition/,
+  );
+
+  const differentEnvironment = trial('e1');
+  differentEnvironment.environment.version = '25.0.0';
+  const differentEnvironmentAgain = trial('e2');
+  differentEnvironmentAgain.environment.version = '25.0.0';
+  assert.throws(
+    () => compareEvaluationCohorts({ control, candidate: { id: 'candidate-environment', frozen: false, trials: [differentEnvironment, differentEnvironmentAgain] } }),
+    /control and candidate must use the same environment definition/,
+  );
+});
+
+test('comparison treats reordered definition keys as the same pinned definition', () => {
+  const control = { id: 'control', frozen: true, trials: [trial('c1'), trial('c2')] };
+  const reordered = trial('n1');
+  reordered.model = { version: '3b-q4_0', name: 'llama3.2', provider: 'ollama' };
+  reordered.environment = { deterministic: true, version: '24.14.1', id: 'node-test' };
+  const reorderedAgain = structuredClone(reordered);
+  reorderedAgain.id = 'n2';
+
+  assert.doesNotThrow(() => compareEvaluationCohorts({
+    control,
+    candidate: { id: 'candidate-reordered', frozen: false, trials: [reordered, reorderedAgain] },
+  }));
+});
+
+test('comparison rejects a candidate measured against a different regression task set', () => {
+  const control = { id: 'control', frozen: true, trials: [trial('c1'), trial('c2')] };
+  const candidate = {
+    id: 'candidate-task-set',
+    frozen: false,
+    trials: [trial('n1', {}, { lifecycle: true }), trial('n2', {}, { lifecycle: true })],
+  };
+
+  assert.throws(
+    () => compareEvaluationCohorts({ control, candidate }),
+    /control and candidate must use the same regression task set/,
+  );
 });
 
 test('comparison refuses improvement claims inside the measured noise floor', () => {

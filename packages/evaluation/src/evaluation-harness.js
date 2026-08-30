@@ -56,6 +56,10 @@ function validateTrial(trial, expectedSuiteId) {
   return suiteId;
 }
 
+function regressionTaskSet(trial) {
+  return JSON.stringify(Object.keys(trial.taskResults).sort());
+}
+
 export function validateEvaluationCohort(cohort) {
   requiredText(cohort?.id, 'cohort id');
   if (!SAFE_ID.test(cohort.id)) throw new Error('cohort id is unsafe');
@@ -66,19 +70,23 @@ export function validateEvaluationCohort(cohort) {
   let pinnedSystemVersion;
   let pinnedEnvironment;
   let pinnedModel;
+  let pinnedTaskSet;
   for (const trial of cohort.trials) {
     suiteId = validateTrial(trial, suiteId);
     if (trialIds.has(trial.id)) throw new Error(`duplicate trial id: ${trial.id}`);
     trialIds.add(trial.id);
+    const environment = JSON.stringify(canonicalize(trial.environment));
+    const model = JSON.stringify(canonicalize(trial.model));
     const systemVersion = trial.systemVersion;
-    const environment = JSON.stringify(trial.environment);
-    const model = JSON.stringify(trial.model);
-    if (pinnedSystemVersion && systemVersion !== pinnedSystemVersion) throw new Error('system version changed inside cohort');
+    const taskSet = regressionTaskSet(trial);
     if (pinnedEnvironment && environment !== pinnedEnvironment) throw new Error('environment changed inside cohort');
     if (pinnedModel && model !== pinnedModel) throw new Error('model changed inside cohort');
-    pinnedSystemVersion ??= systemVersion;
+    if (pinnedSystemVersion && systemVersion !== pinnedSystemVersion) throw new Error('system version changed inside cohort');
+    if (pinnedTaskSet && taskSet !== pinnedTaskSet) throw new Error('regression task set changed inside cohort');
     pinnedEnvironment ??= environment;
     pinnedModel ??= model;
+    pinnedSystemVersion ??= systemVersion;
+    pinnedTaskSet ??= taskSet;
   }
   return Object.freeze({ valid: true, cohortId: cohort.id, trialCount: cohort.trials.length, suiteId });
 }
@@ -127,11 +135,14 @@ export function compareEvaluationCohorts({ control, candidate }) {
   validateEvaluationCohort(candidate);
   if (control.frozen !== true) throw new Error('control cohort must be frozen');
   if (control.trials[0].suiteId !== candidate.trials[0].suiteId) throw new Error('control and candidate must use the same suite');
-  if (JSON.stringify(control.trials[0].model) !== JSON.stringify(candidate.trials[0].model)) {
+  if (JSON.stringify(canonicalize(control.trials[0].model)) !== JSON.stringify(canonicalize(candidate.trials[0].model))) {
     throw new Error('control and candidate must use the same model definition');
   }
-  if (JSON.stringify(control.trials[0].environment) !== JSON.stringify(candidate.trials[0].environment)) {
+  if (JSON.stringify(canonicalize(control.trials[0].environment)) !== JSON.stringify(canonicalize(candidate.trials[0].environment))) {
     throw new Error('control and candidate must use the same environment definition');
+  }
+  if (regressionTaskSet(control.trials[0]) !== regressionTaskSet(candidate.trials[0])) {
+    throw new Error('control and candidate must use the same regression task set');
   }
   const controlSummary = summarizeEvaluationCohort(control);
   const candidateSummary = summarizeEvaluationCohort(candidate);
