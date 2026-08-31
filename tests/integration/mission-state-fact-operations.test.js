@@ -141,3 +141,51 @@ test('atomic fact operations enforce declared actor capabilities', async () => {
     /actor nyx lacks required permission: revoke_fact/,
   );
 });
+
+test('atomic fact operations reject stale revisions without changing authority', async () => {
+  const { service, created } = await createService();
+  await assert.rejects(
+    service.supersedeFact({
+      missionId: created.mission.id,
+      expectedRevision: created.revision + 1,
+      actor: 'nyx',
+      factId: 'server-ip-v3',
+      successor: { id: 'server-ip-v4', value: '100.64.0.11' },
+      reason: 'stale caller',
+    }),
+    /revision conflict/,
+  );
+  assert.deepEqual(await service.facts({ missionId: created.mission.id, key: 'SERVER_IP' }), [
+    { id: 'server-ip-v3', key: 'SERVER_IP', value: '100.64.0.10', status: 'current' },
+  ]);
+});
+
+test('mission creation rejects ambiguous current facts', async () => {
+  const store = createStore();
+  const data = input();
+  data.authoritativeFacts = [
+    { id: 'ip-a', key: 'SERVER_IP', value: '10.0.0.1', status: 'current' },
+    { id: 'ip-b', key: 'SERVER_IP', value: '10.0.0.2', status: 'current' },
+  ];
+  const service = createMissionStateService({ root: '/state', clock: createClock(), store });
+  await assert.rejects(service.create(data), /multiple current authoritative facts for key: SERVER_IP/);
+});
+
+test('mission creation rejects broken cross-key supersession lineage', async () => {
+  const store = createStore();
+  const data = input();
+  data.authoritativeFacts = [
+    { id: 'ip-a', key: 'SERVER_IP', value: '10.0.0.1', status: 'superseded', supersededBy: 'ip-b' },
+    { id: 'ip-b', key: 'OTHER_KEY', value: '10.0.0.2', status: 'current', supersedes: 'ip-a' },
+  ];
+  const service = createMissionStateService({ root: '/state', clock: createClock(), store });
+  await assert.rejects(service.create(data), /fact lineage key mismatch/);
+});
+
+test('mission creation rejects revoked facts without a revocation timestamp', async () => {
+  const store = createStore();
+  const data = input();
+  data.authoritativeFacts = [{ id: 'revoked-ip', key: 'SERVER_IP', value: '10.0.0.1', status: 'revoked' }];
+  const service = createMissionStateService({ root: '/state', clock: createClock(), store });
+  await assert.rejects(service.create(data), /revoked fact revoked-ip requires revokedAt/);
+});
