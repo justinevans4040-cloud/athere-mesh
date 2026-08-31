@@ -46,6 +46,7 @@
     .moneyCard { border-color: rgba(255,209,102,.45); background: rgba(255,209,102,.06); }
     .moneyCard h3 { font-size: 22px; }
     .paidBtn { min-width: 88px; }
+    .byeCard { border-color: rgba(255,209,102,.5); background: rgba(255,209,102,.07); }
   </style>
 </head>
 <body>
@@ -76,21 +77,23 @@
     phase: "setup",
     tables: 0,
     raceTo: 0,
-    buyIn: 0,
+    buy: 0,
     barAdded: 0,
     payout1: 0,
     payout2: 0,
     payout3: 0,
     players: [],
     bracket: { W: {}, L: {}, F: {}, R: {} },
-    feeders: {}
+    feeders: {},
+    tableAssignments: {}
   };
 
   let S = loadState();
   normalizeState();
 
   function normalizeState() {
-    S.buyIn = S.buyIn || 0;
+    S.buy = S.buy || S.buyIn || 0;
+    delete S.buyIn;
     S.barAdded = S.barAdded || 0;
     S.payout1 = S.payout1 || 0;
     S.payout2 = S.payout2 || 0;
@@ -98,6 +101,7 @@
     for (let i = 0; i < S.players.length; i++) {
       if (S.players[i].paid === undefined) S.players[i].paid = false;
     }
+    if (!S.tableAssignments) S.tableAssignments = {};
   }
 
   function loadState() {
@@ -408,9 +412,118 @@
 
   function resolveAuto() {
     resolveByesIn(S.bracket.W);
+    resolveByesIn(S.bracket.L);
     resolveWalkovers();
     resolveByesIn(S.bracket.W);
+    resolveByesIn(S.bracket.L);
     resolveWalkovers();
+  }
+
+  function bracketSlotCount() {
+    return nextPowerOf2(activeP().length);
+  }
+
+  function byeSlotCount() {
+    const n = activeP().length;
+    if (n < 2) return 0;
+    return bracketSlotCount() - n;
+  }
+
+  function getByeAdvances() {
+    const list = [];
+    function scan(obj) {
+      for (const k in obj) {
+        const m = obj[k];
+        if (m.status !== "done") continue;
+        if (m.p1 === "BYE" || m.p2 === "BYE") {
+          const player = m.p1 === "BYE" ? m.p2 : m.p1;
+          if (player && player !== "BYE") {
+            list.push({ id: player, name: pName(player), label: m.label, code: m.code });
+          }
+        }
+      }
+    }
+    scan(S.bracket.W);
+    scan(S.bracket.L);
+    return list;
+  }
+
+  function renderByePanel() {
+    const n = activeP().length;
+    if (n < 2) return "";
+    const byes = getByeAdvances();
+    const slots = byeSlotCount();
+    let html = '<div class="card byeCard"><h3>BYE — skip round</h3>';
+    if (slots > 0 && S.phase === "active") {
+      html +=
+        '<p class="sub" style="margin:4px 0 8px">' +
+        n + " players on a " + bracketSlotCount() + "-slot bracket → " +
+        slots + " BYE slot" + (slots === 1 ? "" : "s") +
+        ". Those players do not play that round; they advance.</p>";
+    }
+    if (byes.length) {
+      html += '<p class="sub" style="margin:4px 0 6px">Already advanced on a BYE (no game):</p>';
+      html += byes.map(function (b) {
+        return '<div class="itemRow"><b>' + esc(b.name) + '</b><span class="badge warn">BYE</span></div>';
+      }).join("");
+    } else if (slots > 0 && S.phase === "setup") {
+      html += '<p class="sub">With ' + n + " players, " + slots + " BYE" + (slots === 1 ? "" : "s") + " on round 1.</p>";
+    } else if (!byes.length) {
+      html += '<p class="sub">No BYEs this event (even player count on bracket).</p>';
+    }
+    return html + "</div>";
+  }
+
+  function isMatchPlayable(m) {
+    return m && m.status !== "done" && m.p1 && m.p2 && m.p1 !== "BYE" && m.p2 !== "BYE";
+  }
+
+  function sortPlayable(list) {
+    return list.slice().sort(function (a, b) {
+      function rank(code) {
+        if (code.startsWith("W")) return 0;
+        if (code.startsWith("L")) return 1;
+        if (code === "F1") return 2;
+        return 3;
+      }
+      const ra = rank(a.code);
+      const rb = rank(b.code);
+      if (ra !== rb) return ra - rb;
+      return a.code < b.code ? -1 : a.code > b.code ? 1 : 0;
+    });
+  }
+
+  function syncTableAssignments() {
+    if (S.phase === "setup") return;
+    if (!S.tableAssignments) S.tableAssignments = {};
+    const tableCount = Math.max(1, S.tables || 0);
+    const playable = sortPlayable(getPlayableMatches());
+    const assignedCodes = {};
+
+    for (let t = 1; t <= tableCount; t++) {
+      const code = S.tableAssignments[t];
+      if (code) {
+        const m = findMatch(code);
+        if (isMatchPlayable(m)) assignedCodes[code] = true;
+        else delete S.tableAssignments[t];
+      }
+    }
+
+    for (let t = 1; t <= tableCount; t++) {
+      if (S.tableAssignments[t]) continue;
+      for (let i = 0; i < playable.length; i++) {
+        const code = playable[i].code;
+        if (!assignedCodes[code]) {
+          S.tableAssignments[t] = code;
+          assignedCodes[code] = true;
+          break;
+        }
+      }
+    }
+
+    Object.keys(S.tableAssignments).forEach(function (k) {
+      if (parseInt(k, 10) > tableCount) delete S.tableAssignments[k];
+    });
   }
 
   function getPlayableMatches() {
@@ -654,7 +767,7 @@
       '<div class="stepNum">STEP 1</div><h3>Tables, race & money</h3>' +
       stepperRow("tables", "How many tables?") +
       stepperRow("raceTo", "Race to (games to win)") +
-      stepperRow("buyIn", "Buy-in per player ($)") +
+      stepperRow("buyIn", "Entry fee per player ($)") +
       stepperRow("barAdded", "Bar adds to pot ($)") +
       '<button type="button" class="primary cta" onclick="window.applySetupContinue()">' +
       (settingsOk ? "Continue → add players" : "Save these numbers") +
@@ -662,6 +775,7 @@
 
       '<div class="card stepCard' + (playersOk ? " done" : "") + '">' +
       '<div class="stepNum">STEP 2</div><h3>Players (' + activeP().length + ")</h3>" +
+      (activeP().length >= 2 ? renderByePanel() : "") +
       (S.buyIn > 0 ? '<p class="sub" style="margin:4px 0">Tap <b>Not paid</b> when someone pays ' + fmtMoney(S.buyIn) + ".</p>" : "") +
       '<form onsubmit="window.submitPlayerAdd(); return false;" class="row" style="margin-top:8px">' +
       '<input id="qName" placeholder="Player name" enterkeyhint="done" autocomplete="off">' +
@@ -692,13 +806,30 @@
     }
 
     const playable = getPlayableMatches();
+    syncTableAssignments();
+    const assignedCount = Object.keys(S.tableAssignments).length;
     let html = renderMoneyCard(true);
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3>Active tables (' + playable.length + ' ready)</h3></div>';
+    html +=
+      '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
+      "<h3>Tables</h3>" +
+      '<div class="row">' +
+      '<span class="sub">Count</span>' +
+      '<button type="button" class="small ghost" onclick="window.bumpSetting(\'tables\',-1)">−</button>' +
+      '<span style="font-weight:900;min-width:20px;text-align:center">' + S.tables + "</span>" +
+      '<button type="button" class="small ghost" onclick="window.bumpSetting(\'tables\',1)">+</button>' +
+      "</div></div>" +
+      '<p class="sub" style="margin:6px 0 0">' + playable.length + " real matches · " + assignedCount + " on tables" +
+      (byeSlotCount() > 0 ? " · " + byeSlotCount() + " BYE slot" + (byeSlotCount() === 1 ? "" : "s") : "") +
+      "</p></div>";
+    html += renderByePanel();
+    html += '<div style="margin-bottom:8px"></div>';
 
-    const tableCount = Math.max(1, S.tables);
+    const tableCount = Math.max(1, S.tables || 0);
     for (let i = 1; i <= tableCount; i++) {
-      const m = playable[i - 1];
-      if (m) {
+      const code = S.tableAssignments[i];
+      const m = code ? findMatch(code) : null;
+      if (m && isMatchPlayable(m)) {
         html +=
           '<div class="tableCard">' +
           '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="badge green">Table ' + i + '</span><span class="sub">' + esc(m.label) + '</span></div>' +
@@ -717,7 +848,7 @@
           '<button class="small primary" onclick="window.recordMatchWin(\'' + m.code + '\',' + m.p2 + ')">Win</button>' +
           '</div></div></div>';
       } else {
-        html += '<div class="tableCard" style="opacity:.4"><span class="badge">Table ' + i + '</span><span class="sub" style="margin-left:8px">Idle / waiting on bracket</span></div>';
+        html += '<div class="tableCard" style="opacity:.4"><span class="badge">Table ' + i + '</span><span class="sub" style="margin-left:8px">Idle — no match yet (check BYE / bracket)</span></div>';
       }
     }
 
@@ -753,7 +884,16 @@
       for (let i = 0; i < keys.length; i++) {
         const m = obj[keys[i]];
         const badge = m.status === "done" ? "green" : "warn";
-        const status = m.winner ? esc(pName(m.winner)) + " won" : "Pending";
+        let status;
+        if (m.status === "done" && m.winner && (m.p1 === "BYE" || m.p2 === "BYE")) {
+          status = esc(pName(m.winner)) + " — BYE (no game)";
+        } else if (m.winner) {
+          status = esc(pName(m.winner)) + " won";
+        } else if (m.p1 === "BYE" || m.p2 === "BYE") {
+          status = "BYE pending";
+        } else {
+          status = "Pending";
+        }
         out +=
           '<div class="itemRow"><div><b>' + esc(m.label) + '</b>' +
           '<div class="sub">' + esc(pName(m.p1)) + ' vs ' + esc(pName(m.p2)) +
@@ -809,6 +949,7 @@
     const max = settingMax(key);
     S[key] = clampNum(S[key] + delta, 0, max);
     save();
+    if (key === "tables" && S.phase !== "setup") syncTableAssignments();
     render();
   };
 
@@ -912,9 +1053,12 @@
   };
 
   window.startTourney = function () {
+    readSetupInputs();
     if (!canStart()) return;
     S.phase = "active";
+    S.tableAssignments = {};
     buildBracket();
+    syncTableAssignments();
     window.setTab("home");
   };
 
