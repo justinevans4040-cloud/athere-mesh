@@ -696,9 +696,7 @@
     if (S.phase === "complete") {
       const champ = S.bracket.R.R1.winner || S.bracket.F.F1.winner;
       html =
-        '<div class="card" style="border:2px solid #2bc861"><h2>Champion: ' + esc(pName(champ)) + "</h2></div>" +
-        renderMoneyCard(true) +
-        html;
+        '<div class="card" style="border:2px solid #2bc861"><h2>Champion: ' + esc(pName(champ)) + "</h2></div>" + html;
     }
     v.innerHTML = html;
   }
