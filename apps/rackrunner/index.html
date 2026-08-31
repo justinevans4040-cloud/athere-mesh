@@ -47,6 +47,7 @@
     .moneyCard h3 { font-size: 22px; }
     .paidBtn { min-width: 88px; }
     .byeCard { border-color: rgba(255,209,102,.5); background: rgba(255,209,102,.07); }
+    .controlBar { border-color: rgba(255,64,93,.35); }
   </style>
 </head>
 <body>
@@ -86,7 +87,8 @@
     bracket: { W: {}, L: {}, F: {}, R: {} },
     feeders: {},
     tableAssignments: {},
-    sequentialW1: false
+    sequentialW1: false,
+    endedEarly: false
   };
 
   let S = loadState();
@@ -104,6 +106,7 @@
     }
     if (!S.tableAssignments) S.tableAssignments = {};
     if (S.sequentialW1 === undefined) S.sequentialW1 = false;
+    if (S.endedEarly === undefined) S.endedEarly = false;
   }
 
   function loadState() {
@@ -636,7 +639,7 @@
   }
 
   function buyInTotal() {
-    return paidCount() * (S.buyIn || 0);
+    return paidCount() * (S.buy || 0);
   }
 
   function totalPot() {
@@ -692,7 +695,7 @@
   function renderMoneyCard(showBarButtons) {
     const pot = totalPot();
     const paid = paidCount();
-    const buy = S.buyIn || 0;
+    const buy = S.buy || 0;
     let html =
       '<div class="card moneyCard">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
@@ -735,7 +738,7 @@
   }
 
   function renderPlayerRow(p, i, context) {
-    const buy = S.buyIn || 0;
+    const buy = S.buy || 0;
     let paidPart = "";
     if (buy > 0) {
       paidPart =
@@ -788,7 +791,7 @@
   }
 
   function readSetupInputs() {
-    const keys = ["tables", "raceTo", "buyIn", "barAdded", "payout1", "payout2", "payout3"];
+    const keys = ["tables", "raceTo", "buy", "barAdded", "payout1", "payout2", "payout3"];
     for (let i = 0; i < keys.length; i++) {
       const el = document.getElementById(inputId(keys[i]));
       if (el) S[keys[i]] = clampNum(el.value, 0, settingMax(keys[i]));
@@ -827,6 +830,43 @@
     );
   }
 
+  function renderActiveControls() {
+    if (S.phase !== "active") return "";
+    return (
+      '<div class="card controlBar">' +
+      '<p class="sub" style="margin:0 0 8px">Tournament is live. End it anytime.</p>' +
+      '<div class="row" style="flex-wrap:wrap">' +
+      '<button type="button" class="danger cta" style="flex:1;min-width:140px" onclick="window.endTourney()">End tournament</button>' +
+      '<button type="button" class="ghost cta" style="flex:1;min-width:140px" onclick="window.backToSetup()">Back to setup</button>' +
+      "</div></div>"
+    );
+  }
+
+  function renderCompleteHeader() {
+    if (S.phase !== "complete") return "";
+    const champ = S.bracket.R.R1.winner || S.bracket.F.F1.winner;
+    let html = "";
+    if (S.endedEarly) {
+      html +=
+        '<div class="card" style="border:2px solid #ffd166">' +
+        "<h2>Tournament ended</h2>" +
+        '<p class="sub">You ended this run manually. Payouts below — edit if needed.</p>' +
+        (champ ? '<p class="sub" style="margin-top:6px">Last standing in bracket: <b>' + esc(pName(champ)) + "</b></p>" : "") +
+        "</div>";
+    } else if (champ) {
+      html +=
+        '<div class="card" style="border:2px solid #2bc861">' +
+        "<h2>Champion: " + esc(pName(champ)) + "</h2></div>";
+    }
+    html +=
+      '<div class="card">' +
+      '<div class="row" style="flex-wrap:wrap;gap:8px">' +
+      '<button type="button" class="primary cta" style="flex:1" onclick="window.backToSetup()">New tournament (same roster)</button>' +
+      '<button type="button" class="danger cta" style="flex:1" onclick="window.hardResetZero()">Clear everything</button>' +
+      "</div></div>";
+    return html;
+  }
+
   function renderSetupFlow(v) {
     const issues = setupIssues();
     const settingsOk = S.tables >= 1 && S.raceTo >= 1;
@@ -846,7 +886,7 @@
       '<div class="stepNum">STEP 1</div><h3>Tables, race & money</h3>' +
       stepperRow("tables", "How many tables?") +
       stepperRow("raceTo", "Race to (games to win)") +
-      stepperRow("buyIn", "Entry fee per player ($)") +
+      stepperRow("buy", "Entry fee per player ($)") +
       stepperRow("barAdded", "Bar adds to pot ($)") +
       '<button type="button" class="primary cta" onclick="window.applySetupContinue()">' +
       (settingsOk ? "Continue → add players" : "Save these numbers") +
@@ -855,7 +895,7 @@
       '<div class="card stepCard' + (playersOk ? " done" : "") + '">' +
       '<div class="stepNum">STEP 2</div><h3>Players (' + activeP().length + ")</h3>" +
       (activeP().length >= 2 ? renderByePanel() : "") +
-      (S.buyIn > 0 ? '<p class="sub" style="margin:4px 0">Tap <b>Not paid</b> when someone pays ' + fmtMoney(S.buyIn) + ".</p>" : "") +
+      (S.buy > 0 ? '<p class="sub" style="margin:4px 0">Tap <b>Not paid</b> when someone pays ' + fmtMoney(S.buy) + ".</p>" : "") +
       '<form onsubmit="window.submitPlayerAdd(); return false;" class="row" style="margin-top:8px">' +
       '<input id="qName" placeholder="Player name" enterkeyhint="done" autocomplete="off">' +
       '<button type="submit" class="primary">Add</button></form>' +
@@ -887,7 +927,8 @@
     const playable = getPlayableMatches();
     syncTableAssignments();
     const assignedCount = Object.keys(S.tableAssignments).length;
-    let html = renderMoneyCard(true);
+    let html = renderActiveControls();
+    html += renderMoneyCard(true);
     html +=
       '<div class="card">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
@@ -932,9 +973,7 @@
     }
 
     if (S.phase === "complete") {
-      const champ = S.bracket.R.R1.winner || S.bracket.F.F1.winner;
-      html =
-        '<div class="card" style="border:2px solid #2bc861"><h2>Champion: ' + esc(pName(champ)) + "</h2></div>" + html;
+      html = renderCompleteHeader() + html;
     }
     v.innerHTML = html;
   }
@@ -946,6 +985,8 @@
       : '<p class="sub">No players yet. Add names manually.</p>';
 
     v.innerHTML =
+      (S.phase === "active" ? renderActiveControls() : "") +
+      (S.phase === "complete" ? renderCompleteHeader() : "") +
       renderMoneyCard(S.phase !== "setup") +
       '<div class="card"><h3>Add player</h3>' +
       '<p class="sub" style="margin:4px 0 8px">Up to ' + MAX_PLAYERS + " players. Tap paid when buy-in is collected.</p>" +
@@ -988,19 +1029,34 @@
     }
 
     v.innerHTML =
+      (S.phase === "active" ? renderActiveControls() : "") +
+      (S.phase === "complete" ? renderCompleteHeader() : "") +
       renderGroup("Winners bracket", S.bracket.W) +
       renderGroup("Losers bracket", S.bracket.L) +
       renderGroup("Finals", Object.assign({}, S.bracket.F, S.bracket.R));
   }
 
   function renderSetup(v) {
+    if (S.phase !== "setup") {
+      v.innerHTML =
+        (S.phase === "active" ? renderActiveControls() : "") +
+        (S.phase === "complete" ? renderCompleteHeader() : "") +
+        '<div class="card">' +
+        '<p class="sub">Tournament is ' + (S.phase === "active" ? "live" : "finished") + ". Use <b>Back to setup</b> to reset the bracket and keep players.</p>" +
+        '<button type="button" class="primary cta" onclick="window.setTab(\'home\')">Go to tables</button>' +
+        "</div>";
+      return;
+    }
     renderSetupFlow(v);
   }
 
   function render() {
     save();
     const phaseEl = document.getElementById("tPhase");
-    phaseEl.innerText = S.phase === "setup" ? "Setup" : S.phase === "active" ? "Live" : "Complete";
+    phaseEl.innerText =
+      S.phase === "setup" ? "Setup" :
+      S.phase === "active" ? "Live" :
+      S.endedEarly ? "Ended" : "Complete";
 
     const homeBtn = document.getElementById("b-home");
     if (homeBtn) homeBtn.textContent = S.phase === "setup" ? "Start" : "Tables";
@@ -1135,6 +1191,7 @@
     readSetupInputs();
     if (!canStart()) return;
     S.phase = "active";
+    S.endedEarly = false;
     S.tableAssignments = {};
     buildBracket();
     syncTableAssignments();
@@ -1160,6 +1217,34 @@
     }
     if (!confirm(pName(winnerId) + " wins (" + wScore + "-" + lScore + ")?")) return;
     completeMatch(m, winnerId, loserId);
+    render();
+  };
+
+  window.endTourney = function () {
+    if (S.phase !== "active") return;
+    if (!confirm("End the tournament now? Tables stop. You can still see pot and payouts.")) return;
+    S.phase = "complete";
+    S.endedEarly = true;
+    applyPayoutMath();
+    save();
+    render();
+  };
+
+  window.backToSetup = function () {
+    const msg = S.phase === "active"
+      ? "Stop this tournament and go back to setup? Bracket clears but players stay."
+      : "Back to setup? Bracket clears but players stay.";
+    if (!confirm(msg)) return;
+    S.phase = "setup";
+    S.endedEarly = false;
+    S.bracket = { W: {}, L: {}, F: {}, R: {} };
+    S.feeders = {};
+    S.tableAssignments = {};
+    S.payout1 = 0;
+    S.payout2 = 0;
+    S.payout3 = 0;
+    S.tab = "home";
+    save();
     render();
   };
 
