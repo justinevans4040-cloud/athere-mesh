@@ -1,32 +1,26 @@
 # Athere Active Run
 
-**Status:** Active — additional Item 2 hardening verified; preparing commit
+**Status:** Active — Item 2 remains evidence-blocked; Item 5 hostile-audit remediation selected
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: additional hostile-audit remediation verified
-- Current backlog item: PHASE 0 / Item 2 — Build the Athere evaluation harness before major redesign
-- Current action: hostile-audit remediation hardened evaluation pinning and documented the remaining measured-control blocker; no later item is being marked complete in this run
-- Files worked on: `packages/evaluation/src/evaluation-harness.js`, `tests/contract/evaluation-pinning.test.js`, `tests/contract/evaluation-harness.test.js`, `docs/current/ATHERE_EVALUATION_HARNESS.md`, and this checkpoint
-- Verification completed: three TDD red-green cycles; 11/11 combined focused harness tests pass with 97.00% line and 100% function coverage; 139/139 complete repository tests pass on Node v24.14.1; production dependency audit reports no known vulnerabilities
-- Last completed checkpoint: system, model, environment, and regression-task-set boundaries now fail closed; canonical comparison prevents false drift from object-key order
-- Blocker: the repository has no `evaluations/controls/` artifact, so a permanent measured control cannot be truthfully manufactured from unavailable measurements. Item 2 remains partial rather than being falsely closed
-- Relevant commit SHAs: run start `90d0a85de967ebba34905e3bfe24b6ceefb7e1c7`; evaluation hardening `58936300bd64930b07590f5476a4c1bcdd8e9345`; regression coverage `3d59eb38b643bce63dc9ee60de23911b768b942d`; evidence policy `d13873f74ca6783bc8d7314e82ae2cb9b8f84bdb`
-- Next highest-priority incomplete work: complete Item 2 by collecting and freezing repeated measured controls; after that, return to hostile-audit Item 5 atomic supersession semantics
+- State: active implementation run
+- Current backlog item: PHASE 1 / Item 5 — Add explicit supersession and state lineage
+- Current action: harden authoritative fact changes so supersession, correction, and revocation are atomic semantic operations rather than caller-constructed replacement arrays
+- Files being worked on: `packages/mission/src/mission-state-service.js`, `tests/integration/mission-state-service.test.js`, `docs/current/ATHERE_STATE_SUPERSESSION.md`, and this checkpoint
+- Verification currently running or just completed: repository inspection only; no completion claim made
+- Last completed checkpoint: Item 2 code hardening is verified, but a permanent measured control artifact is still unavailable and cannot be truthfully manufactured
+- Blocker: Item 2 still requires genuine repeated measured control data; the connected execution device is unavailable in this run, so the directive permits continuing with the next independent item
+- Commit SHA when available: pending
 
 ## Checkpoint history
 
-1. Run started from the hostile-audit truth boundary rather than prior completion labels.
-2. Current backlog and current evaluation implementation were re-read from `master`.
-3. Item 2 was confirmed partial: `systemVersion` was required but not cohort-pinned, and candidate/control comparisons did not reject model or environment drift.
-4. TDD RED reproduced both defects with 2 expected failures.
-5. Production hardening pinned `systemVersion` within repeated cohorts and required identical model/environment definitions between control and candidate comparisons.
-6. Fresh targeted verification reported 8 passed, 0 failed plus successful syntax checking on Node v22.16.0.
-7. Repository inspection confirmed no persisted `evaluations/controls/` artifact exists; the documentation now records that evidence boundary instead of implying Item 2 is complete.
-8. The Node >=24 and measured-control gap blocks truthful Item 2 completion, so no later backlog item was falsely advanced or marked complete.
-9. A production-compatible Node v24.14.1 runtime became available; the complete 137-test suite passed, and the remaining blocker narrowed to collection of a real frozen measured control.
+1. Current `master`, ordered backlog, live run file, mission-state service, and existing supersession tests were re-read.
+2. Item 2 remains partial because no genuine persisted measured control exists; no synthetic benchmark data will be created.
+3. Hostile-audit Item 5 gap confirmed: generic `transition()` currently accepts a caller-supplied complete `authoritativeFacts` replacement, so supersession semantics can be bypassed without an atomic domain operation.
+4. Item 5 selected as the next independent implementation target.
 
 ## Checkpoint policy
 
