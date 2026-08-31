@@ -34,6 +34,15 @@
     .dock button { min-height: 44px; font-size: 12px; padding: 2px; background: rgba(255,255,255,.06); color: #fff; border: 1px solid rgba(255,255,255,.15); }
     .dock button.active { background: #2bc861; color: #050706; border-color: #2bc861; }
     .raceHit { color: #2bc861; font-weight: 800; }
+    .settingBlock { margin: 12px 0; }
+    .settingBlock label { display: block; margin-bottom: 6px; }
+    .stepper { display: flex; gap: 6px; align-items: center; }
+    .stepper input { flex: 1; text-align: center; min-width: 0; }
+    .stepper button { min-width: 52px; min-height: 52px; font-size: 22px; line-height: 1; padding: 0; }
+    .cta { width: 100%; margin-top: 12px; font-size: 16px; }
+    .stepCard { border: 1px solid rgba(44,184,78,.35); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+    .stepCard.done { border-color: rgba(44,184,78,.6); background: rgba(44,184,78,.08); }
+    .stepNum { font-size: 11px; font-weight: 800; color: #2bc861; margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -46,7 +55,7 @@
   </div>
 
   <div class="dock">
-    <button id="b-home" onclick="window.setTab('home')">Tables</button>
+    <button id="b-home" onclick="window.setTab('home')">Start</button>
     <button id="b-players" onclick="window.setTab('players')">Roster</button>
     <button id="b-bracket" onclick="window.setTab('bracket')">Bracket</button>
     <button id="b-setup" onclick="window.setTab('setup')">Setup</button>
@@ -60,7 +69,7 @@
   const MAX_PLAYERS = 20;
 
   const BLANK = {
-    tab: "home",
+    tab: "setup",
     phase: "setup",
     tables: 0,
     raceTo: 0,
@@ -412,17 +421,104 @@
     return activeP().length >= 2 && S.tables >= 1 && S.raceTo >= 1;
   }
 
+  function setupIssues() {
+    const issues = [];
+    if (S.tables < 1) issues.push("tables");
+    if (S.raceTo < 1) issues.push("race to");
+    if (activeP().length < 2) issues.push("2+ players");
+    return issues;
+  }
+
+  function readSetupInputs() {
+    const t = document.getElementById("inTables");
+    const r = document.getElementById("inRaceTo");
+    if (t) S.tables = clampNum(t.value, 0, 20);
+    if (r) S.raceTo = clampNum(r.value, 0, 99);
+    save();
+  }
+
+  function clampNum(val, min, max) {
+    const n = parseInt(val, 10);
+    if (isNaN(n)) return min;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function updateSetupBanner() {
+    const el = document.getElementById("setupStatus");
+    if (!el) return;
+    if (S.phase !== "setup") return;
+    const issues = setupIssues();
+    if (!issues.length) {
+      el.innerHTML = '<span class="badge green">Ready — tap Start below</span>';
+    } else {
+      el.innerHTML = '<span class="badge warn">Still need: ' + esc(issues.join(", ")) + "</span>";
+    }
+  }
+
+  function stepperRow(key, label, max) {
+    return (
+      '<div class="settingBlock">' +
+      '<label class="sub">' + label + "</label>" +
+      '<div class="stepper">' +
+      '<button type="button" aria-label="decrease" onclick="window.bumpSetting(\'' + key + '\',-1)">−</button>' +
+      '<input id="in' + key.charAt(0).toUpperCase() + key.slice(1) + '" type="number" min="0" max="' + max + '" value="' + S[key] + '" inputmode="numeric" enterkeyhint="done" oninput="window.onSettingInput(\'' + key + '\', this.value)">' +
+      '<button type="button" aria-label="increase" onclick="window.bumpSetting(\'' + key + '\',1)">+</button>' +
+      "</div></div>"
+    );
+  }
+
+  function renderSetupFlow(v) {
+    const issues = setupIssues();
+    const settingsOk = S.tables >= 1 && S.raceTo >= 1;
+    const playersOk = activeP().length >= 2;
+
+    v.innerHTML =
+      '<div class="card">' +
+      '<h3>Get started</h3>' +
+      '<p class="sub" style="margin:4px 0 8px">Tap +/− or type numbers. Green buttons move you forward.</p>' +
+      '<div id="setupStatus">' +
+      (issues.length
+        ? '<span class="badge warn">Still need: ' + esc(issues.join(", ")) + "</span>"
+        : '<span class="badge green">Ready — tap Start below</span>') +
+      "</div></div>" +
+
+      '<div class="card stepCard' + (settingsOk ? " done" : "") + '">' +
+      '<div class="stepNum">STEP 1</div><h3>Tables & race</h3>' +
+      stepperRow("tables", "How many tables?", 20) +
+      stepperRow("raceTo", "Race to (games to win)", 99) +
+      '<button type="button" class="primary cta" onclick="window.applySetupContinue()">' +
+      (settingsOk ? "Continue → add players" : "Save these numbers") +
+      "</button></div>" +
+
+      '<div class="card stepCard' + (playersOk ? " done" : "") + '">' +
+      '<div class="stepNum">STEP 2</div><h3>Players (' + activeP().length + ")</h3>" +
+      '<form onsubmit="window.submitPlayerAdd(); return false;" class="row" style="margin-top:8px">' +
+      '<input id="qName" placeholder="Player name" enterkeyhint="done" autocomplete="off">' +
+      '<button type="submit" class="primary">Add</button></form>' +
+      '<p class="sub" style="margin:6px 0">Keyboard Enter / Done adds the name.</p>' +
+      (activeP().length
+        ? '<div style="margin-top:8px">' +
+          activeP().map(function (p, i) {
+            return '<div class="itemRow"><span><b>' + (i + 1) + ". " + esc(p.name) + "</b></span>" +
+              '<button type="button" class="small danger" onclick="window.removeP(' + p.id + ')">X</button></div>';
+          }).join("") +
+          "</div>"
+        : '<p class="sub" style="margin-top:8px">Add at least 2 players.</p>') +
+      "</div>" +
+
+      '<div class="card stepCard' + (canStart() ? " done" : "") + '">' +
+      '<div class="stepNum">STEP 3</div><h3>Start</h3>' +
+      '<p class="sub" style="margin:4px 0 8px">' + S.tables + " tables · race to " + S.raceTo + " · " + activeP().length + " players</p>" +
+      '<button type="button" class="primary cta" onclick="window.startTourney()" ' + (canStart() ? "" : "disabled") + ">" +
+      (canStart() ? "START TOURNAMENT" : "Finish steps 1 & 2 first") +
+      "</button></div>" +
+
+      '<div class="card"><button type="button" class="danger cta" onclick="window.hardResetZero()">Clear everything</button></div>';
+  }
+
   function renderHome(v) {
     if (S.phase === "setup") {
-      v.innerHTML =
-        '<div class="card">' +
-        '<h3>Tournament setup</h3>' +
-        '<p class="sub" style="margin:4px 0 10px">' + activeP().length + ' players · ' + S.tables + ' tables · race to ' + S.raceTo + '</p>' +
-        '<div class="row"><input id="qName" placeholder="Player name"><button class="primary" onclick="window.quickAdd()">+ Add</button></div>' +
-        '<div class="row" style="margin-top:10px">' +
-        '<button class="primary" style="flex:1" onclick="window.startTourney()" ' + (canStart() ? "" : "disabled") + '>' +
-        (!canStart() ? (activeP().length < 2 ? "Need 2+ players" : S.tables < 1 ? "Set tables in Setup" : "Set race in Setup") : "Start tournament") +
-        '</button></div></div>';
+      renderSetupFlow(v);
       return;
     }
 
@@ -480,8 +576,10 @@
 
     v.innerHTML =
       '<div class="card"><h3>Add player</h3>' +
-      '<p class="sub" style="margin:4px 0 8px">Up to ' + MAX_PLAYERS + ' players. Seeds only editable before start.</p>' +
-      '<div class="row" style="margin-top:6px"><input id="pName" placeholder="Name"><button class="primary" onclick="window.addP(document.getElementById(\'pName\').value)">Add</button></div></div>' +
+      '<p class="sub" style="margin:4px 0 8px">Up to ' + MAX_PLAYERS + ' players. Seeds editable before start.</p>' +
+      '<form onsubmit="window.submitPlayerAdd(); return false;" class="row" style="margin-top:6px">' +
+      '<input id="pName" placeholder="Name" enterkeyhint="done" autocomplete="off">' +
+      '<button type="submit" class="primary">Add</button></form></div>' +
       '<div class="card"><h3>Roster (' + list.length + ')</h3>' + roster + '</div>';
   }
 
@@ -515,16 +613,7 @@
   }
 
   function renderSetup(v) {
-    v.innerHTML =
-      '<div class="card"><h3>Tournament settings</h3>' +
-      '<p class="sub" style="margin:4px 0 10px">Enter everything manually. Nothing is pre-filled except zeros.</p>' +
-      '<div style="margin:8px 0"><label class="sub">Tables</label>' +
-      '<input type="number" min="0" max="20" value="' + S.tables + '" onchange="window.updateSettings(\'tables\', this.value)"></div>' +
-      '<div style="margin:8px 0"><label class="sub">Race to</label>' +
-      '<input type="number" min="0" max="99" value="' + S.raceTo + '" onchange="window.updateSettings(\'raceTo\', this.value)"></div>' +
-      '<div class="row" style="margin-top:14px">' +
-      '<button class="danger" style="flex:1" onclick="window.hardResetZero()">Hard reset (clear all data)</button>' +
-      '</div></div>';
+    renderSetupFlow(v);
   }
 
   function render() {
@@ -544,21 +633,59 @@
   }
 
   window.setTab = function (t) {
+    if (S.phase === "setup" && (t === "home" || t === "setup")) {
+      readSetupInputs();
+    }
     S.tab = t;
     render();
   };
 
-  window.updateSettings = function (key, val) {
-    S[key] = Math.max(0, Number(val) || 0);
+  window.bumpSetting = function (key, delta) {
+    const max = key === "tables" ? 20 : 99;
+    S[key] = clampNum(S[key] + delta, 0, max);
+    save();
     render();
   };
 
-  window.quickAdd = function () {
-    const el = document.getElementById("qName");
+  window.onSettingInput = function (key, val) {
+    const max = key === "tables" ? 20 : 99;
+    S[key] = clampNum(val, 0, max);
+    save();
+    updateSetupBanner();
+    const inp = document.getElementById("in" + key.charAt(0).toUpperCase() + key.slice(1));
+    if (inp && inp.value !== String(S[key])) inp.value = S[key];
+  };
+
+  window.applySetupContinue = function () {
+    readSetupInputs();
+    if (S.tables < 1 || S.raceTo < 1) {
+      alert("Set tables (1+) and race to (1+) first.");
+      return;
+    }
+    S.tab = "home";
+    render();
+    const nameEl = document.getElementById("qName");
+    if (nameEl) nameEl.focus();
+  };
+
+  window.updateSettings = function (key, val) {
+    const max = key === "tables" ? 20 : 99;
+    S[key] = clampNum(val, 0, max);
+    save();
+    render();
+  };
+
+  window.submitPlayerAdd = function () {
+    const el = document.getElementById("qName") || document.getElementById("pName");
     if (el && el.value.trim()) {
       window.addP(el.value);
       el.value = "";
+      el.focus();
     }
+  };
+
+  window.quickAdd = function () {
+    window.submitPlayerAdd();
   };
 
   window.addP = function (name) {
@@ -640,9 +767,10 @@
     if (!confirm("Erase all data and reset to zero?")) return;
     localStorage.removeItem(STORAGE_KEY);
     S = JSON.parse(JSON.stringify(BLANK));
-    window.setTab("home");
+    window.setTab("setup");
   };
 
+  if (S.phase === "setup" && S.tab === "home") S.tab = "setup";
   render();
 })();
   </script>
