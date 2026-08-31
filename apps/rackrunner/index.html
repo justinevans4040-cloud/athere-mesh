@@ -43,6 +43,9 @@
     .stepCard { border: 1px solid rgba(44,184,78,.35); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
     .stepCard.done { border-color: rgba(44,184,78,.6); background: rgba(44,184,78,.08); }
     .stepNum { font-size: 11px; font-weight: 800; color: #2bc861; margin-bottom: 4px; }
+    .moneyCard { border-color: rgba(255,209,102,.45); background: rgba(255,209,102,.06); }
+    .moneyCard h3 { font-size: 22px; }
+    .paidBtn { min-width: 88px; }
   </style>
 </head>
 <body>
@@ -73,12 +76,29 @@
     phase: "setup",
     tables: 0,
     raceTo: 0,
+    buyIn: 0,
+    barAdded: 0,
+    payout1: 0,
+    payout2: 0,
+    payout3: 0,
     players: [],
     bracket: { W: {}, L: {}, F: {}, R: {} },
     feeders: {}
   };
 
   let S = loadState();
+  normalizeState();
+
+  function normalizeState() {
+    S.buyIn = S.buyIn || 0;
+    S.barAdded = S.barAdded || 0;
+    S.payout1 = S.payout1 || 0;
+    S.payout2 = S.payout2 || 0;
+    S.payout3 = S.payout3 || 0;
+    for (let i = 0; i < S.players.length; i++) {
+      if (S.players[i].paid === undefined) S.players[i].paid = false;
+    }
+  }
 
   function loadState() {
     try {
@@ -329,12 +349,14 @@
       if (winner === m.p1) {
         S.bracket.F.F1.winner = winner;
         S.phase = "complete";
+        suggestPayoutsIfEmpty();
       } else {
         S.bracket.R.R1.p1 = m.p1;
         S.bracket.R.R1.p2 = m.p2;
       }
     } else if (code === "R1") {
       S.phase = "complete";
+      suggestPayoutsIfEmpty();
     }
   }
 
@@ -412,6 +434,122 @@
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
   }
 
+  function fmtMoney(n) {
+    n = Number(n) || 0;
+    return "$" + n;
+  }
+
+  function paidCount() {
+    return activeP().filter(function (p) { return p.paid; }).length;
+  }
+
+  function buyInTotal() {
+    return paidCount() * (S.buyIn || 0);
+  }
+
+  function totalPot() {
+    return buyInTotal() + (S.barAdded || 0);
+  }
+
+  function settingMax(key) {
+    if (key === "tables") return 20;
+    if (key === "raceTo") return 99;
+    return 9999;
+  }
+
+  function inputId(key) {
+    return "in" + key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  function getStandings() {
+    const first = S.bracket.R.R1.winner || S.bracket.F.F1.winner;
+    let second = null;
+    if (S.bracket.R.R1.status === "done") second = S.bracket.R.R1.loser;
+    else if (S.bracket.F.F1.status === "done") second = S.bracket.F.F1.loser;
+    return { first: first, second: second };
+  }
+
+  function suggestPayoutsIfEmpty() {
+    const pot = totalPot();
+    if (pot <= 0) return;
+    if (!S.payout1) S.payout1 = Math.round(pot * 0.6);
+    if (!S.payout2) S.payout2 = Math.round(pot * 0.3);
+    if (!S.payout3) S.payout3 = Math.max(0, pot - S.payout1 - S.payout2);
+  }
+
+  function renderMoneyCard(showBarButtons) {
+    const pot = totalPot();
+    const paid = paidCount();
+    const buy = S.buyIn || 0;
+    let html =
+      '<div class="card moneyCard">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+      "<h3>Pot " + fmtMoney(pot) + "</h3>" +
+      '<span class="badge warn">' + paid + " paid</span></div>" +
+      '<p class="sub" style="margin:6px 0">Buy-ins ' + fmtMoney(buyInTotal()) +
+      " (" + paid + " × " + fmtMoney(buy) + ") · Bar adds " + fmtMoney(S.barAdded || 0) + "</p>";
+
+    if (showBarButtons) {
+      html +=
+        '<div class="row" style="margin-top:8px;flex-wrap:wrap">' +
+        '<button type="button" class="ghost small" onclick="window.bumpBar(5)">Bar +$5</button>' +
+        '<button type="button" class="ghost small" onclick="window.bumpBar(10)">Bar +$10</button>' +
+        '<button type="button" class="ghost small" onclick="window.bumpBar(20)">Bar +$20</button>' +
+        '<button type="button" class="ghost small" onclick="window.bumpBar(-5)">Bar −$5</button>' +
+        "</div>";
+    }
+
+    if (S.phase === "complete") {
+      suggestPayoutsIfEmpty();
+      const st = getStandings();
+      html += '<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.12);padding-top:10px">';
+      html += '<div class="sub" style="margin-bottom:8px">Payouts (edit amounts)</div>';
+      html += stepperRow("payout1", "1st — " + (st.first ? esc(pName(st.first)) : "champion"), 9999);
+      html += stepperRow("payout2", "2nd — " + (st.second ? esc(pName(st.second)) : "runner-up"), 9999);
+      html += stepperRow("payout3", "3rd place $", 9999);
+      const payoutSum = (S.payout1 || 0) + (S.payout2 || 0) + (S.payout3 || 0);
+      html += '<p class="sub">Payout total ' + fmtMoney(payoutSum) + " · pot " + fmtMoney(pot) + "</p>";
+      html += "</div>";
+    }
+    return html + "</div>";
+  }
+
+  function renderPlayerRow(p, i, context) {
+    const buy = S.buyIn || 0;
+    let paidPart = "";
+    if (buy > 0) {
+      paidPart =
+        '<button type="button" class="small paidBtn ' + (p.paid ? "primary" : "ghost") +
+        '" onclick="window.togglePaid(' + p.id + ')">' +
+        (p.paid ? "Paid " + fmtMoney(buy) : "Not paid") +
+        "</button>";
+    }
+  const canEdit = S.phase === "setup";
+    if (context === "setup") {
+      return (
+        '<div class="itemRow">' +
+        '<span><b>' + (i + 1) + ". " + esc(p.name) + "</b></span>" +
+        '<div class="row">' + paidPart +
+        '<button type="button" class="small danger" onclick="window.removeP(' + p.id + ')">X</button>' +
+        "</div></div>"
+      );
+    }
+    return (
+      '<div class="itemRow">' +
+      '<div style="flex:1"><div class="sub">Seed ' + (i + 1) + "</div>" +
+      '<input value="' + esc(p.name) + '" onchange="window.editPlayerName(' + p.id + ', this.value)" ' +
+      (canEdit ? "" : "disabled") + ">" +
+      "</div>" +
+      '<div class="row">' + paidPart +
+      (canEdit
+        ? '<button class="small ghost" onclick="window.moveSeed(' + p.id + ',-1)" ' + (i === 0 ? "disabled" : "") + ">↑</button>" +
+          '<button class="small ghost" onclick="window.moveSeed(' + p.id + ',1)" ' + (i === activeP().length - 1 ? "disabled" : "") + ">↓</button>" +
+          '<button class="small danger" onclick="window.removeP(' + p.id + ')">X</button>'
+        : "") +
+      "</div></div>"
+    );
+  }
+
   function scoreClass(score) {
     if (S.raceTo > 0 && score >= S.raceTo) return "score raceHit";
     return "score";
@@ -430,10 +568,11 @@
   }
 
   function readSetupInputs() {
-    const t = document.getElementById("inTables");
-    const r = document.getElementById("inRaceTo");
-    if (t) S.tables = clampNum(t.value, 0, 20);
-    if (r) S.raceTo = clampNum(r.value, 0, 99);
+    const keys = ["tables", "raceTo", "buyIn", "barAdded", "payout1", "payout2", "payout3"];
+    for (let i = 0; i < keys.length; i++) {
+      const el = document.getElementById(inputId(keys[i]));
+      if (el) S[keys[i]] = clampNum(el.value, 0, settingMax(keys[i]));
+    }
     save();
   }
 
@@ -456,12 +595,13 @@
   }
 
   function stepperRow(key, label, max) {
+    max = max || settingMax(key);
     return (
       '<div class="settingBlock">' +
       '<label class="sub">' + label + "</label>" +
       '<div class="stepper">' +
       '<button type="button" aria-label="decrease" onclick="window.bumpSetting(\'' + key + '\',-1)">−</button>' +
-      '<input id="in' + key.charAt(0).toUpperCase() + key.slice(1) + '" type="number" min="0" max="' + max + '" value="' + S[key] + '" inputmode="numeric" enterkeyhint="done" oninput="window.onSettingInput(\'' + key + '\', this.value)">' +
+      '<input id="' + inputId(key) + '" type="number" min="0" max="' + max + '" value="' + S[key] + '" inputmode="numeric" enterkeyhint="done" oninput="window.onSettingInput(\'' + key + '\', this.value)">' +
       '<button type="button" aria-label="increase" onclick="window.bumpSetting(\'' + key + '\',1)">+</button>' +
       "</div></div>"
     );
@@ -483,31 +623,32 @@
       "</div></div>" +
 
       '<div class="card stepCard' + (settingsOk ? " done" : "") + '">' +
-      '<div class="stepNum">STEP 1</div><h3>Tables & race</h3>' +
-      stepperRow("tables", "How many tables?", 20) +
-      stepperRow("raceTo", "Race to (games to win)", 99) +
+      '<div class="stepNum">STEP 1</div><h3>Tables, race & money</h3>' +
+      stepperRow("tables", "How many tables?") +
+      stepperRow("raceTo", "Race to (games to win)") +
+      stepperRow("buyIn", "Buy-in per player ($)") +
+      stepperRow("barAdded", "Bar adds to pot ($)") +
       '<button type="button" class="primary cta" onclick="window.applySetupContinue()">' +
       (settingsOk ? "Continue → add players" : "Save these numbers") +
       "</button></div>" +
 
       '<div class="card stepCard' + (playersOk ? " done" : "") + '">' +
       '<div class="stepNum">STEP 2</div><h3>Players (' + activeP().length + ")</h3>" +
+      (S.buyIn > 0 ? '<p class="sub" style="margin:4px 0">Tap <b>Not paid</b> when someone pays ' + fmtMoney(S.buyIn) + ".</p>" : "") +
       '<form onsubmit="window.submitPlayerAdd(); return false;" class="row" style="margin-top:8px">' +
       '<input id="qName" placeholder="Player name" enterkeyhint="done" autocomplete="off">' +
       '<button type="submit" class="primary">Add</button></form>' +
       '<p class="sub" style="margin:6px 0">Keyboard Enter / Done adds the name.</p>' +
       (activeP().length
         ? '<div style="margin-top:8px">' +
-          activeP().map(function (p, i) {
-            return '<div class="itemRow"><span><b>' + (i + 1) + ". " + esc(p.name) + "</b></span>" +
-              '<button type="button" class="small danger" onclick="window.removeP(' + p.id + ')">X</button></div>';
-          }).join("") +
+          activeP().map(function (p, i) { return renderPlayerRow(p, i, "setup"); }).join("") +
           "</div>"
         : '<p class="sub" style="margin-top:8px">Add at least 2 players.</p>') +
       "</div>" +
 
       '<div class="card stepCard' + (canStart() ? " done" : "") + '">' +
       '<div class="stepNum">STEP 3</div><h3>Start</h3>' +
+      renderMoneyCard(false) +
       '<p class="sub" style="margin:4px 0 8px">' + S.tables + " tables · race to " + S.raceTo + " · " + activeP().length + " players</p>" +
       '<button type="button" class="primary cta" onclick="window.startTourney()" ' + (canStart() ? "" : "disabled") + ">" +
       (canStart() ? "START TOURNAMENT" : "Finish steps 1 & 2 first") +
@@ -523,7 +664,8 @@
     }
 
     const playable = getPlayableMatches();
-    let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3>Active tables (' + playable.length + ' ready)</h3></div>';
+    let html = renderMoneyCard(true);
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3>Active tables (' + playable.length + ' ready)</h3></div>';
 
     const tableCount = Math.max(1, S.tables);
     for (let i = 1; i <= tableCount; i++) {
@@ -553,7 +695,10 @@
 
     if (S.phase === "complete") {
       const champ = S.bracket.R.R1.winner || S.bracket.F.F1.winner;
-      html = '<div class="card" style="border:2px solid #2bc861"><h2>Champion: ' + esc(pName(champ)) + '</h2></div>' + html;
+      html =
+        '<div class="card" style="border:2px solid #2bc861"><h2>Champion: ' + esc(pName(champ)) + "</h2></div>" +
+        renderMoneyCard(true) +
+        html;
     }
     v.innerHTML = html;
   }
@@ -561,26 +706,17 @@
   function renderPlayers(v) {
     const list = activeP();
     let roster = list.length
-      ? list.map(function (p, i) {
-          return '<div class="itemRow">' +
-            '<div style="flex:1"><div class="sub">Seed ' + (i + 1) + '</div>' +
-            '<input value="' + esc(p.name) + '" onchange="window.editPlayerName(' + p.id + ', this.value)">' +
-            '</div>' +
-            '<div class="row">' +
-            '<button class="small ghost" onclick="window.moveSeed(' + p.id + ',-1)" ' + (i === 0 || S.phase !== "setup" ? "disabled" : "") + '>↑</button>' +
-            '<button class="small ghost" onclick="window.moveSeed(' + p.id + ',1)" ' + (i === list.length - 1 || S.phase !== "setup" ? "disabled" : "") + '>↓</button>' +
-            '<button class="small danger" onclick="window.removeP(' + p.id + ')" ' + (S.phase !== "setup" ? "disabled" : "") + '>X</button>' +
-            '</div></div>';
-        }).join("")
+      ? list.map(function (p, i) { return renderPlayerRow(p, i, "roster"); }).join("")
       : '<p class="sub">No players yet. Add names manually.</p>';
 
     v.innerHTML =
+      renderMoneyCard(S.phase !== "setup") +
       '<div class="card"><h3>Add player</h3>' +
-      '<p class="sub" style="margin:4px 0 8px">Up to ' + MAX_PLAYERS + ' players. Seeds editable before start.</p>' +
+      '<p class="sub" style="margin:4px 0 8px">Up to ' + MAX_PLAYERS + " players. Tap paid when buy-in is collected.</p>" +
       '<form onsubmit="window.submitPlayerAdd(); return false;" class="row" style="margin-top:6px">' +
       '<input id="pName" placeholder="Name" enterkeyhint="done" autocomplete="off">' +
       '<button type="submit" class="primary">Add</button></form></div>' +
-      '<div class="card"><h3>Roster (' + list.length + ')</h3>' + roster + '</div>';
+      '<div class="card"><h3>Roster (' + list.length + ")</h3>" + roster + "</div>";
   }
 
   function renderBracket(v) {
@@ -621,6 +757,9 @@
     const phaseEl = document.getElementById("tPhase");
     phaseEl.innerText = S.phase === "setup" ? "Setup" : S.phase === "active" ? "Live" : "Complete";
 
+    const homeBtn = document.getElementById("b-home");
+    if (homeBtn) homeBtn.textContent = S.phase === "setup" ? "Start" : "Tables";
+
     document.querySelectorAll(".dock button").forEach(function (b) { b.classList.remove("active"); });
     const btn = document.getElementById("b-" + S.tab);
     if (btn) btn.classList.add("active");
@@ -641,19 +780,32 @@
   };
 
   window.bumpSetting = function (key, delta) {
-    const max = key === "tables" ? 20 : 99;
+    const max = settingMax(key);
     S[key] = clampNum(S[key] + delta, 0, max);
     save();
     render();
   };
 
   window.onSettingInput = function (key, val) {
-    const max = key === "tables" ? 20 : 99;
-    S[key] = clampNum(val, 0, max);
+    S[key] = clampNum(val, 0, settingMax(key));
     save();
     updateSetupBanner();
-    const inp = document.getElementById("in" + key.charAt(0).toUpperCase() + key.slice(1));
+    const inp = document.getElementById(inputId(key));
     if (inp && inp.value !== String(S[key])) inp.value = S[key];
+  };
+
+  window.bumpBar = function (amt) {
+    S.barAdded = clampNum((S.barAdded || 0) + amt, 0, 9999);
+    save();
+    render();
+  };
+
+  window.togglePaid = function (id) {
+    const p = S.players.find(function (x) { return x.id === id; });
+    if (!p) return;
+    p.paid = !p.paid;
+    save();
+    render();
   };
 
   window.applySetupContinue = function () {
@@ -669,8 +821,7 @@
   };
 
   window.updateSettings = function (key, val) {
-    const max = key === "tables" ? 20 : 99;
-    S[key] = clampNum(val, 0, max);
+    S[key] = clampNum(val, 0, settingMax(key));
     save();
     render();
   };
@@ -695,7 +846,7 @@
       alert("Max " + MAX_PLAYERS + " players.");
       return;
     }
-    S.players.push({ id: nextPlayerId(), name: name, removed: false });
+    S.players.push({ id: nextPlayerId(), name: name, removed: false, paid: false });
     render();
   };
 
