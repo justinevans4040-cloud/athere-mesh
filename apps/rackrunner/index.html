@@ -203,13 +203,31 @@
     addFeed("R1", "p2", "F1", "p2");
   }
 
+  function assignW1Pairings(players, matchCount) {
+    const n = players.length;
+    let idx = 0;
+    const out = [];
+    for (let m = 1; m <= matchCount; m++) {
+      if (idx + 1 < n) {
+        out.push({ p1: players[idx].id, p2: players[idx + 1].id });
+        idx += 2;
+      } else if (idx < n) {
+        out.push({ p1: players[idx].id, p2: "BYE" });
+        idx += 1;
+      } else {
+        out.push({ p1: null, p2: null, skipped: true });
+      }
+    }
+    return out;
+  }
+
   function buildBracket() {
     const players = activeP();
     const n = players.length;
     const size = nextPowerOf2(n);
     const totalWRounds = Math.log2(size);
     const totalLRounds = totalWRounds > 1 ? (totalWRounds - 1) * 2 : 0;
-    const seeds = getSeedOrder(size);
+    const w1Pairings = assignW1Pairings(players, size / 2);
 
     S.bracket = { W: {}, L: {}, F: {}, R: {} };
 
@@ -219,18 +237,18 @@
         const code = "W" + r + "-" + m;
         let p1 = null, p2 = null;
         if (r === 1) {
-          const s1 = seeds[(m - 1) * 2];
-          const s2 = seeds[(m - 1) * 2 + 1];
-          p1 = s1 <= n ? players[s1 - 1].id : "BYE";
-          p2 = s2 <= n ? players[s2 - 1].id : "BYE";
+          const pair = w1Pairings[m - 1];
+          p1 = pair.p1;
+          p2 = pair.p2;
         }
+        const skipped = r === 1 && w1Pairings[m - 1].skipped;
         S.bracket.W[code] = {
           code: code,
           label: "Winners R" + r + " — M" + m,
           p1: p1, p2: p2,
           s1: 0, s2: 0,
           winner: null, loser: null,
-          status: "pending"
+          status: skipped ? "done" : "pending"
         };
       }
     }
@@ -277,17 +295,20 @@
       const f = feeds[i];
       const src = findMatch(f.from);
       if (!src) continue;
-      if (src.status !== "done") return true;
-      if (f.type === "loser") {
-        if (src.loser && src.loser !== "BYE") return true;
-      } else if (f.type === "winner") {
-        if (src.winner && src.winner !== "BYE") return true;
-      } else if (f.type === "p1" || f.type === "p2") {
-        const val = src[f.type];
-        if (val && val !== "BYE") return true;
-      }
+      if (matchFeedCanProduce(src, f.type)) return true;
     }
     return false;
+  }
+
+  function matchFeedCanProduce(src, type) {
+    if (!src) return false;
+    if (src.status === "done") {
+      if (type === "loser") return src.loser && src.loser !== "BYE";
+      if (type === "winner") return src.winner && src.winner !== "BYE";
+      if (type === "p1" || type === "p2") return src[type] && src[type] !== "BYE";
+      return false;
+    }
+    return (src.p1 && src.p1 !== "BYE") || (src.p2 && src.p2 !== "BYE");
   }
 
   function feedNext(m) {
@@ -301,9 +322,11 @@
       const i = parseInt(parts[1], 10);
       const nextW = "W" + (r + 1) + "-" + Math.ceil(i / 2);
       if (S.bracket.W[nextW]) {
-        if (i % 2 === 1) S.bracket.W[nextW].p1 = winner;
-        else S.bracket.W[nextW].p2 = winner;
-      } else {
+        if (winner && winner !== "BYE") {
+          if (i % 2 === 1) S.bracket.W[nextW].p1 = winner;
+          else S.bracket.W[nextW].p2 = winner;
+        }
+      } else if (winner && winner !== "BYE") {
         S.bracket.F.F1.p1 = winner;
       }
 
@@ -378,7 +401,9 @@
       if (m.status !== "pending") continue;
       if (m.p1 === "BYE" || m.p2 === "BYE") {
         if (m.p1 === "BYE" && m.p2 === "BYE") {
-          completeMatch(m, "BYE", "BYE");
+          m.winner = "BYE";
+          m.loser = "BYE";
+          m.status = "done";
         } else if (m.p1 === "BYE") {
           completeMatch(m, m.p2, "BYE");
         } else {
@@ -426,7 +451,13 @@
   function byeSlotCount() {
     const n = activeP().length;
     if (n < 2) return 0;
-    return bracketSlotCount() - n;
+    return n % 2;
+  }
+
+  function w1PlayableCount() {
+    const n = activeP().length;
+    if (n < 2) return 0;
+    return Math.floor(n / 2);
   }
 
   function getByeAdvances() {
@@ -457,9 +488,12 @@
     if (slots > 0 && S.phase === "active") {
       html +=
         '<p class="sub" style="margin:4px 0 8px">' +
-        n + " players on a " + bracketSlotCount() + "-slot bracket → " +
-        slots + " BYE slot" + (slots === 1 ? "" : "s") +
-        ". Those players do not play that round; they advance.</p>";
+        n + " players → " + slots + " BYE" + (slots === 1 ? "" : "s") +
+        " (odd count). Everyone else plays round 1.</p>";
+    } else if (n >= 2 && S.phase === "active") {
+      html +=
+        '<p class="sub" style="margin:4px 0 8px">' +
+        n + " players → " + w1PlayableCount() + " matches round 1 (pair down the roster).</p>";
     }
     if (byes.length) {
       html += '<p class="sub" style="margin:4px 0 6px">Already advanced on a BYE (no game):</p>';

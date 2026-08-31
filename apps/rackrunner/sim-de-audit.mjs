@@ -11,12 +11,30 @@ function getSeedOrder(num) {
   return next;
 }
 
+function assignW1Pairings(players, matchCount) {
+  const n = players.length;
+  let idx = 0;
+  const out = [];
+  for (let m = 1; m <= matchCount; m++) {
+    if (idx + 1 < n) {
+      out.push({ p1: players[idx].id, p2: players[idx + 1].id });
+      idx += 2;
+    } else if (idx < n) {
+      out.push({ p1: players[idx].id, p2: "BYE" });
+      idx += 1;
+    } else {
+      out.push({ p1: null, p2: null, skipped: true });
+    }
+  }
+  return out;
+}
+
 function buildAll(players) {
   const n = players.length;
   const size = nextPowerOf2(n);
   const totalWRounds = Math.log2(size);
   const totalLRounds = totalWRounds > 1 ? (totalWRounds - 1) * 2 : 0;
-  const seeds = getSeedOrder(size);
+  const w1Pairings = assignW1Pairings(players, size / 2);
   const bracket = { W: {}, L: {}, F: {}, R: {} };
   const feeders = {};
 
@@ -31,12 +49,12 @@ function buildAll(players) {
       const code = `W${r}-${m}`;
       let p1 = null, p2 = null;
       if (r === 1) {
-        const s1 = seeds[(m - 1) * 2];
-        const s2 = seeds[(m - 1) * 2 + 1];
-        p1 = s1 <= n ? players[s1 - 1].id : "BYE";
-        p2 = s2 <= n ? players[s2 - 1].id : "BYE";
+        const pair = w1Pairings[m - 1];
+        p1 = pair.p1;
+        p2 = pair.p2;
       }
-      bracket.W[code] = { code, p1, p2, winner: null, loser: null, status: "pending" };
+      const skipped = r === 1 && w1Pairings[m - 1].skipped;
+      bracket.W[code] = { code, p1, p2, winner: null, loser: null, status: skipped ? "done" : "pending" };
     }
   }
   for (let r = 1; r <= totalLRounds; r++) {
@@ -90,14 +108,22 @@ function findMatch(bracket, code) {
   return bracket.W[code] || bracket.L[code] || bracket.F[code] || bracket.R[code];
 }
 
+function matchFeedCanProduce(src, type) {
+  if (!src) return false;
+  if (src.status === "done") {
+    if (type === "loser") return src.loser && src.loser !== "BYE";
+    if (type === "winner") return src.winner && src.winner !== "BYE";
+    return false;
+  }
+  return (src.p1 && src.p1 !== "BYE") || (src.p2 && src.p2 !== "BYE");
+}
+
 function slotWillGetPlayer(bracket, feeders, matchCode, slot) {
   const feeds = feeders[matchCode]?.[slot] || [];
   for (const f of feeds) {
     const src = findMatch(bracket, f.from);
     if (!src) continue;
-    if (src.status !== "done") return true;
-    if (f.type === "loser" && src.loser && src.loser !== "BYE") return true;
-    if (f.type === "winner" && src.winner && src.winner !== "BYE") return true;
+    if (matchFeedCanProduce(src, f.type)) return true;
   }
   return false;
 }
@@ -110,9 +136,11 @@ function feedNext(bracket, m, state) {
     const [r, i] = [parseInt(code.substring(1).split("-")[0]), parseInt(code.substring(1).split("-")[1])];
     const nextW = `W${r + 1}-${Math.ceil(i / 2)}`;
     if (bracket.W[nextW]) {
-      if (i % 2 === 1) bracket.W[nextW].p1 = winner;
-      else bracket.W[nextW].p2 = winner;
-    } else bracket.F.F1.p1 = winner;
+      if (winner && winner !== "BYE") {
+        if (i % 2 === 1) bracket.W[nextW].p1 = winner;
+        else bracket.W[nextW].p2 = winner;
+      }
+    } else if (winner && winner !== "BYE") bracket.F.F1.p1 = winner;
     if (loser && loser !== "BYE") {
       const totalLRounds = Object.keys(bracket.L).reduce((max, k) => Math.max(max, parseInt(k.substring(1).split("-")[0])), 0);
       if (totalLRounds === 0) bracket.F.F1.p2 = loser;
@@ -161,9 +189,19 @@ function resolveByesIn(bracket, feeders, obj, state) {
     const m = obj[code];
     if (m.status !== "pending") continue;
     if (m.p1 === "BYE" || m.p2 === "BYE") {
-      if (m.p1 === "BYE" && m.p2 === "BYE") { m.winner = "BYE"; m.loser = "BYE"; completeMatch(bracket, feeders, m, state); }
-      else if (m.p1 === "BYE") { m.winner = m.p2; m.loser = "BYE"; completeMatch(bracket, feeders, m, state); }
-      else { m.winner = m.p1; m.loser = "BYE"; completeMatch(bracket, feeders, m, state); }
+      if (m.p1 === "BYE" && m.p2 === "BYE") {
+        m.winner = "BYE";
+        m.loser = "BYE";
+        m.status = "done";
+      } else if (m.p1 === "BYE") {
+        m.winner = m.p2;
+        m.loser = "BYE";
+        completeMatch(bracket, feeders, m, state);
+      } else {
+        m.winner = m.p1;
+        m.loser = "BYE";
+        completeMatch(bracket, feeders, m, state);
+      }
     }
   }
 }
@@ -185,8 +223,10 @@ function resolveWalkovers(bracket, feeders, state) {
 
 function resolveAuto(bracket, feeders, state) {
   resolveByesIn(bracket, feeders, bracket.W, state);
+  resolveByesIn(bracket, feeders, bracket.L, state);
   resolveWalkovers(bracket, feeders, state);
   resolveByesIn(bracket, feeders, bracket.W, state);
+  resolveByesIn(bracket, feeders, bracket.L, state);
   resolveWalkovers(bracket, feeders, state);
 }
 
