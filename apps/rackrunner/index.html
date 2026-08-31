@@ -6,7 +6,7 @@
   <title>RackRunner — Double Elimination</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { background: #040906; color: #f4faf6; padding: 8px; padding-bottom: 80px; }
+    body { background: #040906; color: #f4faf6; padding: 8px; padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); -webkit-text-size-adjust: 100%; }
     button, input, select { font: inherit; outline: none; }
     button { min-height: 44px; border-radius: 10px; padding: 8px 12px; background: #fff; color: #050706; font-weight: 800; border: 2px solid #050706; cursor: pointer; }
     button:active { transform: translateY(1px); }
@@ -30,7 +30,7 @@
     .score { font-size: 18px; font-weight: 900; min-width: 24px; text-align: center; }
     .itemRow { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.03); margin-bottom: 6px; }
     .itemRow input { min-height: 36px; }
-    .dock { position: fixed; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; background: #040906; border-top: 1px solid rgba(255,255,255,.15); z-index: 1000; }
+    .dock { position: fixed; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); background: #040906; border-top: 1px solid rgba(255,255,255,.15); z-index: 1000; }
     .dock button { min-height: 44px; font-size: 12px; padding: 2px; background: rgba(255,255,255,.06); color: #fff; border: 1px solid rgba(255,255,255,.15); }
     .dock button.active { background: #2bc861; color: #050706; border-color: #2bc861; }
     .raceHit { color: #2bc861; font-weight: 800; }
