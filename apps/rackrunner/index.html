@@ -349,14 +349,14 @@
       if (winner === m.p1) {
         S.bracket.F.F1.winner = winner;
         S.phase = "complete";
-        suggestPayoutsIfEmpty();
+        applyPayoutMath();
       } else {
         S.bracket.R.R1.p1 = m.p1;
         S.bracket.R.R1.p2 = m.p2;
       }
     } else if (code === "R1") {
       S.phase = "complete";
-      suggestPayoutsIfEmpty();
+      applyPayoutMath();
     }
   }
 
@@ -469,12 +469,32 @@
     return { first: first, second: second };
   }
 
-  function suggestPayoutsIfEmpty() {
+  function isWinnerTakeAll() {
+    return activeP().length < 10;
+  }
+
+  function applyPayoutMath() {
     const pot = totalPot();
     if (pot <= 0) return;
-    if (!S.payout1) S.payout1 = Math.round(pot * 0.6);
-    if (!S.payout2) S.payout2 = Math.round(pot * 0.3);
-    if (!S.payout3) S.payout3 = Math.max(0, pot - S.payout1 - S.payout2);
+    if (isWinnerTakeAll()) {
+      S.payout1 = pot;
+      S.payout2 = 0;
+      S.payout3 = 0;
+      return;
+    }
+    if (!S.payout1) {
+      S.payout1 = Math.round(pot * 0.6);
+      S.payout2 = Math.round(pot * 0.3);
+      S.payout3 = Math.max(0, pot - S.payout1 - S.payout2);
+    }
+  }
+
+  function payoutRuleNote() {
+    if (!activeP().length) return "";
+    if (isWinnerTakeAll()) {
+      return '<p class="sub" style="margin-top:6px"><b>Under 10 players:</b> winner take all (' + fmtMoney(totalPot()) + " to 1st).</p>";
+    }
+    return '<p class="sub" style="margin-top:6px">10+ players: 60% / 30% / 10% split at end.</p>';
   }
 
   function renderMoneyCard(showBarButtons) {
@@ -487,7 +507,8 @@
       "<h3>Pot " + fmtMoney(pot) + "</h3>" +
       '<span class="badge warn">' + paid + " paid</span></div>" +
       '<p class="sub" style="margin:6px 0">Buy-ins ' + fmtMoney(buyInTotal()) +
-      " (" + paid + " × " + fmtMoney(buy) + ") · Bar adds " + fmtMoney(S.barAdded || 0) + "</p>";
+      " (" + paid + " × " + fmtMoney(buy) + ") · Bar adds " + fmtMoney(S.barAdded || 0) + "</p>" +
+      payoutRuleNote();
 
     if (showBarButtons) {
       html +=
@@ -500,13 +521,20 @@
     }
 
     if (S.phase === "complete") {
-      suggestPayoutsIfEmpty();
+      applyPayoutMath();
       const st = getStandings();
+      const wta = isWinnerTakeAll();
       html += '<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.12);padding-top:10px">';
-      html += '<div class="sub" style="margin-bottom:8px">Payouts (edit amounts)</div>';
+      html += '<div class="sub" style="margin-bottom:8px">' +
+        (wta ? "Winner take all (under 10 players)" : "Payouts — edit if needed (60/30/10)") +
+        "</div>";
       html += stepperRow("payout1", "1st — " + (st.first ? esc(pName(st.first)) : "champion"), 9999);
-      html += stepperRow("payout2", "2nd — " + (st.second ? esc(pName(st.second)) : "runner-up"), 9999);
-      html += stepperRow("payout3", "3rd place $", 9999);
+      if (!wta) {
+        html += stepperRow("payout2", "2nd — " + (st.second ? esc(pName(st.second)) : "runner-up"), 9999);
+        html += stepperRow("payout3", "3rd place $", 9999);
+      } else {
+        html += '<p class="sub">2nd & 3rd: ' + fmtMoney(0) + " (winner take all)</p>";
+      }
       const payoutSum = (S.payout1 || 0) + (S.payout2 || 0) + (S.payout3 || 0);
       html += '<p class="sub">Payout total ' + fmtMoney(payoutSum) + " · pot " + fmtMoney(pot) + "</p>";
       html += "</div>";
