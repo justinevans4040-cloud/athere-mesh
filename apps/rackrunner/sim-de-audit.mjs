@@ -1,4 +1,4 @@
-/** Audit fixed RackRunner DE logic for 2–20 players */
+/** Audit RackRunner DE logic for 2–20 players */
 function nextPowerOf2(n) { let p = 1; while (p < n) p *= 2; return p; }
 function getSeedOrder(num) {
   if (num === 2) return [1, 2];
@@ -11,16 +11,51 @@ function getSeedOrder(num) {
   return next;
 }
 
+function standardW1RealCount(n) {
+  const size = nextPowerOf2(n);
+  const seeds = getSeedOrder(size);
+  let real = 0;
+  for (let m = 1; m <= size / 2; m++) {
+    const s1 = seeds[(m - 1) * 2];
+    const s2 = seeds[(m - 1) * 2 + 1];
+    if (s1 <= n && s2 <= n) real++;
+  }
+  return real;
+}
+
+function useSequentialW1(n) {
+  const size = nextPowerOf2(n);
+  const gap = size - n;
+  return gap > 0 && gap <= 2 && Math.floor(n / 2) > standardW1RealCount(n);
+}
+
+function assignStandardW1Pairings(players, size) {
+  const n = players.length;
+  const seeds = getSeedOrder(size);
+  const matchCount = size / 2;
+  const out = [];
+  for (let m = 1; m <= matchCount; m++) {
+    const s1 = seeds[(m - 1) * 2];
+    const s2 = seeds[(m - 1) * 2 + 1];
+    out.push({
+      p1: s1 <= n ? players[s1 - 1].id : "BYE",
+      p2: s2 <= n ? players[s2 - 1].id : "BYE",
+      skipped: false
+    });
+  }
+  return out;
+}
+
 function assignW1Pairings(players, matchCount) {
   const n = players.length;
   let idx = 0;
   const out = [];
   for (let m = 1; m <= matchCount; m++) {
     if (idx + 1 < n) {
-      out.push({ p1: players[idx].id, p2: players[idx + 1].id });
+      out.push({ p1: players[idx].id, p2: players[idx + 1].id, skipped: false });
       idx += 2;
     } else if (idx < n) {
-      out.push({ p1: players[idx].id, p2: "BYE" });
+      out.push({ p1: players[idx].id, p2: "BYE", skipped: false });
       idx += 1;
     } else {
       out.push({ p1: null, p2: null, skipped: true });
@@ -34,7 +69,10 @@ function buildAll(players) {
   const size = nextPowerOf2(n);
   const totalWRounds = Math.log2(size);
   const totalLRounds = totalWRounds > 1 ? (totalWRounds - 1) * 2 : 0;
-  const w1Pairings = assignW1Pairings(players, size / 2);
+  const sequentialW1 = useSequentialW1(n);
+  const w1Pairings = sequentialW1
+    ? assignW1Pairings(players, size / 2)
+    : assignStandardW1Pairings(players, size);
   const bracket = { W: {}, L: {}, F: {}, R: {} };
   const feeders = {};
 
@@ -53,7 +91,7 @@ function buildAll(players) {
         p1 = pair.p1;
         p2 = pair.p2;
       }
-      const skipped = r === 1 && w1Pairings[m - 1].skipped;
+      const skipped = r === 1 && sequentialW1 && w1Pairings[m - 1].skipped;
       bracket.W[code] = { code, p1, p2, winner: null, loser: null, status: skipped ? "done" : "pending" };
     }
   }
@@ -115,6 +153,7 @@ function matchFeedCanProduce(src, type) {
     if (type === "winner") return src.winner && src.winner !== "BYE";
     return false;
   }
+  if (!src.p1 && !src.p2) return true;
   return (src.p1 && src.p1 !== "BYE") || (src.p2 && src.p2 !== "BYE");
 }
 
@@ -214,9 +253,13 @@ function resolveWalkovers(bracket, feeders, state) {
     const ok2 = m.p2 && m.p2 !== "BYE";
     if (ok1 && ok2) continue;
     if (ok1 && !ok2 && !slotWillGetPlayer(bracket, feeders, m.code, "p2")) {
-      m.winner = m.p1; m.loser = m.p2; completeMatch(bracket, feeders, m, state);
+      m.winner = m.p1;
+      m.loser = m.p2;
+      completeMatch(bracket, feeders, m, state);
     } else if (ok2 && !ok1 && !slotWillGetPlayer(bracket, feeders, m.code, "p1")) {
-      m.winner = m.p2; m.loser = m.p1; completeMatch(bracket, feeders, m, state);
+      m.winner = m.p2;
+      m.loser = m.p1;
+      completeMatch(bracket, feeders, m, state);
     }
   }
 }
@@ -264,7 +307,7 @@ function run(n, lbWinsGF) {
     completeMatch(bracket, feeders, m, state);
     steps++;
   }
-  return { ok: state.phase === "complete", n, steps, reset: bracket.R.R1.status === "done" };
+  return { ok: state.phase === "complete", n, steps, seq: useSequentialW1(n) };
 }
 
 let fail = 0;
@@ -275,7 +318,7 @@ for (let n = 2; n <= 20; n++) {
     console.log("FAIL", n, a, b);
     fail++;
   } else {
-    console.log("OK", n, "steps", a.steps, "reset", b.reset);
+    console.log("OK", n, "steps", a.steps, a.seq ? "seq" : "std");
   }
 }
 console.log(fail ? `FAILED ${fail}` : "ALL 2-20 PASS");

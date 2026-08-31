@@ -85,7 +85,8 @@
     players: [],
     bracket: { W: {}, L: {}, F: {}, R: {} },
     feeders: {},
-    tableAssignments: {}
+    tableAssignments: {},
+    sequentialW1: false
   };
 
   let S = loadState();
@@ -102,6 +103,7 @@
       if (S.players[i].paid === undefined) S.players[i].paid = false;
     }
     if (!S.tableAssignments) S.tableAssignments = {};
+    if (S.sequentialW1 === undefined) S.sequentialW1 = false;
   }
 
   function loadState() {
@@ -203,6 +205,41 @@
     addFeed("R1", "p2", "F1", "p2");
   }
 
+  function standardW1RealCount(n) {
+    const size = nextPowerOf2(n);
+    const seeds = getSeedOrder(size);
+    let real = 0;
+    for (let m = 1; m <= size / 2; m++) {
+      const s1 = seeds[(m - 1) * 2];
+      const s2 = seeds[(m - 1) * 2 + 1];
+      if (s1 <= n && s2 <= n) real++;
+    }
+    return real;
+  }
+
+  function useSequentialW1(n) {
+    const size = nextPowerOf2(n);
+    const gap = size - n;
+    return gap > 0 && gap <= 2 && Math.floor(n / 2) > standardW1RealCount(n);
+  }
+
+  function assignStandardW1Pairings(players, size) {
+    const n = players.length;
+    const seeds = getSeedOrder(size);
+    const matchCount = size / 2;
+    const out = [];
+    for (let m = 1; m <= matchCount; m++) {
+      const s1 = seeds[(m - 1) * 2];
+      const s2 = seeds[(m - 1) * 2 + 1];
+      out.push({
+        p1: s1 <= n ? players[s1 - 1].id : "BYE",
+        p2: s2 <= n ? players[s2 - 1].id : "BYE",
+        skipped: false
+      });
+    }
+    return out;
+  }
+
   function assignW1Pairings(players, matchCount) {
     const n = players.length;
     let idx = 0;
@@ -227,7 +264,11 @@
     const size = nextPowerOf2(n);
     const totalWRounds = Math.log2(size);
     const totalLRounds = totalWRounds > 1 ? (totalWRounds - 1) * 2 : 0;
-    const w1Pairings = assignW1Pairings(players, size / 2);
+    const sequentialW1 = useSequentialW1(n);
+    const w1Pairings = sequentialW1
+      ? assignW1Pairings(players, size / 2)
+      : assignStandardW1Pairings(players, size);
+    S.sequentialW1 = sequentialW1;
 
     S.bracket = { W: {}, L: {}, F: {}, R: {} };
 
@@ -241,7 +282,7 @@
           p1 = pair.p1;
           p2 = pair.p2;
         }
-        const skipped = r === 1 && w1Pairings[m - 1].skipped;
+        const skipped = r === 1 && sequentialW1 && w1Pairings[m - 1].skipped;
         S.bracket.W[code] = {
           code: code,
           label: "Winners R" + r + " — M" + m,
@@ -308,6 +349,7 @@
       if (type === "p1" || type === "p2") return src[type] && src[type] !== "BYE";
       return false;
     }
+    if (!src.p1 && !src.p2) return true;
     return (src.p1 && src.p1 !== "BYE") || (src.p2 && src.p2 !== "BYE");
   }
 
@@ -491,9 +533,12 @@
         n + " players → " + slots + " BYE" + (slots === 1 ? "" : "s") +
         " (odd count). Everyone else plays round 1.</p>";
     } else if (n >= 2 && S.phase === "active") {
+      const w1 = sequentialW1 ? w1PlayableCount() : standardW1RealCount(n);
       html +=
         '<p class="sub" style="margin:4px 0 8px">' +
-        n + " players → " + w1PlayableCount() + " matches round 1 (pair down the roster).</p>";
+        n + " players → " + w1 + " match" + (w1 === 1 ? "" : "es") + " round 1" +
+        (S.sequentialW1 ? " (paired down roster)" : " (bracket seeds)") +
+        ".</p>";
     }
     if (byes.length) {
       html += '<p class="sub" style="margin:4px 0 6px">Already advanced on a BYE (no game):</p>';
