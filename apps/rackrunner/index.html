@@ -48,6 +48,9 @@
     .paidBtn { min-width: 88px; }
     .byeCard { border-color: rgba(255,209,102,.5); background: rgba(255,209,102,.07); }
     .controlBar { border-color: rgba(255,64,93,.35); }
+    .formatRow { display: flex; gap: 8px; flex-wrap: wrap; }
+    .formatBtn { flex: 1; min-width: 140px; }
+    .formatBtn.active { background: #2bc861 !important; color: #050706 !important; border-color: #2bc861 !important; }
   </style>
 </head>
 <body>
@@ -88,7 +91,8 @@
     feeders: {},
     tableAssignments: {},
     sequentialW1: false,
-    endedEarly: false
+    endedEarly: false,
+    format: "de"
   };
 
   let S = loadState();
@@ -107,6 +111,7 @@
     if (!S.tableAssignments) S.tableAssignments = {};
     if (S.sequentialW1 === undefined) S.sequentialW1 = false;
     if (S.endedEarly === undefined) S.endedEarly = false;
+    if (S.format !== "de") S.format = "de";
   }
 
   function loadState() {
@@ -784,6 +789,7 @@
 
   function setupIssues() {
     const issues = [];
+    if (S.format !== "de") issues.push("double elimination format");
     if (S.tables < 1) issues.push("tables");
     if (S.raceTo < 1) issues.push("race to");
     if (activeP().length < 2) issues.push("2+ players");
@@ -824,9 +830,44 @@
       '<label class="sub">' + label + "</label>" +
       '<div class="stepper">' +
       '<button type="button" aria-label="decrease" onclick="window.bumpSetting(\'' + key + '\',-1)">−</button>' +
-      '<input id="' + inputId(key) + '" type="number" min="0" max="' + max + '" value="' + S[key] + '" inputmode="numeric" enterkeyhint="done" oninput="window.onSettingInput(\'' + key + '\', this.value)">' +
+      '<input id="' + inputId(key) + '" type="number" min="0" max="' + max + '" value="' + S[key] + '" inputmode="numeric" enterkeyhint="done" oninput="window.onSettingInput(\'' + key + '\', this.value)" onblur="window.readSetupFromDom()">' +
       '<button type="button" aria-label="increase" onclick="window.bumpSetting(\'' + key + '\',1)">+</button>' +
       "</div></div>"
+    );
+  }
+
+  function renderFormatPicker() {
+    const deActive = S.format === "de";
+    return (
+      '<div class="settingBlock">' +
+      '<label class="sub">Format</label>' +
+      '<div class="row formatRow">' +
+      '<button type="button" class="formatBtn ' + (deActive ? "active" : "ghost") + '" onclick="window.setFormat(\'de\')">Double elimination</button>' +
+      '<button type="button" class="formatBtn ghost" disabled>Single elimination</button>' +
+      "</div>" +
+      (deActive
+        ? '<p class="sub" style="margin-top:6px"><span class="badge green">Double elimination</span> selected — saved on this phone.</p>'
+        : '<p class="sub" style="margin-top:6px">Tap <b>Double elimination</b> to continue.</p>') +
+      "</div>"
+    );
+  }
+
+  function renderSetupSummaryCard() {
+    if (S.phase !== "setup") return "";
+    const issues = setupIssues();
+    return (
+      '<div class="card">' +
+      '<h3>Tournament setup</h3>' +
+      renderFormatPicker() +
+      '<p class="sub" style="margin:6px 0">' +
+      (S.format === "de" ? '<span class="badge green">Double elimination</span> ' : "") +
+      S.tables + " tables · race to " + S.raceTo + " · " + activeP().length + " players" +
+      "</p>" +
+      (issues.length
+        ? '<p class="sub" style="margin-top:6px">Still need: ' + esc(issues.join(", ")) + "</p>"
+        : '<p class="sub" style="margin-top:6px"><span class="badge green">Ready to start</span></p>') +
+      '<button type="button" class="ghost cta" onclick="window.setTab(\'home\')">Open full setup wizard</button>' +
+      "</div>"
     );
   }
 
@@ -883,7 +924,8 @@
       "</div></div>" +
 
       '<div class="card stepCard' + (settingsOk ? " done" : "") + '">' +
-      '<div class="stepNum">STEP 1</div><h3>Tables, race & money</h3>' +
+      '<div class="stepNum">STEP 1</div><h3>Format &amp; tables</h3>' +
+      renderFormatPicker() +
       stepperRow("tables", "How many tables?") +
       stepperRow("raceTo", "Race to (games to win)") +
       stepperRow("buy", "Entry fee per player ($)") +
@@ -985,6 +1027,7 @@
       : '<p class="sub">No players yet. Add names manually.</p>';
 
     v.innerHTML =
+      (S.phase === "setup" ? renderSetupSummaryCard() : "") +
       (S.phase === "active" ? renderActiveControls() : "") +
       (S.phase === "complete" ? renderCompleteHeader() : "") +
       renderMoneyCard(S.phase !== "setup") +
@@ -1029,6 +1072,7 @@
     }
 
     v.innerHTML =
+      (S.phase === "setup" ? renderSetupSummaryCard() : "") +
       (S.phase === "active" ? renderActiveControls() : "") +
       (S.phase === "complete" ? renderCompleteHeader() : "") +
       renderGroup("Winners bracket", S.bracket.W) +
@@ -1073,10 +1117,22 @@
   }
 
   window.setTab = function (t) {
-    if (S.phase === "setup" && (t === "home" || t === "setup")) {
+    if (S.phase === "setup") {
       readSetupInputs();
     }
     S.tab = t;
+    render();
+  };
+
+  window.readSetupFromDom = function () {
+    if (S.phase !== "setup") return;
+    readSetupInputs();
+  };
+
+  window.setFormat = function (fmt) {
+    if (fmt !== "de") return;
+    S.format = "de";
+    save();
     render();
   };
 
@@ -1112,6 +1168,10 @@
 
   window.applySetupContinue = function () {
     readSetupInputs();
+    if (S.format !== "de") {
+      alert("Select Double elimination format first.");
+      return;
+    }
     if (S.tables < 1 || S.raceTo < 1) {
       alert("Set tables (1+) and race to (1+) first.");
       return;
@@ -1189,6 +1249,10 @@
 
   window.startTourney = function () {
     readSetupInputs();
+    if (S.format !== "de") {
+      alert("Select Double elimination format first.");
+      return;
+    }
     if (!canStart()) return;
     S.phase = "active";
     S.endedEarly = false;
