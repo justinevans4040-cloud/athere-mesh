@@ -16,21 +16,36 @@ function requireMissionStore(missionStore) {
   return missionStore;
 }
 
-export async function inspectRecovery({ root, missionStore = DEFAULT_MISSION_STORE }) {
-  const store = requireMissionStore(missionStore);
-  const result = { resumable: [], blocked: [], corrupt: [] };
+async function recoveryCandidateIds({ root, store }) {
+  if (typeof store.listRecoveryCandidates === 'function') {
+    const candidates = await store.listRecoveryCandidates();
+    if (!Array.isArray(candidates)) throw new TypeError('listRecoveryCandidates must return an array');
+    return candidates
+      .map((candidate) => candidate?.missionId)
+      .filter((missionId) => typeof missionId === 'string' && missionId.length > 0)
+      .sort((left, right) => left.localeCompare(right));
+  }
+
   let entries;
   try {
     entries = await readdir(path.resolve(root, 'missions'), { withFileTypes: true });
   } catch (error) {
-    if (error.code === 'ENOENT') return result;
+    if (error.code === 'ENOENT') return [];
     throw error;
   }
 
-  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
-    const match = SNAPSHOT.exec(entry.name);
-    if (!match || !entry.isFile()) continue;
-    const missionId = match[1];
+  return entries
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .filter((entry) => entry.isFile() && SNAPSHOT.test(entry.name))
+    .map((entry) => SNAPSHOT.exec(entry.name)[1]);
+}
+
+export async function inspectRecovery({ root, missionStore = DEFAULT_MISSION_STORE }) {
+  const store = requireMissionStore(missionStore);
+  const result = { resumable: [], blocked: [], corrupt: [] };
+  const missionIds = await recoveryCandidateIds({ root, store });
+
+  for (const missionId of missionIds) {
     let record;
     try {
       record = await store.loadMission({ root, missionId });
@@ -57,7 +72,9 @@ function recoveryBlocked(record) {
 }
 
 function retryableRecoveryConflict(error) {
-  return error?.message === 'mission write already in progress' || /^revision conflict: /.test(error?.message);
+  return error?.message === 'mission write already in progress'
+    || error?.message === 'revision conflict'
+    || /^revision conflict: /.test(error?.message);
 }
 
 async function convergeInterruptedMission({ root, missionId, clock, missionStore }) {
