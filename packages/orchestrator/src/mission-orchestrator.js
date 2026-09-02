@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { planCommand } from '../../command/src/command-planner.js';
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
-import { writeProof, verifyProof } from '../../proof/src/proof-store.js';
+import { writeArtifactProof, writeProof, verifyArtifactProof, verifyProof } from '../../proof/src/proof-store.js';
 import { inspectRecovery } from '../../recovery/src/recovery-coordinator.js';
 import { createMemoryResonanceBus } from '../../resonance/src/resonance-bus.js';
 
@@ -180,6 +182,28 @@ export function createMissionOrchestrator({
         });
         const verification = await verifyProof({ root: workspaceRoot, ref });
         if (verification.verified !== true) throw new Error(`proof verification failed: ${verification.reason ?? 'unknown'}`);
+        const proofBytes = await readFile(path.resolve(workspaceRoot, ...ref.path.split('/')));
+        const verifierResult = Object.freeze({
+          verifier: 'qra_emerge_audit',
+          verified: true,
+          proofSha256: ref.sha256,
+        });
+        const artifactRef = await writeArtifactProof({
+          root: workspaceRoot,
+          missionId: record.mission.id,
+          artifactId: 'mission-proof',
+          artifact: proofBytes,
+          predecessorHash: null,
+          agent: 'qra_emerge_audit',
+          action: 'verified_mission_proof',
+          verifierResult,
+          missionStateVersion: record.revision,
+          timestamp: clock(),
+        });
+        const artifactVerification = await verifyArtifactProof({ root: workspaceRoot, ref: artifactRef, artifact: proofBytes });
+        if (artifactVerification.verified !== true) {
+          throw new Error(`artifact provenance verification failed: ${artifactVerification.reason ?? 'unknown'}`);
+        }
         record = await persistTransition(record, {
           type: 'completed',
           agent: 'qra_emerge_audit',
@@ -195,7 +219,7 @@ export function createMissionOrchestrator({
           failedWork: [],
           evidence: [...record.mission.evidence, { agent: 'qra_emerge_audit', executor: 'proof-verifier', result: verification }],
           activeAgents: [],
-          artifactReferences: [{ id: 'mission-proof', ...ref, verified: verification.verified }],
+          artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
         });
         return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });
       } catch (error) {

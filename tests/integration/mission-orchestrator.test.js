@@ -65,6 +65,16 @@ test('restart retrieval preserves NYX and RUNE evidence plus proof-bound validat
     { agent: 'rune', executor: 'node-test-runner', result: stored.mission.signals[3].evidence.result },
   ]);
   assert.equal(stored.mission.result.proofSha256, stored.mission.proof.sha256);
+  assert.equal(stored.mission.artifactReferences.length, 1);
+  assert.equal(stored.mission.artifactReferences[0].id, 'mission-proof');
+  assert.match(stored.mission.artifactReferences[0].artifactHash, /^[a-f0-9]{64}$/);
+  assert.match(stored.mission.artifactReferences[0].proofHash, /^[a-f0-9]{64}$/);
+  assert.equal(stored.mission.artifactReferences[0].agent, 'qra_emerge_audit');
+  assert.equal(stored.mission.artifactReferences[0].action, 'verified_mission_proof');
+  assert.equal(stored.mission.artifactReferences[0].missionStateVersion, 4);
+  assert.deepEqual(stored.mission.artifactReferences[0].verifierResult, {
+    verifier: 'qra_emerge_audit', verified: true, proofSha256: stored.mission.proof.sha256,
+  });
   assert.deepEqual(immediate.tests, stored.mission.result.tests);
 });
 
@@ -134,7 +144,10 @@ test('orchestrator records the complete mission in the authoritative state servi
   assert.deepEqual(stored.mission.failedWork, []);
   assert.deepEqual(stored.mission.activeAgents, []);
   assert.deepEqual(stored.mission.evidence.map(({ agent }) => agent), ['nyx', 'rune', 'qra_emerge_audit']);
-  assert.deepEqual(stored.mission.artifactReferences, [{ id: 'mission-proof', ...stored.mission.proof }]);
+  assert.equal(stored.mission.artifactReferences[0].id, 'mission-proof');
+  assert.equal(stored.mission.artifactReferences[0].artifactHash, stored.mission.proof.sha256);
+  assert.equal(stored.mission.artifactReferences[0].verifierResult.proofSha256, stored.mission.proof.sha256);
+  assert.equal(stored.mission.artifactReferences[0].verified, true);
   assert.equal(stored.mission.currentPlan.version, 1);
   assert.equal(stored.mission.environmentObservations[0].key, 'repository_root');
   assert.deepEqual(

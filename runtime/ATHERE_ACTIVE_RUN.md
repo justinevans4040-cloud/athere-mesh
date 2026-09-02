@@ -1,21 +1,19 @@
 # Athere Active Run
 
-**Status:** Finished — Item 5 acceptance hardened and focused verification passed
+**Status:** Active — correcting completion truth and landing verified Item 6 integration
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: Item 5 hostile-audit gap implemented, committed, and verified with focused exact-byte tests
-- Current backlog item: PHASE 1 / Item 5 — Add explicit supersession and state lineage
-- Current action: run finished after verifying the semantic fact lifecycle boundary; no Item 6 implementation started in this run
-- Files worked on: `packages/mission/src/mission-state-service.js`, `tests/integration/mission-state-fact-operations.test.js`, `tests/integration/mission-state-service.test.js`, `docs/current/ATHERE_STATE_SUPERSESSION.md`, and this checkpoint
-- Verification completed: TDD RED showed 6/6 expected failures before implementation; GREEN passed 6/6 after implementation; final focused suite passed 10/10 after stale-revision and invalid-lineage guards were added; `node --check` passed for the production module and dedicated test; Git blob hashes proved the exact locally tested production and dedicated-test bytes match the files committed to `master`
-- Verification environment: local Node v22.16.0; production blob SHA `29775b2c0d8c2d1285432239ca0227b75d1fa65d`; dedicated-test blob SHA `39f8b8855cace9f7835cf08f1ceb4eec32735705`
-- Acceptance result: ordinary agent retrieval still excludes superseded/corrected/revoked facts; post-creation raw `authoritativeFacts` replacement is rejected; record, supersede, correct, and revoke changes are permission-scoped atomic state revisions with hash-bound transition lineage and stale-revision protection
-- Blocker: Item 2 still requires genuine repeated measured control data; the connected Node >=24 execution device was unavailable, so a fresh repository-wide Node 24 regression and production dependency audit could not be run in this session
-- Relevant commit SHAs: run start `cfb31e319255be07cb7badb2f93cb2af44762b98`; production atomic fact operations `1aed8ba3a7f909265874f7bb21e708edcdc8b0c6`; dedicated tests `670fce7a7124be7580a921c961763fb94d343a7e`; expanded guards `14e294c874eb0f7ae0ca9106b807234bffd7148e`; retired obsolete raw-mutation tests `f53e11a836a590fe9383701f16968276d3049b1a`; documentation `e15d2b946736201b2032e667a454c81d5e7457d1`
-- Next highest-priority incomplete work: complete Item 2 when genuine control measurements are available; while that evidence blocker persists, the next independent hostile-audit remediation is Item 6, wiring cryptographic artifact provenance into Titan's operational mission path
+- State: prior “Items 1–8 complete” characterization retracted; completion is governed only by acceptance evidence
+- Current backlog item: PHASE 1 / Item 6 — operational artifact provenance integration, followed immediately by the still-incomplete PHASE 0 / Item 2 measurement gate
+- Current action: land the already test-first Item 6 integration, then stop advancing later items until genuine repeated control measurements are frozen
+- Files worked on: `packages/orchestrator/src/mission-orchestrator.js`, `tests/integration/mission-orchestrator.test.js`, and this checkpoint
+- Verification completed: TDD RED reproduced the missing Titan mission-path provenance; GREEN passed 9/9 focused tests; full Node v24.14.1 suite passed 147/147; production dependency audit found no known vulnerabilities
+- Acceptance result: Titan now hashes, records, re-reads, and independently verifies the exact mission-proof artifact with producer, action, verifier result, mission-state version, timestamp, and predecessor boundary before completion
+- Remaining truth gate: Item 2 has framework code but no genuine frozen repeated control dataset; it is incomplete and blocks any claim that architectural improvement is proven
+- Next action: commit and push Item 6 with fresh evidence, then implement and execute the real Item 2 control-collection path rather than substituting synthetic data
 
 ## Checkpoint history
 
@@ -29,6 +27,8 @@ This file is the live operator view for the current Athere implementation run.
 8. Stale-revision rejection plus ambiguous-current, broken-cross-key-lineage, and missing-revocation-timestamp guards were added; final focused suite passed 10/10.
 9. `node --check` passed on the production module and dedicated test file. Git blob hashes matched the exact committed production and dedicated-test bytes.
 10. Full repository Node >=24 regression could not be executed because the connected execution device was offline; no GitHub Actions workflow was used as a substitute.
+11. Node v24.14.1 became available; Item 6 operational provenance was implemented test-first and passed 9/9 focused plus 147/147 full repository tests.
+12. The prior broad completion label was rejected: Item 2 remains incomplete until real repeated controls are collected and frozen.
 
 ## Checkpoint policy
 
