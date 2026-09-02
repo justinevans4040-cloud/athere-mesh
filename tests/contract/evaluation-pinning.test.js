@@ -48,6 +48,17 @@ test('cohort rejects system-version drift across repeated trials', () => {
   );
 });
 
+test('cohort rejects seed drift across repeated trials', () => {
+  assert.throws(
+    () => validateEvaluationCohort({
+      id: 'control-seed-drift',
+      frozen: true,
+      trials: [trial('c1'), trial('c2', { seed: 43 })],
+    }),
+    /seed changed inside cohort/,
+  );
+});
+
 test('comparison rejects model or environment drift between control and candidate', () => {
   const control = { id: 'control', frozen: true, trials: [trial('c1'), trial('c2')] };
   const model = { provider: 'none', name: 'other-model', version: '1' };

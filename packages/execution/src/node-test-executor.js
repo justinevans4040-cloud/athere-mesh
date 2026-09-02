@@ -80,6 +80,20 @@ function exitCodeFrom(error) {
   return 1;
 }
 
+function testArguments(testFiles) {
+  if (testFiles === undefined) return ['--test'];
+  if (!Array.isArray(testFiles) || testFiles.length === 0) throw new TypeError('testFiles must be a non-empty array');
+  const files = testFiles.map((file) => {
+    if (typeof file !== 'string' || file.length === 0 || path.isAbsolute(file)) throw new TypeError('test file must be relative');
+    const normalized = file.replaceAll('\\', '/');
+    if (!normalized.startsWith('tests/') || normalized.split('/').includes('..') || !TEST_FILE.test(normalized)) {
+      throw new Error(`unsafe test file: ${file}`);
+    }
+    return normalized;
+  });
+  return ['--test', ...files];
+}
+
 export function createNodeTestExecutor({ repositoryRoot, execFileImpl = defaultExecFile } = {}) {
   const root = requireRepositoryRoot(repositoryRoot);
   if (typeof execFileImpl !== 'function') throw new TypeError('execFileImpl must be a function');
@@ -96,7 +110,8 @@ export function createNodeTestExecutor({ repositoryRoot, execFileImpl = defaultE
       });
     },
 
-    async runTests() {
+    async runTests({ testFiles } = {}) {
+      const args = testArguments(testFiles);
       const options = {
         cwd: root,
         shell: false,
@@ -107,7 +122,7 @@ export function createNodeTestExecutor({ repositoryRoot, execFileImpl = defaultE
       let processResult;
       let exitCode = 0;
       try {
-        processResult = await execFileImpl(process.execPath, ['--test'], options);
+        processResult = await execFileImpl(process.execPath, args, options);
       } catch (error) {
         processResult = error;
         exitCode = exitCodeFrom(error);
@@ -116,7 +131,7 @@ export function createNodeTestExecutor({ repositoryRoot, execFileImpl = defaultE
       const stderr = text(processResult?.stderr);
       const totals = parseSummary(stdout);
       return Object.freeze({
-        command: 'node --test',
+        command: `node ${args.join(' ')}`,
         exitCode,
         ...totals,
         stdout,

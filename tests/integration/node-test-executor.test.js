@@ -80,6 +80,25 @@ test('node test executor runs Node directly with bounded non-shell options and r
   });
 });
 
+test('node test executor runs one declared regression file without invoking a shell', async () => {
+  const repositoryRoot = await repository();
+  const calls = [];
+  const executor = createNodeTestExecutor({
+    repositoryRoot,
+    execFileImpl: async (file, args, options) => {
+      calls.push({ file, args, options });
+      return { stdout: footer({ tests: 1, passed: 1, failed: 0 }), stderr: '' };
+    },
+  });
+
+  const result = await executor.runTests({ testFiles: ['tests/contract/worker.test.js'] });
+
+  assert.deepEqual(calls[0].args, ['--test', 'tests/contract/worker.test.js']);
+  assert.equal(calls[0].options.shell, false);
+  assert.equal(result.command, 'node --test tests/contract/worker.test.js');
+  assert.equal(result.passed, 1);
+});
+
 test('node test executor inspects repository metadata and source and test files without a shell', async () => {
   const repositoryRoot = await repository();
   await writeFile(path.join(repositoryRoot, 'packages', 'one', 'src', 'generated.json'), '{}\n');

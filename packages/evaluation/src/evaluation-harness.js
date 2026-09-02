@@ -71,6 +71,7 @@ export function validateEvaluationCohort(cohort) {
   let pinnedEnvironment;
   let pinnedModel;
   let pinnedTaskSet;
+  let pinnedSeed;
   for (const trial of cohort.trials) {
     suiteId = validateTrial(trial, suiteId);
     if (trialIds.has(trial.id)) throw new Error(`duplicate trial id: ${trial.id}`);
@@ -83,10 +84,12 @@ export function validateEvaluationCohort(cohort) {
     if (pinnedModel && model !== pinnedModel) throw new Error('model changed inside cohort');
     if (pinnedSystemVersion && systemVersion !== pinnedSystemVersion) throw new Error('system version changed inside cohort');
     if (pinnedTaskSet && taskSet !== pinnedTaskSet) throw new Error('regression task set changed inside cohort');
+    if (pinnedSeed !== undefined && trial.seed !== pinnedSeed) throw new Error('seed changed inside cohort');
     pinnedEnvironment ??= environment;
     pinnedModel ??= model;
     pinnedSystemVersion ??= systemVersion;
     pinnedTaskSet ??= taskSet;
+    pinnedSeed ??= trial.seed;
   }
   return Object.freeze({ valid: true, cohortId: cohort.id, trialCount: cohort.trials.length, suiteId });
 }
