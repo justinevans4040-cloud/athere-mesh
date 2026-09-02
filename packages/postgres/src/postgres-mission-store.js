@@ -16,42 +16,58 @@ export async function createPostgresMissionStore({ db }) {
     )
   `);
 
-  return Object.freeze({
-    async load({ missionId }) {
-      const id = requireMissionId(missionId);
-      const result = await db.query(
-        'SELECT revision, mission FROM titan_missions WHERE mission_id = $1',
-        [id],
-      );
-      if (result.rows.length === 0) throw new Error('mission snapshot not found');
-      const row = result.rows[0];
-      return { revision: row.revision, mission: typeof row.mission === 'string' ? JSON.parse(row.mission) : row.mission };
-    },
+  async function load({ missionId }) {
+    const id = requireMissionId(missionId);
+    const result = await db.query(
+      'SELECT revision, mission FROM titan_missions WHERE mission_id = $1',
+      [id],
+    );
+    if (result.rows.length === 0) throw new Error('mission snapshot not found');
+    const row = result.rows[0];
+    return { revision: row.revision, mission: typeof row.mission === 'string' ? JSON.parse(row.mission) : row.mission };
+  }
 
-    async save({ mission, expectedRevision }) {
-      if (!mission || typeof mission !== 'object') throw new TypeError('mission is required');
-      const id = requireMissionId(mission.id);
-      let result;
-      if (expectedRevision === undefined) {
-        result = await db.query(
-          `INSERT INTO titan_missions (mission_id, revision, mission)
-           VALUES ($1, 1, $2::jsonb)
-           ON CONFLICT (mission_id) DO NOTHING
-           RETURNING revision`,
-          [id, JSON.stringify(mission)],
-        );
-      } else {
-        if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) throw new Error('invalid expected revision');
-        result = await db.query(
-          `UPDATE titan_missions
-           SET revision = revision + 1, mission = $2::jsonb, updated_at = CURRENT_TIMESTAMP
-           WHERE mission_id = $1 AND revision = $3
-           RETURNING revision`,
-          [id, JSON.stringify(mission), expectedRevision],
-        );
-      }
-      if (result.rows.length === 0) throw new Error('revision conflict');
-      return { revision: result.rows[0].revision, mission };
-    },
+  async function save({ mission, expectedRevision }) {
+    if (!mission || typeof mission !== 'object') throw new TypeError('mission is required');
+    const id = requireMissionId(mission.id);
+    let result;
+    if (expectedRevision === undefined) {
+      result = await db.query(
+        `INSERT INTO titan_missions (mission_id, revision, mission)
+         VALUES ($1, 1, $2::jsonb)
+         ON CONFLICT (mission_id) DO NOTHING
+         RETURNING revision`,
+        [id, JSON.stringify(mission)],
+      );
+    } else {
+      if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) throw new Error('invalid expected revision');
+      result = await db.query(
+        `UPDATE titan_missions
+         SET revision = revision + 1, mission = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+         WHERE mission_id = $1 AND revision = $3
+         RETURNING revision`,
+        [id, JSON.stringify(mission), expectedRevision],
+      );
+    }
+    if (result.rows.length === 0) throw new Error('revision conflict');
+    return { revision: result.rows[0].revision, mission };
+  }
+
+  async function listRecoveryCandidates() {
+    const result = await db.query(`
+      SELECT mission_id
+      FROM titan_missions
+      WHERE mission->>'status' IN ('accepted', 'running', 'blocked')
+      ORDER BY mission_id ASC
+    `);
+    return result.rows.map((row) => ({ missionId: requireMissionId(row.mission_id) }));
+  }
+
+  return Object.freeze({
+    load,
+    save,
+    loadMission: ({ missionId }) => load({ missionId }),
+    saveMission: ({ mission, expectedRevision }) => save({ mission, expectedRevision }),
+    listRecoveryCandidates,
   });
 }
