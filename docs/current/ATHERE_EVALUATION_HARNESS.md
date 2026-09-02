@@ -1,6 +1,6 @@
 # Athere Evaluation and Regression Harness
 
-**Status:** core contract implemented; permanent measured control not yet recorded
+**Status:** production control collection implemented; final self-covering control in progress
 
 The Phase 0 evaluation harness prevents architectural changes from being called improvements without repeated, pinned, comparative evidence.
 
@@ -35,7 +35,8 @@ Control and candidate cohorts must use the same suite, regression task set, and 
 
 - Production module: `packages/evaluation/src/evaluation-harness.js`
 - Contract tests: `tests/contract/evaluation-harness.test.js` and `tests/contract/evaluation-pinning.test.js`
-- CLI: `pnpm evaluation:compare <frozen-control.json> <candidate.json>`
+- Control CLI: `pnpm evaluation:collect-control`
+- Comparison CLI: `pnpm evaluation:compare <frozen-control.json> <candidate.json>`
 - Frozen-control writer: `writeFrozenEvaluation({ root, cohort })`
 
 The CLI prints a machine-readable comparison report. It exits with code 2 for a regression so an external deployment gate can block advancement.
@@ -54,4 +55,4 @@ The harness does not invent unavailable telemetry. An executor or observer must 
 
 ## Current evidence boundary
 
-The repository does not currently contain a persisted `evaluations/controls/` control artifact. Until repeated measured control trials are executed and frozen on a production-compatible Node >=24 environment, Item 2 remains partially complete and later architectural work must not be described as benchmark-proven improvement merely because its functional tests pass.
+The first genuine control, `titan-core-v1-6b36adf54204.json`, preserves three measured runs from clean commit `6b36adf54204a822ca37daf4b066cb0b1a8c75a0` on Node 24.14.1. Its hostile audit found that v1 omitted the evaluator's own tests, so it remains preserved evidence but is not the final Item 2 control. The versioned `titan-core-v2` suite adds self-coverage; Item 2 remains incomplete until its clean-commit control is collected, verified, committed, and pushed.

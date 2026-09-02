@@ -17,7 +17,7 @@ const { stdout: revisionOutput } = await execFile('git', ['rev-parse', 'HEAD'], 
 const systemVersion = revisionOutput.trim();
 if (!/^[a-f0-9]{40}$/.test(systemVersion)) throw new Error('git did not return a full commit revision');
 
-const suitePath = path.join(root, 'evaluations', 'suites', 'titan-core-v1.json');
+const suitePath = path.join(root, 'evaluations', 'suites', 'titan-core-v2.json');
 const suite = JSON.parse(await readFile(suitePath, 'utf8'));
 const result = await collectAndFreezeNodeControl({
   root,
