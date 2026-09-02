@@ -8,6 +8,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "evaluation:collect-control": "node scripts/collect-evaluation-control.js",
     "evaluation:compare": "node scripts/compare-evaluations.js",
     "test": "node --test",
     "test:contract": "node --test tests/contract",

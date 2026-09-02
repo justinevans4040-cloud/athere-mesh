@@ -8,9 +8,9 @@ This file is the live operator view for the current Athere implementation run.
 
 - State: prior “Items 1–8 complete” characterization retracted; completion is governed only by acceptance evidence
 - Current backlog item: PHASE 0 / Item 2 — build and execute the Athere evaluation baseline
-- Current action: measured cohort collector and per-file deterministic execution boundary are implemented; next is the permanent collection CLI and genuine repeated control run
+- Current action: permanent clean-commit control CLI and versioned Titan regression suite verified; committing them before executing the genuine repeated control
 - Files worked on: `packages/orchestrator/src/mission-orchestrator.js`, `tests/integration/mission-orchestrator.test.js`, and this checkpoint
-- Verification completed: Item 2 collector work used three RED/GREEN cycles; 22/22 focused evaluation/execution tests pass; full Node v24.14.1 suite passes 151/151; production dependency audit finds no known vulnerabilities
+- Verification completed: Item 2 runner and CLI work is test-first; current full Node v24.14.1 suite passes 152/152; syntax checks and production dependency audit pass; dirty-worktree collection is rejected
 - Acceptance result: Titan now hashes, records, re-reads, and independently verifies the exact mission-proof artifact with producer, action, verifier result, mission-state version, timestamp, and predecessor boundary before completion
 - Remaining truth gate: Item 2 has framework code but no genuine frozen repeated control dataset; it is incomplete and blocks any claim that architectural improvement is proven
 - Next action: write a failing test for collection from an actual deterministic regression-suite execution; no later item will be advanced while the measured control remains absent
@@ -32,6 +32,7 @@ This file is the live operator view for the current Athere implementation run.
 13. Item 6 was committed and pushed as `04ff4132d8615ca781f193f8990e9b580382d008`; local and remote `master` matched after push.
 14. A persistent completion goal was armed for Items 1–8 with strict ordered acceptance, test-first implementation, hostile audit, security review, and evidence-before-claims requirements.
 15. TDD added a measured cohort collector, safe per-file Node regression execution, and seed-drift rejection; complete verification passed 151/151.
+16. TDD connected the collector to the safe Node executor and immutable writer; a permanent eight-task `titan-core-v1` suite and clean-commit CLI are ready for the first genuine three-trial run.
 
 ## Checkpoint policy
 

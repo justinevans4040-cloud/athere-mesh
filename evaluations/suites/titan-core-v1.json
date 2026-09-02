@@ -1,0 +1,13 @@
+{
+  "id": "titan-core-v1",
+  "tasks": [
+    { "id": "mission_contract", "file": "tests/contract/mission-contract.test.js" },
+    { "id": "agent_envelope", "file": "tests/contract/agent-envelope.test.js" },
+    { "id": "mission_state", "file": "tests/integration/mission-state-service.test.js" },
+    { "id": "fact_lineage", "file": "tests/integration/mission-state-fact-operations.test.js" },
+    { "id": "artifact_provenance", "file": "tests/integration/artifact-proof.test.js" },
+    { "id": "mission_orchestration", "file": "tests/integration/mission-orchestrator.test.js" },
+    { "id": "recovery", "file": "tests/integration/recovery-coordinator.test.js" },
+    { "id": "functional_api", "file": "tests/integration/functional-api.test.js" }
+  ]
+}
