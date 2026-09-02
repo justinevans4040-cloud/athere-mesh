@@ -1,19 +1,19 @@
 # Athere Active Run
 
-**Status:** Active — correcting completion truth and landing verified Item 6 integration
+**Status:** Active — Item 2 is the mandatory acceptance gate
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: prior “Items 1–8 complete” characterization retracted; completion is governed only by acceptance evidence
-- Current backlog item: PHASE 1 / Item 6 — operational artifact provenance integration, followed immediately by the still-incomplete PHASE 0 / Item 2 measurement gate
-- Current action: land the already test-first Item 6 integration, then stop advancing later items until genuine repeated control measurements are frozen
+- Current backlog item: PHASE 0 / Item 2 — build and execute the Athere evaluation baseline
+- Current action: implement the real trial-execution and telemetry collection path, run repeated unchanged-system trials, and freeze the resulting control artifact
 - Files worked on: `packages/orchestrator/src/mission-orchestrator.js`, `tests/integration/mission-orchestrator.test.js`, and this checkpoint
 - Verification completed: TDD RED reproduced the missing Titan mission-path provenance; GREEN passed 9/9 focused tests; full Node v24.14.1 suite passed 147/147; production dependency audit found no known vulnerabilities
 - Acceptance result: Titan now hashes, records, re-reads, and independently verifies the exact mission-proof artifact with producer, action, verifier result, mission-state version, timestamp, and predecessor boundary before completion
 - Remaining truth gate: Item 2 has framework code but no genuine frozen repeated control dataset; it is incomplete and blocks any claim that architectural improvement is proven
-- Next action: commit and push Item 6 with fresh evidence, then implement and execute the real Item 2 control-collection path rather than substituting synthetic data
+- Next action: write a failing test for collection from an actual deterministic regression-suite execution; no later item will be advanced while the measured control remains absent
 
 ## Checkpoint history
 
@@ -29,6 +29,8 @@ This file is the live operator view for the current Athere implementation run.
 10. Full repository Node >=24 regression could not be executed because the connected execution device was offline; no GitHub Actions workflow was used as a substitute.
 11. Node v24.14.1 became available; Item 6 operational provenance was implemented test-first and passed 9/9 focused plus 147/147 full repository tests.
 12. The prior broad completion label was rejected: Item 2 remains incomplete until real repeated controls are collected and frozen.
+13. Item 6 was committed and pushed as `04ff4132d8615ca781f193f8990e9b580382d008`; local and remote `master` matched after push.
+14. A persistent completion goal was armed for Items 1–8 with strict ordered acceptance, test-first implementation, hostile audit, security review, and evidence-before-claims requirements.
 
 ## Checkpoint policy
 
