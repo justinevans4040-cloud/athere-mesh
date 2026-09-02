@@ -1,6 +1,6 @@
 # Athere Evaluation and Regression Harness
 
-**Status:** production control collection implemented; final self-covering control in progress
+**Status:** production control collection and self-covering frozen baseline verified
 
 The Phase 0 evaluation harness prevents architectural changes from being called improvements without repeated, pinned, comparative evidence.
 
@@ -55,4 +55,6 @@ The harness does not invent unavailable telemetry. An executor or observer must 
 
 ## Current evidence boundary
 
-The first genuine control, `titan-core-v1-6b36adf54204.json`, preserves three measured runs from clean commit `6b36adf54204a822ca37daf4b066cb0b1a8c75a0` on Node 24.14.1. Its hostile audit found that v1 omitted the evaluator's own tests, so it remains preserved evidence but is not the final Item 2 control. The versioned `titan-core-v2` suite adds self-coverage; Item 2 remains incomplete until its clean-commit control is collected, verified, committed, and pushed.
+The first genuine control, `titan-core-v1-6b36adf54204.json`, remains immutable historical evidence. Its hostile audit found that v1 omitted the evaluator's own tests. The final self-covering control, `titan-core-v2-42b3a4fc8a85.json`, records three measured runs from clean commit `42b3a4fc8a854b19636305d282474a7e50fc502f` on Node 24.14.1. All 12 pinned tasks passed in all three trials; the artifact validates as a frozen cohort and has SHA-256 `08f56024a5b4be47c3e8edcd1c48aa7dc2388785392233178d1bb0631b254498`.
+
+This deterministic control legitimately records zero model calls, tokens, inference cost, handoffs, and authoritative runtime mutations because none occur inside this suite boundary. It must not be used to claim improvements to model-driven or distributed behavior; those changes require their own versioned suites and measured controls.
