@@ -241,3 +241,28 @@ test('state service rejects corrupt work partitions and unauthorized active agen
     /unsupported authoritative state field: permissions/,
   );
 });
+
+test('transition operation IDs suppress exact retries and reject conflicting reuse', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-state-idempotency-'));
+  const service = createMissionStateService({ root, clock });
+  const created = await service.create(createInput());
+  const request = {
+    operationId: 'op-inspect-running-1',
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    signal: { type: 'running', agent: 'nyx', detail: 'inspection started' },
+    update: { activeAgents: ['nyx'] },
+  };
+
+  const first = await service.transition(request);
+  const retry = await service.transition(request);
+
+  assert.equal(first.revision, 2);
+  assert.equal(retry.revision, 2);
+  assert.equal(retry.duplicate, true);
+  assert.equal((await service.history({ missionId: created.mission.id })).length, 2);
+  await assert.rejects(
+    service.transition({ ...request, signal: { ...request.signal, detail: 'different operation' } }),
+    /idempotency conflict/i,
+  );
+});

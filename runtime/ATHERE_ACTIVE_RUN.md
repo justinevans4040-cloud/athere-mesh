@@ -1,19 +1,19 @@
 # Athere Active Run
 
-**Status:** Active — Item 2 complete; auditing Item 3 in strict order
+**Status:** Active — Items 2–7 acceptance-audited; Item 8 implementation in progress
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: prior “Items 1–8 complete” characterization retracted; completion is governed only by acceptance evidence
-- Current backlog item: PHASE 1 / Item 3 — move authoritative mission state completely outside model context
-- Current action: audit every Item 3 ownership field and context-destruction acceptance condition before accepting prior completion claims
+- Current backlog item: PHASE 2 / Item 8 — make every state-changing operation idempotent
+- Current action: transition operation IDs now suppress exact retries and reject conflicting reuse; create and atomic fact operations remain to be covered
 - Files worked on: `packages/orchestrator/src/mission-orchestrator.js`, `tests/integration/mission-orchestrator.test.js`, and this checkpoint
 - Verification completed: Item 2 runner and CLI work is test-first; current full Node v24.14.1 suite passes 152/152; syntax checks and production dependency audit pass; dirty-worktree collection is rejected
 - Acceptance result: Titan now hashes, records, re-reads, and independently verifies the exact mission-proof artifact with producer, action, verifier result, mission-state version, timestamp, and predecessor boundary before completion
 - Remaining truth gate: Items 3–8 must each be re-audited in order against their full acceptance conditions; passing tests alone is insufficient
-- Next action: prove Item 3 field ownership and restart survival, then fix every validated gap test-first
+- Next action: extend the same persisted operation-ID contract to mission creation and all atomic fact mutations, then audit timeout, rollback, and failure semantics
 
 ## Checkpoint history
 
@@ -36,6 +36,8 @@ This file is the live operator view for the current Athere implementation run.
 17. Hostile audit preserved v1 but rejected it as final because it omitted evaluator self-coverage.
 18. The self-covering `titan-core-v2` control ran 12 pinned tasks three times from clean commit `42b3a4fc8a85`; all trials passed and the frozen artifact validated at SHA-256 `08f56024a5b4be47c3e8edcd1c48aa7dc2388785392233178d1bb0631b254498`.
 19. Final Item 2 verification passed the full 152-test suite and production dependency audit. Item 2 is complete; no improvement claim is implied without a future comparative candidate run.
+20. Ordered acceptance audit found direct evidence for Items 3–7 and confirmed Item 8 incomplete due to missing universal operation IDs.
+21. Item 8 TDD RED reproduced duplicate transition execution; GREEN now returns exact retries without a new revision and rejects conflicting ID reuse. Full verification passes 153/153; Item 8 remains partial.
 
 ## Checkpoint policy
 
