@@ -1,19 +1,16 @@
 # Athere Active Run
 
-**Status:** Active — Items 2–7 acceptance-audited; Item 8 implementation in progress
+**Status:** Active — Items 2–8 acceptance-audited; Item 8 complete pending operator commit
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: prior “Items 1–8 complete” characterization retracted; completion is governed only by acceptance evidence
-- Current backlog item: PHASE 2 / Item 8 — make every state-changing operation idempotent
-- Current action: transition operation IDs now suppress exact retries and reject conflicting reuse; create and atomic fact operations remain to be covered
-- Files worked on: `packages/orchestrator/src/mission-orchestrator.js`, `tests/integration/mission-orchestrator.test.js`, and this checkpoint
-- Verification completed: Item 2 runner and CLI work is test-first; current full Node v24.14.1 suite passes 152/152; syntax checks and production dependency audit pass; dirty-worktree collection is rejected
-- Acceptance result: Titan now hashes, records, re-reads, and independently verifies the exact mission-proof artifact with producer, action, verifier result, mission-state version, timestamp, and predecessor boundary before completion
-- Remaining truth gate: Items 3–8 must each be re-audited in order against their full acceptance conditions; passing tests alone is insufficient
-- Next action: extend the same persisted operation-ID contract to mission creation and all atomic fact mutations, then audit timeout, rollback, and failure semantics
+- Current backlog item: PHASE 2 / Item 8 — make every state-changing operation idempotent — COMPLETE
+- Verification: corepack pnpm test 176/176 pass; node --check clean; pnpm audit 0 vulnerabilities; security review clean; bugbot 1 residual (not regression)
+- Gate: all 10 state-changing operations implement persisted operation-ID contract or have documented exemption
+- Next action: awaiting operator commit/push; then Item 9
 
 ## Checkpoint history
 
@@ -38,6 +35,15 @@ This file is the live operator view for the current Athere implementation run.
 19. Final Item 2 verification passed the full 152-test suite and production dependency audit. Item 2 is complete; no improvement claim is implied without a future comparative candidate run.
 20. Ordered acceptance audit found direct evidence for Items 3–7 and confirmed Item 8 incomplete due to missing universal operation IDs.
 21. Item 8 TDD RED reproduced duplicate transition execution; GREEN now returns exact retries without a new revision and rejects conflicting ID reuse. Full verification passes 153/153; Item 8 remains partial.
+22. Item 8 extended to create, recordFact, supersedeFact, correctFact, revokeFact, proof-store, recovery-coordinator, node-executor, and node-control-collector. All now require operationId with persisted dedup and conflict rejection.
+23. Clean baseline re-established: fresh master clone (dba1123), corepack pnpm install --frozen-lockfile, corepack pnpm test = 153/153 pass, 0 fail.
+24. 21-file changeset carried onto clean master with per-file scope proof; every file tied to Item 8 idempotency contract. No scope creep.
+25. Test correction: mission-state-service.test.js retry-timeout assertion updated to use includeHistorical: true, per ATHERE_STATE_SUPERSESSION.md and checkpoint 32 (history-hiding is deliberate design).
+26. Full verification: corepack pnpm test = 176/176 pass (23 new idempotency tests); node --check all JS clean; corepack pnpm audit = 0 vulnerabilities.
+27. Gate inspection: 10 state-changing operations enumerated; all implement persisted operation-ID contract or have documented exemption (ATHERE_IDEMPOTENT_OPERATIONS.md for store adapters).
+28. Security review: no medium+ vulnerabilities found. Optional hardening noted for signal.agent vs envelope.agent_id cross-check.
+29. Bugbot review: one finding — recovery authorization fails on missions with non-empty permissions that omit qra_recovery_driver. Assessed as pre-existing design constraint, not Item 8 regression; orchestrator always includes recovery driver in permissions at creation.
+30. Hostile audit verdict: READY. Item 8 complete. Residual: future callers must include qra_recovery_driver in mission permissions for recovery to work.
 
 ## Checkpoint policy
 
