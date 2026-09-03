@@ -224,7 +224,7 @@ test('functional API exposes health, operational team, durable command result, a
     const team = await request(api, '/api/team');
     assert.equal(team.status, 200);
     assert.equal(team.body.enabledAgents, 6);
-    assert.equal(team.body.agents.length, 25);
+    assert.equal(team.body.agents.length, 26);
     assert.deepEqual(
       team.body.agents.filter(({ enabled }) => enabled).map(({ id, executorId, operational }) => ({ id, executorId, operational })),
       [

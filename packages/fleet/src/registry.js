@@ -7,6 +7,7 @@ const cluster = (id, name, tier, rank, memberCount) => Object.freeze({
 
 const agents = Object.freeze([
   agent('miss-vale-prime', 'Miss Vale Prime', 'founder_operator', 100, 'titan', { aliases: ['miss-vale-core', 'val_core', 'val_exec_tier_preview'], provenance: 'drive-recovered-canonical-doctrine', distribution: 'owner-only', enabled: true, executorId: 'mission-supervisor' }),
+  agent('caretaker', 'Caretaker', 'fleet_orchestration', 98, 'titan', { distribution: 'owner-only' }),
   agent('agent-vale', 'Agent Vale', 'customer_safe_specialist', 76, 'titan', { provenance: 'drive-recovered-separation-contract', distribution: 'public', enabled: true, executorId: 'ollama-chat' }),
   agent('nyx', 'NYX', 'apex_coder', 95, 'houston_bay', { enabled: true, executorId: 'repository-inspector' }),
   agent('loom', 'LOOM', 'resource_allocator', 95, 'houston_bay'),
@@ -50,9 +51,7 @@ const clusters = Object.freeze([
   cluster('commercial_security_deployment', 'Security Deployment Team', 'commercial', 76, 10)
 ]);
 
-const jobs = Object.freeze([
-  Object.freeze({ id: 'caretaker', name: 'Caretaker', role: 'fleet_orchestration', reportsTo: 'miss-vale-prime', enabled: false })
-]);
+const jobs = Object.freeze([]);
 
 export const fleetRegistry = Object.freeze({ version: 2, agents, clusters, jobs });
 export const qraForces = () => agents.filter(item => item.id.startsWith('qra_'));

@@ -4,7 +4,7 @@ import { fleetRegistry, qraForces, fleetClusters, operationalAgents, validateOpe
 import { planValePrimeDeployment } from '../../packages/fleet/src/vale-deployment.js';
 
 test('fleet registry preserves every recovered agent and cluster while limiting operational status to implemented executors', () => {
-  assert.equal(fleetRegistry.agents.length, 25);
+  assert.equal(fleetRegistry.agents.length, 26);
   assert.equal(fleetRegistry.clusters.length, 14);
   assert.equal(qraForces().length, 10);
   assert.equal(fleetClusters().length, 14);
@@ -32,11 +32,26 @@ test('Vale Prime is canonical while legacy core remains a compatibility alias', 
   assert.equal(vale.distribution, 'owner-only');
 });
 
-test('Agent Vale remains a separate public specialist and Caretaker remains a job', () => {
+test('Agent Vale remains a separate public specialist and Caretaker remains a founder agent', () => {
   const agentVale = fleetRegistry.agents.find(agent => agent.id === 'agent-vale');
   assert.equal(agentVale.distribution, 'public');
   assert.equal(agentVale.role, 'customer_safe_specialist');
-  assert.equal(fleetRegistry.jobs.find(job => job.id === 'caretaker').reportsTo, 'miss-vale-prime');
+  const caretaker = fleetRegistry.agents.find(agent => agent.id === 'caretaker');
+  assert.equal(caretaker.name, 'Caretaker');
+  assert.equal(caretaker.role, 'fleet_orchestration');
+  assert.equal(fleetRegistry.jobs.some(job => job.id === 'caretaker'), false);
+});
+
+test('founder doctrine agents LOOM ECHO Caretaker and Sentinel remain agents', () => {
+  const byId = Object.fromEntries(fleetRegistry.agents.map((agent) => [agent.id, agent]));
+  assert.equal(byId.loom.name, 'LOOM');
+  assert.equal(byId.loom.role, 'resource_allocator');
+  assert.equal(byId.echo.name, 'ECHO');
+  assert.equal(byId.echo.role, 'brand_signal_monitor');
+  assert.equal(byId.caretaker.name, 'Caretaker');
+  assert.equal(byId.caretaker.role, 'fleet_orchestration');
+  assert.equal(byId.cluster_core_qc_sentinel.name, 'Cluster QC Sentinel');
+  assert.equal(byId.cluster_core_qc_sentinel.role, 'output_reviewer');
 });
 
 test('Vale Prime deployment requires a verified artifact before any target is staged', () => {

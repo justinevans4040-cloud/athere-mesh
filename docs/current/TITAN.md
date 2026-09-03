@@ -19,7 +19,7 @@ The operational team is deliberately limited to implemented executors:
 | QRA Audit Evidence Strike | `proof-verifier` | Proof completion evidence |
 | QRA Recovery Driver | `recovery-coordinator` | Marks interrupted work blocked for operator retry |
 
-Every other recovered registry entry remains preserved and disabled until it has a real executor. Odin is not part of Titan's team or scope.
+Founder-assigned agents remain agents in the fleet registry, including Caretaker, LOOM, ECHO, and Cluster QC Sentinel. Lack of a wired executor does not demote an agent to a job or erase identity. Odin is not part of Titan's team or scope.
 
 ## API boundary
 

@@ -53,7 +53,7 @@ Authoritative current-state references are `STATUS.md`, `docs/current/TITAN.md`,
 
 #### Operational agent set
 
-The registry preserves more recovered identities, but only agents with real executor bindings are enabled. Current enabled set from `packages/fleet/src/registry.js`:
+The registry preserves founder-assigned agent identities. Only agents with real executor bindings are currently `enabled` for live execution. Current enabled set from `packages/fleet/src/registry.js`:
 
 | Agent | Executor ID | Current responsibility |
 |---|---|---|
@@ -64,7 +64,7 @@ The registry preserves more recovered identities, but only agents with real exec
 | QRA Audit Evidence Strike | `proof-verifier` | proof/evidence validation |
 | QRA Recovery Driver | `recovery-coordinator` | interrupted-mission recovery state |
 
-`validateOperationalFleet()` rejects an enabled agent that lacks an executor ID.
+Caretaker, LOOM, ECHO, and Cluster QC Sentinel remain agents. Absence of an executor binding must not demote them out of the agent registry. `validateOperationalFleet()` rejects an enabled agent that lacks an executor ID.
 
 #### Recovery
 

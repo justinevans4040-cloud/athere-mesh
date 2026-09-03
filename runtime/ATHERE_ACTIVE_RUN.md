@@ -1,16 +1,16 @@
 # Athere Active Run
 
-**Status:** Active — Items 2–8 acceptance-audited; Item 8 complete pending operator commit
+**Status:** Active — Items 2–8 acceptance-audited; founder agent IP restore in progress after registry demotion
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: prior “Items 1–8 complete” characterization retracted; completion is governed only by acceptance evidence
-- Current backlog item: PHASE 2 / Item 8 — make every state-changing operation idempotent — COMPLETE
-- Verification: corepack pnpm test 176/176 pass; node --check clean; pnpm audit 0 vulnerabilities; security review clean; bugbot 1 residual (not regression)
-- Gate: all 10 state-changing operations implement persisted operation-ID contract or have documented exemption
-- Next action: awaiting operator commit/push; then Item 9
+- State: Item 8 landed on master (`98ebc4c`, tag `item-8-complete`). Founder agent IP demotion (Caretaker parked in `jobs`) was reversed.
+- Current backlog item: Item 9 paused pending operator direction after agent-IP correction
+- Agent IP restore: Caretaker returned to `agents[]` as `fleet_orchestration`; LOOM, ECHO, Cluster QC Sentinel remain agents; `jobs` no longer holds Caretaker
+- Verification: corepack pnpm test 177/177 pass
+- Next action: operator review of agent IP restore; then resume Item 9 only with explicit go
 
 ## Checkpoint history
 
@@ -44,6 +44,7 @@ This file is the live operator view for the current Athere implementation run.
 28. Security review: no medium+ vulnerabilities found. Optional hardening noted for signal.agent vs envelope.agent_id cross-check.
 29. Bugbot review: one finding — recovery authorization fails on missions with non-empty permissions that omit qra_recovery_driver. Assessed as pre-existing design constraint, not Item 8 regression; orchestrator always includes recovery driver in permissions at creation.
 30. Hostile audit verdict: READY. Item 8 complete. Residual: future callers must include qra_recovery_driver in mission permissions for recovery to work.
+31. Founder agent IP restore: Caretaker removed from `jobs` and restored as agent `fleet_orchestration` in `agents[]`. Doctrine agents LOOM, ECHO, Caretaker, Cluster QC Sentinel asserted by contract tests. Docs/STATUS/baseline updated to forbid identity demotion. corepack pnpm test 177/177.
 
 ## Checkpoint policy
 

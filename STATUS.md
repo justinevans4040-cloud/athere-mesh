@@ -16,4 +16,4 @@
 
 ## Truth boundary
 
-Model chat is advisory only. Mission status, test totals, proof paths, hashes, and completion originate from deterministic executors and stored artifacts. The recovered registry is preserved; entries without a real executor remain disabled. Odin is outside this repository's scope.
+Model chat is advisory only. Mission status, test totals, proof paths, hashes, and completion originate from deterministic executors and stored artifacts. Founder-assigned agents (including Caretaker, LOOM, ECHO, and Cluster QC Sentinel) remain agents in the fleet registry; missing executor wiring is not an identity rewrite. Odin is outside this repository's scope.
