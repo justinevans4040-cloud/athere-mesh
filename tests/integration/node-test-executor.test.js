@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createNodeTestExecutor } from '../../packages/execution/src/node-test-executor.js';
+import { createNodeTestExecutor, nodeExecutionInputBinding } from '../../packages/execution/src/node-test-executor.js';
 
 const summary = [
   'TAP version 13',
@@ -40,6 +40,127 @@ async function repository() {
   return root;
 }
 
+function operationEnvelope(repositoryRoot, overrides = {}) {
+  return {
+    mission_id: 'mission-executor-contract',
+    task_id: 'run-node-tests',
+    operation_id: 'mission-executor-contract-test-execution',
+    agent_id: 'rune',
+    capability_id: 'node-test-runner',
+    state_version: 3,
+    objective: 'Execute the declared Node test suite',
+    allowed_actions: ['execute_node_tests'],
+    required_inputs: ['repository_root', nodeExecutionInputBinding({ repositoryRoot, operation: 'test' })],
+    evidence_requirements: ['terminal Node test summary'],
+    timeout: 300_000,
+    resource_budget: { max_processes: 1, max_output_bytes: 1_048_576 },
+    expected_output_schema: { type: 'object', required: ['command', 'exitCode', 'tests', 'passed', 'failed', 'skipped', 'stdout', 'stderr'] },
+    completion_conditions: ['test process exits and complete totals are parsed'],
+    error_state: null,
+    provenance: { requested_by: 'miss-vale-prime', created_at: '2026-08-29T14:15:00.000Z' },
+    ...overrides,
+  };
+}
+
+function inspectionEnvelope(repositoryRoot, overrides = {}) {
+  return operationEnvelope(repositoryRoot, {
+    task_id: 'inspect-repository',
+    operation_id: 'mission-executor-contract-inspect-execution',
+    agent_id: 'nyx',
+    capability_id: 'repository-inspector',
+    objective: 'Inspect repository metadata and inventory',
+    allowed_actions: ['observe_repository'],
+    state_version: 2,
+    required_inputs: ['repository_root', nodeExecutionInputBinding({ repositoryRoot, operation: 'inspect' })],
+    resource_budget: { max_filesystem_entries: 100_000 },
+    expected_output_schema: { type: 'object', required: ['package', 'sourceFilesOnDisk', 'testFilesOnDisk'] },
+    completion_conditions: ['repository metadata and inventory are returned'],
+    ...overrides,
+  });
+}
+
+test('node executor rejects incompatible agent operations before filesystem or process execution', async () => {
+  const repositoryRoot = await repository();
+  let processCalls = 0;
+  const executor = createNodeTestExecutor({
+    repositoryRoot,
+    execFileImpl: async () => {
+      processCalls += 1;
+      return { stdout: footer({ tests: 1, passed: 1, failed: 0 }), stderr: '' };
+    },
+  });
+  const incompatible = operationEnvelope(repositoryRoot, {
+    agent_id: 'nyx',
+    capability_id: 'repository-inspector',
+    allowed_actions: ['observe_repository'],
+  });
+
+  await assert.rejects(() => executor.runTests({ envelope: incompatible }), /not authorized to execute_node_tests/i);
+  await assert.rejects(
+    () => executor.inspect({ envelope: operationEnvelope(repositoryRoot) }),
+    /not authorized to observe_repository/i,
+  );
+  await assert.rejects(
+    () => executor.runTests({ envelope: operationEnvelope(repositoryRoot, { resource_budget: { max_processes: 2, max_output_bytes: 1_048_576 } }) }),
+    /max_processes/i,
+  );
+  await assert.rejects(
+    () => executor.runTests({ envelope: operationEnvelope(repositoryRoot, { expected_output_schema: { type: 'object', required: ['exitCode'] } }) }),
+    /expected_output_schema/i,
+  );
+  await assert.rejects(
+    () => executor.inspect({ envelope: inspectionEnvelope(repositoryRoot, { resource_budget: { max_filesystem_entries: 0 } }) }),
+    /max_filesystem_entries/i,
+  );
+  await assert.rejects(
+    () => executor.runTests({
+      envelope: operationEnvelope(repositoryRoot, { required_inputs: ['repository_root', `node_execution_input_sha256:${'0'.repeat(64)}`] }),
+    }),
+    /input binding/i,
+  );
+  await assert.rejects(
+    () => executor.runTests({
+      envelope: operationEnvelope(repositoryRoot, {
+        expected_output_schema: {
+          type: 'object',
+          required: ['command', 'exitCode', 'tests', 'passed', 'failed', 'skipped', 'stdout', 'stderr'],
+          properties: { command: { type: 'number' } },
+        },
+      }),
+    }),
+    /expected_output_schema/i,
+  );
+  await assert.rejects(
+    () => executor.runTests({
+      envelope: operationEnvelope(repositoryRoot, { state_version: 99, provenance: { requested_by: 'unknown', created_at: '2026-08-29T14:15:00.000Z' } }),
+    }),
+    /mission context/i,
+  );
+  assert.equal(processCalls, 0);
+});
+
+test('repository inspection aborts its active filesystem read at the envelope deadline', async () => {
+  const repositoryRoot = await repository();
+  let observedAbort = false;
+  const executor = createNodeTestExecutor({
+    repositoryRoot,
+    readFileImpl: async (file, options) => {
+      assert.equal(file, path.join(repositoryRoot, 'package.json'));
+      await new Promise((resolve) => options.signal.addEventListener('abort', resolve, { once: true }));
+      observedAbort = options.signal.aborted;
+      const error = new Error('read aborted');
+      error.name = 'AbortError';
+      throw error;
+    },
+  });
+
+  await assert.rejects(
+    () => executor.inspect({ envelope: inspectionEnvelope(repositoryRoot, { timeout: 10 }) }),
+    (error) => error.code === 'OPERATION_TIMEOUT',
+  );
+  assert.equal(observedAbort, true);
+});
+
 test('node test executor runs Node directly with bounded non-shell options and returns real failure totals', async () => {
   const repositoryRoot = await repository();
   const calls = [];
@@ -55,7 +176,7 @@ test('node test executor runs Node directly with bounded non-shell options and r
     },
   });
 
-  const result = await executor.runTests();
+  const result = await executor.runTests({ envelope: operationEnvelope(repositoryRoot) });
 
   assert.deepEqual(calls, [{
     file: process.execPath,
@@ -82,6 +203,7 @@ test('node test executor runs Node directly with bounded non-shell options and r
 
 test('node test executor runs one declared regression file without invoking a shell', async () => {
   const repositoryRoot = await repository();
+  const testFiles = ['tests/contract/worker.test.js'];
   const calls = [];
   const executor = createNodeTestExecutor({
     repositoryRoot,
@@ -91,10 +213,22 @@ test('node test executor runs one declared regression file without invoking a sh
     },
   });
 
-  const result = await executor.runTests({ testFiles: ['tests/contract/worker.test.js'] });
+  const result = await executor.runTests({
+    envelope: operationEnvelope(repositoryRoot, {
+      timeout: 12_345,
+      resource_budget: { max_processes: 1, max_output_bytes: 4_096 },
+      required_inputs: [
+        'repository_root',
+        nodeExecutionInputBinding({ repositoryRoot, operation: 'test', testFiles }),
+      ],
+    }),
+    testFiles,
+  });
 
   assert.deepEqual(calls[0].args, ['--test', 'tests/contract/worker.test.js']);
   assert.equal(calls[0].options.shell, false);
+  assert.equal(calls[0].options.timeout, 12_345);
+  assert.equal(calls[0].options.maxBuffer, 4_096);
   assert.equal(result.command, 'node --test tests/contract/worker.test.js');
   assert.equal(result.passed, 1);
 });
@@ -107,7 +241,7 @@ test('node test executor inspects repository metadata and source and test files 
   await writeFile(path.join(repositoryRoot, 'tests', 'contract', 'helper.js'), 'not a test file\n');
   const executor = createNodeTestExecutor({ repositoryRoot, execFileImpl: async () => ({ stdout: summary, stderr: '' }) });
 
-  assert.deepEqual(await executor.inspect(), {
+  assert.deepEqual(await executor.inspect({ envelope: inspectionEnvelope(repositoryRoot) }), {
     package: { name: 'test-repository', version: '1.2.3' },
     sourceFilesOnDisk: 1,
     testFilesOnDisk: 1,
@@ -118,7 +252,7 @@ test('node test executor refuses output without a complete test summary', async 
   const repositoryRoot = await repository();
   const executor = createNodeTestExecutor({ repositoryRoot, execFileImpl: async () => ({ stdout: 'TAP version 13\n', stderr: '' }) });
 
-  await assert.rejects(() => executor.runTests(), /missing test summary/i);
+  await assert.rejects(() => executor.runTests({ envelope: operationEnvelope(repositoryRoot) }), /missing test summary/i);
 });
 
 test('node test executor rejects fake complete footer output before the real Node footer', async () => {
@@ -128,7 +262,7 @@ test('node test executor rejects fake complete footer output before the real Nod
     execFileImpl: async () => ({ stdout: `untrusted output\n${footer({ tests: 999, passed: 999, failed: 0 })}\n${footer()}`, stderr: '' }),
   });
 
-  await assert.rejects(() => executor.runTests(), /ambiguous test summary/i);
+  await assert.rejects(() => executor.runTests({ envelope: operationEnvelope(repositoryRoot) }), /ambiguous test summary/i);
 });
 
 test('node test executor rejects an internally inconsistent final test trailer', async () => {
@@ -138,7 +272,7 @@ test('node test executor rejects an internally inconsistent final test trailer',
     execFileImpl: async () => ({ stdout: footer({ tests: 3, passed: 3, failed: 1 }), stderr: '' }),
   });
 
-  await assert.rejects(() => executor.runTests(), /inconsistent test summary/i);
+  await assert.rejects(() => executor.runTests({ envelope: operationEnvelope(repositoryRoot) }), /inconsistent test summary/i);
 });
 
 test('node test executor rejects a fake complete footer after a real Node footer', async () => {
@@ -148,7 +282,7 @@ test('node test executor rejects a fake complete footer after a real Node footer
     execFileImpl: async () => ({ stdout: `${footer()}\n${footer({ tests: 8, passed: 8, failed: 0 })}`, stderr: '' }),
   });
 
-  await assert.rejects(() => executor.runTests(), /ambiguous test summary/i);
+  await assert.rejects(() => executor.runTests({ envelope: operationEnvelope(repositoryRoot) }), /ambiguous test summary/i);
 });
 
 test('node test executor rejects duplicate complete Node footers even when totals match', async () => {
@@ -158,5 +292,5 @@ test('node test executor rejects duplicate complete Node footers even when total
     execFileImpl: async () => ({ stdout: `${footer()}\n${footer()}`, stderr: '' }),
   });
 
-  await assert.rejects(() => executor.runTests(), /ambiguous test summary/i);
+  await assert.rejects(() => executor.runTests({ envelope: operationEnvelope(repositoryRoot) }), /ambiguous test summary/i);
 });

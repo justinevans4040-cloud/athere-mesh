@@ -7,6 +7,7 @@ import { createMission, transitionMission } from '../../packages/contracts/src/m
 import { createMissionStore, saveMission } from '../../packages/mission/src/mission-store.js';
 import { inspectRecovery, recoverInterruptedMissions } from '../../packages/recovery/src/recovery-coordinator.js';
 import { loadMission } from '../../packages/mission/src/mission-store.js';
+import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 
 const clock = (value) => () => value;
 
@@ -79,7 +80,7 @@ test('startup recovery refuses to steal a genuinely active owner lease', async (
 
   await assert.rejects(
     () => recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:02:00.000Z') }),
-    /mission write already in progress/,
+    /mission write already in progress|operation retry timed out/,
   );
   assert.equal((await missionStore.loadMission({ root, missionId })).mission.status, 'accepted');
   assert.equal(await readFile(lockPath, 'utf8'), activeMetadata);
@@ -191,4 +192,46 @@ test('concurrent startup recovery callers converge on one durable recovery block
   assert.equal(record.mission.status, 'blocked');
   assert.equal(record.mission.signals.at(-1).agent, 'qra_recovery_driver');
   assert.equal(record.mission.signals.at(-1).detail, 'interrupted execution requires operator retry');
+});
+
+test('startup recovery preserves authoritative lineage with a stable recovery operation ID', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'athere-authoritative-recovery-'));
+  const state = createMissionStateService({ root, clock: clock('2026-08-23T10:00:00.000Z') });
+  await state.create({
+    operationId: 'op-create-recoverable-1',
+    id: 'mission-authoritative-recovery',
+    objective: 'Recover without corrupting authoritative history',
+    goals: [{ id: 'goal-1', objective: 'Recover' }],
+    subgoals: [{ id: 'recover', objective: 'Recover safely', goalId: 'goal-1' }],
+    dependencies: [],
+    constraints: [],
+    permissions: [{ actor: 'qra_recovery_driver', actions: ['block_interrupted_mission'] }],
+    currentPlan: { id: 'plan-1', version: 1, steps: ['recover'] },
+    environmentObservations: [],
+  });
+
+  assert.deepEqual(await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:00.000Z') }), {
+    recovered: ['mission-authoritative-recovery'], blocked: [], corrupt: [],
+  });
+  assert.equal((await state.verifyHistory({ missionId: 'mission-authoritative-recovery' })).valid, true);
+  const history = await state.history({ missionId: 'mission-authoritative-recovery' });
+  assert.equal(history.at(-1).operationId, 'mission-authoritative-recovery-recovery-block');
+});
+
+test('startup recovery imports legacy snapshots into the authoritative transition ledger', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'athere-legacy-recovery-ledger-'));
+  const missionId = 'legacy-recovery-ledger';
+  await saveMission({ root, mission: createMission({ id: missionId, intent: 'Recover legacy mission', clock: clock('2026-08-23T10:00:00.000Z') }) });
+
+  await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:00.000Z') });
+
+  const record = await loadMission({ root, missionId });
+  assert.equal(record.revision, 2);
+  assert.equal(record.mission.transitionHistory.length, 2);
+  assert.equal(record.mission.transitionHistory[0].action, 'import_legacy_snapshot');
+  assert.equal(record.mission.transitionHistory[1].operationId, 'legacy-recovery-ledger-recovery-block');
+  const state = createMissionStateService({ root });
+  const verification = await state.verifyHistory({ missionId });
+  assert.equal(verification.valid, true);
+  assert.equal(verification.stateVersion, 2);
 });

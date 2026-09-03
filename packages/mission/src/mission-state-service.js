@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import { authorizeAgentOperation } from '../../contracts/src/agent-operation.js';
 import { createMission, transitionMission } from '../../contracts/src/mission.js';
+import { verifyProof } from '../../proof/src/proof-store.js';
 import { loadMission, saveMission } from './mission-store.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -13,6 +16,8 @@ const SELECTABLE_FIELDS = new Set([
   'objective', 'permissions', 'currentFacts',
   ...[...MUTABLE_FIELDS].filter((field) => field !== 'authoritativeFacts'),
 ]);
+const OPERATION_RETRY_TIMEOUT_MS = 5_000;
+const OPERATION_RETRY_DELAY_MS = 10;
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -52,7 +57,7 @@ function stateChanges(before, after) {
   return Object.freeze(changes);
 }
 
-function transitionRecord({ stateVersion, previousVersion, previousTransitionHash, operationId = null, actor, action, timestamp, input, before, after, authorization, evidence }) {
+function transitionRecord({ stateVersion, previousVersion, previousTransitionHash, operationId = null, operationHashInput, actor, action, timestamp, input, before, after, authorization, evidence }) {
   const changes = stateChanges(before, after);
   const record = {
     transitionId: `${after.id}-transition-${stateVersion}`,
@@ -60,7 +65,7 @@ function transitionRecord({ stateVersion, previousVersion, previousTransitionHas
     previousVersion,
     previousTransitionHash: previousTransitionHash ?? null,
     operationId,
-    operationHash: operationId === null ? null : hashValue(input),
+    operationHash: operationId === null ? null : hashValue(operationHashInput ?? input),
     actor,
     action,
     timestamp,
@@ -130,6 +135,7 @@ function verifyTransitionHistory(mission, revision) {
 
 function requiredText(value, label) { if (typeof value !== 'string' || value.trim().length === 0) throw new TypeError(`${label} must be a non-empty string`); return value.trim(); }
 function requiredId(value, label) { const id = requiredText(value, label); if (!SAFE_ID.test(id)) throw new TypeError(`${label} is invalid`); return id; }
+function boundedInteger(value, label, { min, max }) { if (!Number.isSafeInteger(value) || value < min || value > max) throw new TypeError(`${label} must be between ${min} and ${max}`); return value; }
 function optionalId(value, label) { return value === undefined ? undefined : requiredId(value, label); }
 function optionalIsoTimestamp(value, label) { if (value === undefined) return undefined; const timestamp = requiredText(value, label); if (Number.isNaN(Date.parse(timestamp))) throw new TypeError(`${label} must be an ISO timestamp`); return timestamp; }
 function stringArray(value, label) { if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`); return Object.freeze(value.map((item) => requiredText(item, `${label} entry`))); }
@@ -212,15 +218,64 @@ function recordableFact(value) {
 function authoritativeState(input) { const goals = validateGoals(input.goals); const { items: subgoals, ids: subgoalIds } = validateSubgoals(input.subgoals, new Set(goals.map(({ id }) => id))); const currentPlan = validatePlan(input.currentPlan, subgoalIds); return Object.freeze({ objective: requiredText(input.objective, 'objective'), goals, subgoals, dependencies: validateDependencies(input.dependencies, subgoalIds), completedWork: Object.freeze([]), pendingWork: Object.freeze([...currentPlan.steps]), failedWork: Object.freeze([]), evidence: Object.freeze([]), constraints: stringArray(input.constraints, 'constraints'), permissions: validatePermissions(input.permissions), activeAgents: Object.freeze([]), artifactReferences: Object.freeze([]), currentPlan, environmentObservations: validateObservations(input.environmentObservations), authoritativeFacts: validateFacts(input.authoritativeFacts ?? []) }); }
 function validateUpdate(update, mission) { if (!update || typeof update !== 'object' || Array.isArray(update)) throw new TypeError('state update must be an object'); if (Object.hasOwn(update, 'authoritativeFacts')) throw new Error('authoritativeFacts must be changed through atomic fact operations'); for (const field of Object.keys(update)) if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`); const validated = {}; for (const field of ['completedWork', 'pendingWork', 'failedWork', 'constraints', 'activeAgents']) if (Object.hasOwn(update, field)) validated[field] = stringArray(update[field], field); for (const field of ['evidence', 'artifactReferences', 'environmentObservations']) if (Object.hasOwn(update, field)) validated[field] = field === 'environmentObservations' ? validateObservations(update[field]) : records(update[field], field); if (Object.hasOwn(update, 'goals') || Object.hasOwn(update, 'subgoals') || Object.hasOwn(update, 'dependencies') || Object.hasOwn(update, 'currentPlan')) throw new Error('mission graph and currentPlan are immutable in this service version'); const subgoalIds = new Set(mission.subgoals?.map(({ id }) => id) ?? []); const partitions = ['completedWork', 'pendingWork', 'failedWork'].map((field) => [field, validated[field] ?? mission[field] ?? []]); const assigned = new Map(); for (const [, workIds] of partitions) for (const id of workIds) { if (!subgoalIds.has(id)) throw new Error(`work references unknown subgoal: ${id}`); if (assigned.has(id)) throw new Error(`work partitions overlap: ${id}`); assigned.set(id, true); } const permittedActors = new Set((mission.permissions ?? []).map(({ actor }) => actor)); for (const agent of validated.activeAgents ?? mission.activeAgents ?? []) if (!permittedActors.has(agent)) throw new Error(`active agent lacks mission permission: ${agent}`); return Object.freeze(validated); }
 
-export function createMissionStateService({ root, clock = () => new Date().toISOString(), store = { loadMission, saveMission } } = {}) {
+export function createMissionStateService({
+  root,
+  clock = () => new Date().toISOString(),
+  store = { loadMission, saveMission },
+  operationRetryTimeoutMs = OPERATION_RETRY_TIMEOUT_MS,
+  operationRetryDelayMs = OPERATION_RETRY_DELAY_MS,
+} = {}) {
   requiredText(root, 'root'); if (typeof clock !== 'function') throw new TypeError('clock must be a function'); if (typeof store?.loadMission !== 'function' || typeof store?.saveMission !== 'function') throw new TypeError('store must provide loadMission and saveMission');
-  async function commitFactOperation({ missionId, expectedRevision, actor, action, evidence, input, mutate }) {
+  const retryTimeoutMs = boundedInteger(operationRetryTimeoutMs, 'operationRetryTimeoutMs', { min: 1, max: 60_000 });
+  const retryDelayMs = boundedInteger(operationRetryDelayMs, 'operationRetryDelayMs', { min: 1, max: retryTimeoutMs });
+  async function saveOperation({ mission, expectedRevision, operationId, operationHash }) {
+    const deadline = Date.now() + retryTimeoutMs;
+    const retryOrThrow = async (saveError) => {
+      if (saveError?.message !== 'mission write already in progress') throw saveError;
+      if (Date.now() >= deadline) {
+        throw new Error(`operation retry timed out after ${retryTimeoutMs}ms`, { cause: saveError });
+      }
+      await delay(retryDelayMs);
+    };
+    for (;;) {
+      let saveError;
+      try {
+        return await store.saveMission({ root, mission, ...(expectedRevision === undefined ? {} : { expectedRevision }) });
+      } catch (error) {
+        saveError = error;
+      }
+      let current;
+      try {
+        current = await store.loadMission({ root, missionId: mission.id });
+      } catch {
+        await retryOrThrow(saveError);
+        continue;
+      }
+      const prior = (current.mission.transitionHistory ?? []).find((entry) => entry.operationId === operationId);
+      if (prior) {
+        if (prior.operationHash !== operationHash) {
+          throw new Error(`idempotency conflict: operation id already has different content: ${operationId}`);
+        }
+        return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
+      }
+      await retryOrThrow(saveError);
+    }
+  }
+
+  async function commitFactOperation({ operationId, missionId, expectedRevision, actor, action, evidence, input, mutate }) {
     const id = requiredId(missionId, 'mission id');
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) throw new TypeError('revision conflict: expectedRevision must be a positive integer');
+    const operation = requiredId(operationId, 'operation id');
     const current = await store.loadMission({ root, missionId: id });
-    const authorization = requiredFactPermission(current.mission, actor, action);
     const existingHistory = current.mission.transitionHistory ?? [];
     const history = existingHistory.length > 0 ? existingHistory : [legacyImportRecord(current.mission, current.revision, clock())];
+    const operationHashInput = { actor, action, input, evidence: evidence ?? null };
+    const prior = history.find((entry) => entry.operationId === operation);
+    if (prior) {
+      if (prior.operationHash !== hashValue(operationHashInput)) throw new Error(`idempotency conflict: operation id already has different content: ${operation}`);
+      return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
+    }
+    const authorization = requiredFactPermission(current.mission, actor, action);
     const timestamp = clock();
     const authoritativeFacts = validateFacts(mutate(current.mission, timestamp));
     const nextState = Object.freeze({ ...current.mission, authoritativeFacts, updatedAt: timestamp });
@@ -228,6 +283,8 @@ export function createMissionStateService({ root, clock = () => new Date().toISO
       stateVersion: expectedRevision + 1,
       previousVersion: expectedRevision,
       previousTransitionHash: history.at(-1).transitionHash,
+      operationId: operation,
+      operationHashInput,
       actor: authorization.actor,
       action,
       timestamp,
@@ -238,16 +295,53 @@ export function createMissionStateService({ root, clock = () => new Date().toISO
       evidence,
     });
     const mission = Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) });
-    return store.saveMission({ root, mission, expectedRevision });
+    return saveOperation({ mission, expectedRevision, operationId: operation, operationHash: hashValue(operationHashInput) });
   }
 
   return Object.freeze({
-    async create(input) { const id = requiredId(input?.id, 'mission id'); const state = authoritativeState(input); const created = Object.freeze({ ...createMission({ id, intent: state.objective, clock }), ...state }); const lineage = transitionRecord({ stateVersion: 1, previousVersion: 0, previousTransitionHash: null, actor: 'titan', action: 'create', timestamp: created.createdAt, input: state, before: Object.freeze({ id }), after: created, authorization: { actor: 'titan', actions: ['create_mission'], granted: true } }); const mission = Object.freeze({ ...created, transitionHistory: Object.freeze([lineage]) }); return store.saveMission({ root, mission }); },
-    async transition({ operationId, missionId, expectedRevision, signal, update = {} }) { const id = requiredId(missionId, 'mission id'); if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) throw new TypeError('revision conflict: expectedRevision must be a positive integer'); const operation = operationId === undefined ? null : requiredId(operationId, 'operation id'); const current = await store.loadMission({ root, missionId: id }); const existingHistory = current.mission.transitionHistory ?? []; const history = existingHistory.length > 0 ? existingHistory : [legacyImportRecord(current.mission, current.revision, clock())]; const stateUpdate = validateUpdate(update, current.mission); const input = { signal, update: stateUpdate }; if (operation !== null) { const prior = history.find((entry) => entry.operationId === operation); if (prior) { if (prior.operationHash !== hashValue(input)) throw new Error(`idempotency conflict: operation id already has different content: ${operation}`); return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion }); } } const permittedActors = new Set((current.mission.permissions ?? []).map(({ actor }) => actor)); if (permittedActors.size > 0 && !permittedActors.has(signal?.agent)) throw new Error(`transition actor lacks mission permission: ${signal?.agent}`); const transitioned = transitionMission(current.mission, signal, { clock }); const nextState = Object.freeze({ ...transitioned, ...stateUpdate }); const permission = (current.mission.permissions ?? []).find(({ actor }) => actor === signal.agent); const lineage = transitionRecord({ stateVersion: expectedRevision + 1, previousVersion: expectedRevision, previousTransitionHash: history.at(-1).transitionHash, operationId: operation, actor: signal.agent, action: signal.type, timestamp: nextState.updatedAt, input, before: current.mission, after: nextState, authorization: { actor: signal.agent, actions: permission?.actions ?? [], granted: permittedActors.size === 0 || Boolean(permission) }, evidence: signal.evidence }); const mission = Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) }); return store.saveMission({ root, mission, expectedRevision }); },
-    async recordFact({ missionId, expectedRevision, actor, fact, evidence }) {
+    async create(input) { const id = requiredId(input?.id, 'mission id'); const operation = requiredId(input?.operationId, 'operation id'); const state = authoritativeState(input); const created = Object.freeze({ ...createMission({ id, intent: state.objective, clock }), ...state }); const lineage = transitionRecord({ stateVersion: 1, previousVersion: 0, previousTransitionHash: null, operationId: operation, actor: 'titan', action: 'create', timestamp: created.createdAt, input: state, before: Object.freeze({ id }), after: created, authorization: { actor: 'titan', actions: ['create_mission'], granted: true } }); const mission = Object.freeze({ ...created, transitionHistory: Object.freeze([lineage]) }); return saveOperation({ mission, operationId: operation, operationHash: hashValue(state) }); },
+    async transition({ operationId, missionId, expectedRevision, signal, update = {}, envelope }) {
+      const id = requiredId(missionId, 'mission id');
+      if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) throw new TypeError('revision conflict: expectedRevision must be a positive integer');
+      const operation = requiredId(operationId, 'operation id');
+      const current = await store.loadMission({ root, missionId: id });
+      const existingHistory = current.mission.transitionHistory ?? [];
+      const history = existingHistory.length > 0 ? existingHistory : [legacyImportRecord(current.mission, current.revision, clock())];
+      const stateUpdate = validateUpdate(update, current.mission);
+      const authorization = authorizeAgentOperation({ envelope, mission: current.mission, expectedRevision, operationId: operation, signalType: signal?.type });
+      const input = { envelope: authorization.envelope, signal, update: stateUpdate };
+      const prior = history.find((entry) => entry.operationId === operation);
+      if (prior) {
+        if (prior.operationHash !== hashValue(input)) throw new Error(`idempotency conflict: operation id already has different content: ${operation}`);
+        return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
+      }
+      if (signal?.type === 'completed') {
+        const verification = await verifyProof({ root, ref: signal.proof });
+        if (verification.verified !== true) throw new Error(`completion proof verification failed: ${verification.reason ?? 'unknown'}`);
+      }
+      const transitioned = transitionMission(current.mission, signal, { clock });
+      const nextState = Object.freeze({ ...transitioned, ...stateUpdate });
+      const lineage = transitionRecord({
+        stateVersion: expectedRevision + 1,
+        previousVersion: expectedRevision,
+        previousTransitionHash: history.at(-1).transitionHash,
+        operationId: operation,
+        actor: signal.agent,
+        action: authorization.action,
+        timestamp: nextState.updatedAt,
+        input,
+        before: current.mission,
+        after: nextState,
+        authorization: { actor: signal.agent, actions: authorization.permission.actions, granted: true },
+        evidence: signal.evidence,
+      });
+      const mission = Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) });
+      return saveOperation({ mission, expectedRevision, operationId: operation, operationHash: hashValue(input) });
+    },
+    async recordFact({ operationId, missionId, expectedRevision, actor, fact, evidence }) {
       const normalized = recordableFact(fact);
       return commitFactOperation({
-        missionId, expectedRevision, actor, action: 'record_fact', evidence,
+        operationId, missionId, expectedRevision, actor, action: 'record_fact', evidence,
         input: { fact: normalized },
         mutate(mission) {
           const facts = mission.authoritativeFacts ?? [];
@@ -259,11 +353,11 @@ export function createMissionStateService({ root, clock = () => new Date().toISO
         },
       });
     },
-    async supersedeFact({ missionId, expectedRevision, actor, factId, successor, reason, evidence }) {
+    async supersedeFact({ operationId, missionId, expectedRevision, actor, factId, successor, reason, evidence }) {
       const next = successorInput(successor);
       const why = requiredText(reason, 'supersession reason');
       return commitFactOperation({
-        missionId, expectedRevision, actor, action: 'supersede_fact', evidence,
+        operationId, missionId, expectedRevision, actor, action: 'supersede_fact', evidence,
         input: { factId: requiredId(factId, 'fact id'), successor: next, reason: why },
         mutate(mission) {
           const predecessor = currentFactById(mission, factId);
@@ -274,11 +368,11 @@ export function createMissionStateService({ root, clock = () => new Date().toISO
         },
       });
     },
-    async correctFact({ missionId, expectedRevision, actor, factId, successor, reason, evidence }) {
+    async correctFact({ operationId, missionId, expectedRevision, actor, factId, successor, reason, evidence }) {
       const next = successorInput(successor);
       const why = requiredText(reason, 'correction reason');
       return commitFactOperation({
-        missionId, expectedRevision, actor, action: 'correct_fact', evidence,
+        operationId, missionId, expectedRevision, actor, action: 'correct_fact', evidence,
         input: { factId: requiredId(factId, 'fact id'), successor: next, reason: why },
         mutate(mission) {
           const predecessor = currentFactById(mission, factId);
@@ -289,10 +383,10 @@ export function createMissionStateService({ root, clock = () => new Date().toISO
         },
       });
     },
-    async revokeFact({ missionId, expectedRevision, actor, factId, reason, evidence }) {
+    async revokeFact({ operationId, missionId, expectedRevision, actor, factId, reason, evidence }) {
       const why = requiredText(reason, 'revocation reason');
       return commitFactOperation({
-        missionId, expectedRevision, actor, action: 'revoke_fact', evidence,
+        operationId, missionId, expectedRevision, actor, action: 'revoke_fact', evidence,
         input: { factId: requiredId(factId, 'fact id'), reason: why },
         mutate(mission, timestamp) {
           const predecessor = currentFactById(mission, factId);
@@ -302,7 +396,19 @@ export function createMissionStateService({ root, clock = () => new Date().toISO
         },
       });
     },
-    async get({ missionId }) { return store.loadMission({ root, missionId: requiredId(missionId, 'mission id') }); },
+    async get({ missionId, includeHistorical = false }) {
+      if (typeof includeHistorical !== 'boolean') throw new TypeError('includeHistorical must be a boolean');
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      if (includeHistorical) return record;
+      const { transitionHistory: ignoredHistory, ...currentMission } = record.mission;
+      return Object.freeze({
+        ...record,
+        mission: Object.freeze({
+          ...currentMission,
+          authoritativeFacts: currentFacts(record.mission.authoritativeFacts ?? []),
+        }),
+      });
+    },
     async history({ missionId }) { const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') }); return Object.freeze(structuredClone(record.mission.transitionHistory ?? [])); },
     async verifyHistory({ missionId }) { const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') }); return verifyTransitionHistory(record.mission, record.revision); },
     async facts({ missionId, key, includeHistorical = false, includeTentative = false }) { const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') }); const factKey = key === undefined ? undefined : requiredText(key, 'fact key'); if (typeof includeHistorical !== 'boolean') throw new TypeError('includeHistorical must be a boolean'); if (typeof includeTentative !== 'boolean') throw new TypeError('includeTentative must be a boolean'); return currentFacts(record.mission.authoritativeFacts ?? [], { key: factKey, includeHistorical, includeTentative }); },

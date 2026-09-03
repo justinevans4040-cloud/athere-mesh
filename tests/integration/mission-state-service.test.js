@@ -4,11 +4,34 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
+import { createAgentOperationEnvelope } from '../../packages/contracts/src/agent-operation.js';
+import { createMissionStateService as createRawMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 import { loadMission, saveMission } from '../../packages/mission/src/mission-store.js';
 
 const clock = () => '2026-08-26T18:00:00.000Z';
+function withAgentEnvelopes(service) {
+  return {
+    ...service,
+    async transition(request) {
+      if (!request.operationId || request.envelope) return service.transition(request);
+      return service.transition({
+        ...request,
+        envelope: createAgentOperationEnvelope({
+          record: { mission: { id: request.missionId }, revision: request.expectedRevision },
+          operationId: request.operationId,
+          agentId: request.signal.agent,
+          objective: 'exercise an authorized mission transition',
+          createdAt: clock(),
+        }),
+      });
+    },
+  };
+}
+function createMissionStateService(options) {
+  return withAgentEnvelopes(createRawMissionStateService(options));
+}
 const createInput = () => ({
+  operationId: 'op-create-authoritative-1',
   id: 'mission-authoritative-1',
   objective: 'Prove the complete mission state survives agent context loss',
   goals: [{ id: 'goal-1', objective: 'Persist authoritative state' }],
@@ -26,6 +49,7 @@ test('authoritative mission state survives service reconstruction with every own
 
   const created = await service.create(createInput());
   const running = await service.transition({
+    operationId: 'op-persist-authoritative-1',
     missionId: created.mission.id,
     expectedRevision: created.revision,
     signal: { type: 'running', agent: 'nyx', detail: 'inspection complete' },
@@ -65,6 +89,7 @@ test('every authoritative mutation appends hash-bound transition lineage', async
   const service = createMissionStateService({ root, clock });
   const created = await service.create(createInput());
   await service.transition({
+    operationId: 'op-lineage-running-1',
     missionId: created.mission.id,
     expectedRevision: created.revision,
     signal: { type: 'running', agent: 'nyx', detail: 'inspection complete', evidence: { path: 'evidence/tree.json' } },
@@ -78,7 +103,7 @@ test('every authoritative mutation appends hash-bound transition lineage', async
     history.map(({ stateVersion, previousVersion, actor, action, transitionResult, rollbackTargetVersion }) => ({ stateVersion, previousVersion, actor, action, transitionResult, rollbackTargetVersion })),
     [
       { stateVersion: 1, previousVersion: 0, actor: 'titan', action: 'create', transitionResult: 'committed', rollbackTargetVersion: null },
-      { stateVersion: 2, previousVersion: 1, actor: 'nyx', action: 'running', transitionResult: 'committed', rollbackTargetVersion: 1 },
+      { stateVersion: 2, previousVersion: 1, actor: 'nyx', action: 'observe_repository', transitionResult: 'committed', rollbackTargetVersion: 1 },
     ],
   );
   assert.equal(history[1].timestamp, '2026-08-26T18:00:00.000Z');
@@ -138,6 +163,7 @@ test('transition marks an explicit provenance boundary for a pre-ledger mission'
   const legacyService = createMissionStateService({ root, clock, store });
 
   await legacyService.transition({
+    operationId: 'op-legacy-running-1',
     missionId: created.mission.id,
     expectedRevision: created.revision,
     signal: { type: 'running', agent: 'nyx', detail: 'legacy mutation' },
@@ -172,6 +198,7 @@ test('state service rejects unknown mutations and stale revisions', async () => 
 
   await assert.rejects(
     service.transition({
+      operationId: 'op-guard-unknown-1',
       missionId: created.mission.id,
       expectedRevision: created.revision,
       signal: { type: 'running', agent: 'nyx' },
@@ -181,6 +208,7 @@ test('state service rejects unknown mutations and stale revisions', async () => 
   );
   await assert.rejects(
     service.transition({
+      operationId: 'op-guard-revision-1',
       missionId: created.mission.id,
       expectedRevision: 0,
       signal: { type: 'running', agent: 'nyx' },
@@ -197,6 +225,7 @@ test('state service rejects corrupt work partitions and unauthorized active agen
 
   await assert.rejects(
     service.transition({
+      operationId: 'op-integrity-missing-1',
       missionId: created.mission.id,
       expectedRevision: created.revision,
       signal: { type: 'running', agent: 'nyx' },
@@ -206,6 +235,7 @@ test('state service rejects corrupt work partitions and unauthorized active agen
   );
   await assert.rejects(
     service.transition({
+      operationId: 'op-integrity-overlap-1',
       missionId: created.mission.id,
       expectedRevision: created.revision,
       signal: { type: 'running', agent: 'nyx' },
@@ -215,6 +245,7 @@ test('state service rejects corrupt work partitions and unauthorized active agen
   );
   await assert.rejects(
     service.transition({
+      operationId: 'op-integrity-agent-1',
       missionId: created.mission.id,
       expectedRevision: created.revision,
       signal: { type: 'running', agent: 'nyx' },
@@ -224,15 +255,17 @@ test('state service rejects corrupt work partitions and unauthorized active agen
   );
   await assert.rejects(
     service.transition({
+      operationId: 'op-integrity-actor-1',
       missionId: created.mission.id,
       expectedRevision: created.revision,
       signal: { type: 'running', agent: 'unregistered-agent' },
       update: {},
     }),
-    /transition actor lacks mission permission: unregistered-agent/,
+    /unknown operational agent: unregistered-agent/,
   );
   await assert.rejects(
     service.transition({
+      operationId: 'op-integrity-permission-1',
       missionId: created.mission.id,
       expectedRevision: created.revision,
       signal: { type: 'running', agent: 'nyx' },
@@ -240,6 +273,86 @@ test('state service rejects corrupt work partitions and unauthorized active agen
     }),
     /unsupported authoritative state field: permissions/,
   );
+});
+
+test('state transitions reject missing envelopes and capability-incompatible completion attempts', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-state-envelope-guard-'));
+  const rawService = createRawMissionStateService({ root, clock });
+  const created = await rawService.create(createInput());
+  const request = {
+    operationId: 'op-envelope-required-1',
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    signal: { type: 'running', agent: 'nyx' },
+  };
+  await assert.rejects(rawService.transition(request), /agent envelope/i);
+
+  const incompatible = createAgentOperationEnvelope({
+    record: created,
+    operationId: 'op-forged-completion-1',
+    agentId: 'nyx',
+    objective: 'attempt an unauthorized completion',
+    createdAt: clock(),
+  });
+  await assert.rejects(rawService.transition({
+    operationId: 'op-forged-completion-1',
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    signal: {
+      type: 'completed',
+      agent: 'nyx',
+      proof: { verified: true, path: 'proofs/forged.json', sha256: 'a'.repeat(64), operationId: 'forged-proof' },
+    },
+    envelope: incompatible,
+  }), /cannot perform completed transition/i);
+  assert.equal((await rawService.get({ missionId: created.mission.id })).mission.status, 'accepted');
+});
+
+test('the authoritative completion boundary re-reads and verifies proof bytes', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-state-proof-boundary-'));
+  const rawService = createRawMissionStateService({ root, clock });
+  const created = await rawService.create({
+    ...createInput(),
+    operationId: 'op-create-proof-boundary-1',
+    id: 'mission-proof-boundary-1',
+    permissions: [
+      { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
+      { actor: 'qra_emerge_audit', actions: ['verify_proof'] },
+    ],
+  });
+  const runningOperation = 'op-proof-boundary-running-1';
+  const running = await rawService.transition({
+    operationId: runningOperation,
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    signal: { type: 'running', agent: 'miss-vale-prime' },
+    envelope: createAgentOperationEnvelope({
+      record: created,
+      operationId: runningOperation,
+      agentId: 'miss-vale-prime',
+      objective: 'supervise proof-bound completion',
+      createdAt: clock(),
+    }),
+  });
+  const completionOperation = 'op-proof-boundary-complete-1';
+  await assert.rejects(rawService.transition({
+    operationId: completionOperation,
+    missionId: created.mission.id,
+    expectedRevision: running.revision,
+    signal: {
+      type: 'completed',
+      agent: 'qra_emerge_audit',
+      proof: { verified: true, path: 'proofs/missing.json', sha256: 'a'.repeat(64), operationId: 'missing-proof' },
+    },
+    envelope: createAgentOperationEnvelope({
+      record: running,
+      operationId: completionOperation,
+      agentId: 'qra_emerge_audit',
+      objective: 'verify completion proof',
+      createdAt: clock(),
+    }),
+  }), (error) => error.code === 'ENOENT');
+  assert.equal((await rawService.get({ missionId: created.mission.id })).mission.status, 'running');
 });
 
 test('transition operation IDs suppress exact retries and reject conflicting reuse', async () => {
@@ -264,5 +377,91 @@ test('transition operation IDs suppress exact retries and reject conflicting reu
   await assert.rejects(
     service.transition({ ...request, signal: { ...request.signal, detail: 'different operation' } }),
     /idempotency conflict/i,
+  );
+});
+
+test('concurrent retries against the durable store converge on one transition', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-state-concurrent-retry-'));
+  const service = createMissionStateService({ root, clock });
+  const created = await service.create(createInput());
+  const request = {
+    operationId: 'op-concurrent-running-1',
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    signal: { type: 'running', agent: 'nyx', detail: 'concurrent retry' },
+    update: { activeAgents: ['nyx'] },
+  };
+
+  const results = await Promise.all(Array.from({ length: 8 }, () => service.transition(request)));
+
+  assert.equal(results.every(({ revision }) => revision === 2), true);
+  assert.equal(results.filter(({ duplicate }) => duplicate !== true).length, 1);
+  assert.equal((await service.history({ missionId: created.mission.id })).length, 2);
+});
+
+test('operation retry timeout fails without committing partial state', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-operation-timeout-'));
+  const initial = createMissionStateService({ root, clock });
+  const created = await initial.create(createInput());
+  const busyStore = {
+    loadMission,
+    async saveMission() { throw new Error('mission write already in progress'); },
+  };
+  const service = createMissionStateService({
+    root,
+    clock,
+    store: busyStore,
+    operationRetryTimeoutMs: 25,
+    operationRetryDelayMs: 5,
+  });
+
+  await assert.rejects(
+    service.transition({
+      operationId: 'op-timeout-running-1',
+      missionId: created.mission.id,
+      expectedRevision: created.revision,
+      signal: { type: 'running', agent: 'nyx', detail: 'must not commit' },
+      update: { activeAgents: ['nyx'] },
+    }),
+    /operation retry timed out after 25ms/,
+  );
+  const unchanged = await initial.get({ missionId: created.mission.id, includeHistorical: true });
+  assert.equal(unchanged.revision, 1);
+  assert.equal(unchanged.mission.status, 'accepted');
+  assert.equal(unchanged.mission.transitionHistory.length, 1);
+});
+
+test('mission creation operation IDs return the existing mission only for an exact retry', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-create-idempotency-'));
+  const service = createMissionStateService({ root, clock });
+  const request = { ...createInput(), operationId: 'op-create-mission-1' };
+
+  const first = await service.create(request);
+  const retry = await service.create(request);
+
+  assert.equal(first.revision, 1);
+  assert.equal(retry.revision, 1);
+  assert.equal(retry.duplicate, true);
+  assert.equal((await service.history({ missionId: request.id })).length, 1);
+  await assert.rejects(
+    service.create({ ...request, objective: 'different mission' }),
+    /idempotency conflict/i,
+  );
+});
+
+test('state-changing service operations require a caller-supplied operation ID', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-required-operation-id-'));
+  const service = createMissionStateService({ root, clock });
+
+  const { operationId: ignored, ...withoutOperationId } = createInput();
+  await assert.rejects(service.create(withoutOperationId), /operation id must be a non-empty string/i);
+  const created = await service.create({ ...createInput(), operationId: 'op-required-create-1' });
+  await assert.rejects(
+    service.transition({
+      missionId: created.mission.id,
+      expectedRevision: created.revision,
+      signal: { type: 'running', agent: 'nyx' },
+    }),
+    /operation id must be a non-empty string/i,
   );
 });

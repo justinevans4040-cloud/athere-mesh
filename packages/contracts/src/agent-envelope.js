@@ -1,6 +1,7 @@
 const ENVELOPE_FIELDS = Object.freeze([
   'mission_id',
   'task_id',
+  'operation_id',
   'agent_id',
   'capability_id',
   'state_version',
@@ -16,6 +17,7 @@ const ENVELOPE_FIELDS = Object.freeze([
   'provenance',
 ]);
 const FIELD_SET = new Set(ENVELOPE_FIELDS);
+const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
 export class AgentEnvelopeError extends TypeError {
   constructor(code, message) {
@@ -45,6 +47,12 @@ function text(value, label) {
     invalid('INVALID_TEXT', `${label} must be a non-empty string`);
   }
   return value.trim();
+}
+
+function identifier(value, label) {
+  const normalized = text(value, label);
+  if (!SAFE_ID.test(normalized)) invalid('INVALID_IDENTIFIER', `${label} must be a safe identifier`);
+  return normalized;
 }
 
 function integer(value, label, { min = 0, positive = false } = {}) {
@@ -130,6 +138,7 @@ export function parseAgentEnvelope(input) {
   return Object.freeze({
     mission_id: text(envelope.mission_id, 'mission_id'),
     task_id: text(envelope.task_id, 'task_id'),
+    operation_id: identifier(envelope.operation_id, 'operation_id'),
     agent_id: text(envelope.agent_id, 'agent_id'),
     capability_id: text(envelope.capability_id, 'capability_id'),
     state_version: integer(envelope.state_version, 'state_version'),

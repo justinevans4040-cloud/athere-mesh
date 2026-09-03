@@ -78,6 +78,144 @@ test('restart retrieval preserves NYX and RUNE evidence plus proof-bound validat
   assert.deepEqual(immediate.tests, stored.mission.result.tests);
 });
 
+test('orchestrator dispatches NYX and RUNE through complete state-bound agent envelopes', async () => {
+  const root = await workspace();
+  const received = [];
+  const executor = {
+    async inspect({ envelope }) {
+      received.push(envelope);
+      return { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 12, testFilesOnDisk: 60 };
+    },
+    async runTests({ envelope }) {
+      received.push(envelope);
+      return {
+        command: 'node --test', exitCode: 0, tests: 60, passed: 60, failed: 0, skipped: 0,
+        stdout: 'complete', stderr: '',
+      };
+    },
+  };
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    executor,
+    clock: clock(),
+    idFactory: () => 'envelope-dispatch-1111',
+  });
+
+  const result = await orchestrator.execute({ profile: 'owner', text: 'test all of Titan' });
+
+  assert.equal(result.mission.status, 'completed');
+  assert.deepEqual(received.map((envelope) => ({
+    mission_id: envelope.mission_id,
+    task_id: envelope.task_id,
+    operation_id: envelope.operation_id,
+    agent_id: envelope.agent_id,
+    capability_id: envelope.capability_id,
+    state_version: envelope.state_version,
+    allowed_actions: envelope.allowed_actions,
+    required_input_name: envelope.required_inputs[0],
+    input_binding_valid: /^node_execution_input_sha256:[a-f0-9]{64}$/.test(envelope.required_inputs[1]),
+    timeout: envelope.timeout,
+    error_state: envelope.error_state,
+    requested_by: envelope.provenance.requested_by,
+  })), [
+    {
+      mission_id: 'mission-envelope-dispatch-1111',
+      task_id: 'inspect-repository',
+      operation_id: 'mission-envelope-dispatch-1111-inspect-execution',
+      agent_id: 'nyx',
+      capability_id: 'repository-inspector',
+      state_version: 2,
+      allowed_actions: ['observe_repository'],
+      required_input_name: 'repository_root',
+      input_binding_valid: true,
+      timeout: 30_000,
+      error_state: null,
+      requested_by: 'miss-vale-prime',
+    },
+    {
+      mission_id: 'mission-envelope-dispatch-1111',
+      task_id: 'run-node-tests',
+      operation_id: 'mission-envelope-dispatch-1111-test-execution',
+      agent_id: 'rune',
+      capability_id: 'node-test-runner',
+      state_version: 3,
+      allowed_actions: ['execute_node_tests'],
+      required_input_name: 'repository_root',
+      input_binding_valid: true,
+      timeout: 300_000,
+      error_state: null,
+      requested_by: 'miss-vale-prime',
+    },
+  ]);
+  assert.equal(received.every(Object.isFrozen), true);
+});
+
+test('orchestrator rejects executor output that violates the declared operation schema', async () => {
+  const malformedInspectionRoot = await workspace();
+  const malformedInspection = createMissionOrchestrator({
+    root: malformedInspectionRoot,
+    repositoryRoot: malformedInspectionRoot,
+    clock: clock(),
+    idFactory: () => 'malformed-inspection-1111',
+    executor: {
+      async inspect() {
+        return { package: 'not-package-metadata', sourceFilesOnDisk: -1, testFilesOnDisk: 'many' };
+      },
+      async runTests() { throw new Error('must not execute after malformed inspection'); },
+    },
+  });
+
+  const inspectionResult = await malformedInspection.execute({ profile: 'owner', text: 'test all of Titan' });
+  assert.equal(inspectionResult.mission.status, 'blocked');
+  assert.match(inspectionResult.mission.signals.at(-1).detail, /invalid repository inspection result/i);
+  assert.deepEqual(inspectionResult.mission.evidence, []);
+
+  const malformedTestRoot = await workspace();
+  const malformedTest = createMissionOrchestrator({
+    root: malformedTestRoot,
+    repositoryRoot: malformedTestRoot,
+    clock: clock(),
+    idFactory: () => 'malformed-test-result-1111',
+    executor: {
+      async inspect() {
+        return { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 12, testFilesOnDisk: 60 };
+      },
+      async runTests() {
+        return { command: 17, exitCode: 0, tests: 'bogus', passed: -99, failed: 0, skipped: null, stdout: [], stderr: {} };
+      },
+    },
+  });
+
+  const testResult = await malformedTest.execute({ profile: 'owner', text: 'test all of Titan' });
+  assert.equal(testResult.mission.status, 'blocked');
+  assert.match(testResult.mission.signals.at(-1).detail, /invalid Node test result/i);
+  assert.deepEqual(testResult.mission.evidence.map(({ agent }) => agent), ['nyx']);
+
+  const inconsistentTotalsRoot = await workspace();
+  const inconsistentTotals = createMissionOrchestrator({
+    root: inconsistentTotalsRoot,
+    repositoryRoot: inconsistentTotalsRoot,
+    clock: clock(),
+    idFactory: () => 'inconsistent-test-totals-1111',
+    executor: {
+      async inspect() {
+        return { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 12, testFilesOnDisk: 60 };
+      },
+      async runTests() {
+        return {
+          command: 'node --test', exitCode: 0, tests: 100, passed: 1, failed: 0, skipped: 0,
+          stdout: 'incomplete totals', stderr: '',
+        };
+      },
+    },
+  });
+
+  const totalsResult = await inconsistentTotals.execute({ profile: 'owner', text: 'test all of Titan' });
+  assert.equal(totalsResult.mission.status, 'blocked');
+  assert.match(totalsResult.mission.signals.at(-1).detail, /invalid Node test result/i);
+});
+
 async function workspace() {
   return mkdtemp(path.join(tmpdir(), 'titan-mission-orchestrator-'));
 }
@@ -103,6 +241,20 @@ test('golden Titan test mission persists accepted running and completed states w
   assert.deepEqual(result.tests, { tests: 60, passed: 60, failed: 0, skipped: 0 });
   assert.equal(result.mission.proof.verified, true);
   assert.match(result.mission.proof.sha256, /^[a-f0-9]{64}$/);
+  assert.deepEqual(
+    result.mission.transitionHistory.slice(1).map(({ actor, action, input }) => ({
+      actor,
+      action,
+      envelopeAgent: input.envelope.agent_id,
+      envelopeOperation: input.envelope.operation_id,
+    })),
+    [
+      { actor: 'miss-vale-prime', action: 'supervise_mission', envelopeAgent: 'miss-vale-prime', envelopeOperation: `${result.mission.id}-supervision` },
+      { actor: 'nyx', action: 'observe_repository', envelopeAgent: 'nyx', envelopeOperation: `${result.mission.id}-inspection` },
+      { actor: 'rune', action: 'execute_node_tests', envelopeAgent: 'rune', envelopeOperation: `${result.mission.id}-tests` },
+      { actor: 'qra_emerge_audit', action: 'verify_proof', envelopeAgent: 'qra_emerge_audit', envelopeOperation: `${result.mission.id}-completion` },
+    ],
+  );
   assert.equal((await orchestrator.getMission({ missionId: result.mission.id })).revision, 5);
   assert.deepEqual(
     (await bus.read({ missionId: result.mission.id })).map(({ agent }) => agent),
@@ -116,9 +268,10 @@ test('golden Titan test mission persists accepted running and completed states w
   });
   const reloaded = await freshOrchestrator.getMission({ missionId: result.mission.id });
   const proof = JSON.parse(await readFile(path.join(root, reloaded.mission.proof.path), 'utf8'));
-  assert.deepEqual(proof.agentEvidence.map(({ agent }) => agent), ['nyx', 'rune']);
-  assert.deepEqual(proof.agentEvidence[0].result, { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 12, testFilesOnDisk: 60 });
-  assert.deepEqual(proof.agentEvidence[1].result, {
+  assert.equal(proof.operationId, `${result.mission.id}-proof`);
+  assert.deepEqual(proof.payload.agentEvidence.map(({ agent }) => agent), ['nyx', 'rune']);
+  assert.deepEqual(proof.payload.agentEvidence[0].result, { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 12, testFilesOnDisk: 60 });
+  assert.deepEqual(proof.payload.agentEvidence[1].result, {
     command: 'node --test', exitCode: 0, tests: 60, passed: 60, failed: 0, skipped: 0,
   });
 });

@@ -26,6 +26,7 @@ function advisoryEnvelope(agent, text) {
   return parseAgentEnvelope({
     mission_id: `advisory-${requestId}`,
     task_id: `chat-${requestId}`,
+    operation_id: `advisory-operation-${requestId}`,
     agent_id: agent.id,
     capability_id: agent.executorId ?? 'unbound-agent',
     state_version: 0,
@@ -51,6 +52,25 @@ function validatedEnvelope(rawEnvelope) {
   }
 }
 
+async function completeWithinTimeout(complete, request, timeoutMs) {
+  const controller = new AbortController();
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(runtimeError('OPERATION_TIMEOUT', `operation timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => complete({ ...request, signal: controller.signal })),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function createAgentRuntime({ complete }) {
   if (typeof complete !== 'function') throw new TypeError('agent completion provider is required');
   return Object.freeze({
@@ -71,11 +91,11 @@ export function createAgentRuntime({ complete }) {
         throw runtimeError('ACTION_NOT_ALLOWED', 'agent envelope does not permit respond');
       }
 
-      const response = await complete({
+      const response = await completeWithinTimeout(complete, {
         agent: Object.freeze({ id: agent.id, name: agent.name, role: agent.role }),
         envelope,
         text: envelope.objective,
-      });
+      }, envelope.timeout);
       const content = response?.content;
       if (typeof content !== 'string' || content.trim().length === 0) throw runtimeError('EMPTY_RESPONSE', 'model returned an empty response');
       return Object.freeze({ agentId: agent.id, content: content.trim(), live: true });

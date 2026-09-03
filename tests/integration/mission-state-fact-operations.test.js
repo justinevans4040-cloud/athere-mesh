@@ -26,6 +26,7 @@ function createStore() {
 
 function input() {
   return {
+    operationId: 'op-create-facts-1',
     id: 'mission-facts-1',
     objective: 'Maintain authoritative facts safely',
     goals: [{ id: 'goal-1', objective: 'Keep state correct' }],
@@ -49,6 +50,7 @@ test('generic transitions cannot replace authoritative fact collections', async 
   const { service, created } = await createService();
   await assert.rejects(
     service.transition({
+      operationId: 'op-reject-generic-facts-1',
       missionId: created.mission.id,
       expectedRevision: created.revision,
       signal: { type: 'running', agent: 'nyx' },
@@ -61,6 +63,7 @@ test('generic transitions cannot replace authoritative fact collections', async 
 test('supersedeFact atomically retires the current fact and installs one successor', async () => {
   const { service, created } = await createService();
   const saved = await service.supersedeFact({
+    operationId: 'op-supersede-fact-1',
     missionId: created.mission.id,
     expectedRevision: created.revision,
     actor: 'nyx',
@@ -84,9 +87,30 @@ test('supersedeFact atomically retires the current fact and installs one success
   assert.equal((await service.verifyHistory({ missionId: created.mission.id })).valid, true);
 });
 
+test('ordinary mission reads expose current facts only and history requires an explicit request', async () => {
+  const { service, created } = await createService();
+  await service.supersedeFact({
+    operationId: 'op-supersede-read-boundary-1',
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    actor: 'nyx',
+    factId: 'server-ip-v3',
+    successor: { id: 'server-ip-v4', value: '100.64.0.11' },
+    reason: 'verified address change',
+  });
+
+  const ordinary = await service.get({ missionId: created.mission.id });
+  assert.deepEqual(ordinary.mission.authoritativeFacts.map(({ id }) => id), ['server-ip-v4']);
+  assert.equal(ordinary.mission.transitionHistory, undefined);
+  const historical = await service.get({ missionId: created.mission.id, includeHistorical: true });
+  assert.deepEqual(historical.mission.authoritativeFacts.map(({ id }) => id), ['server-ip-v3', 'server-ip-v4']);
+  assert.equal(historical.mission.transitionHistory.at(-1).action, 'supersede_fact');
+});
+
 test('correctFact records correction lineage without exposing the incorrect value as current', async () => {
   const { service, created } = await createService();
   await service.correctFact({
+    operationId: 'op-correct-fact-1',
     missionId: created.mission.id,
     expectedRevision: created.revision,
     actor: 'nyx',
@@ -104,6 +128,7 @@ test('correctFact records correction lineage without exposing the incorrect valu
 test('revokeFact removes a revoked fact from normal agent retrieval and preserves explicit history', async () => {
   const { service, created } = await createService();
   await service.revokeFact({
+    operationId: 'op-revoke-fact-1',
     missionId: created.mission.id,
     expectedRevision: created.revision,
     actor: 'nyx',
@@ -121,6 +146,7 @@ test('recordFact refuses to create a second current fact and requires explicit s
   const { service, created } = await createService();
   await assert.rejects(
     service.recordFact({
+      operationId: 'op-record-duplicate-fact-1',
       missionId: created.mission.id,
       expectedRevision: created.revision,
       actor: 'nyx',
@@ -137,7 +163,7 @@ test('atomic fact operations enforce declared actor capabilities', async () => {
   const service = createMissionStateService({ root: '/state', clock: createClock(), store });
   const created = await service.create(data);
   await assert.rejects(
-    service.revokeFact({ missionId: created.mission.id, expectedRevision: created.revision, actor: 'nyx', factId: 'server-ip-v3', reason: 'test' }),
+    service.revokeFact({ operationId: 'op-denied-revoke-1', missionId: created.mission.id, expectedRevision: created.revision, actor: 'nyx', factId: 'server-ip-v3', reason: 'test' }),
     /actor nyx lacks required permission: revoke_fact/,
   );
 });
@@ -146,6 +172,7 @@ test('atomic fact operations reject stale revisions without changing authority',
   const { service, created } = await createService();
   await assert.rejects(
     service.supersedeFact({
+      operationId: 'op-stale-supersede-1',
       missionId: created.mission.id,
       expectedRevision: created.revision + 1,
       actor: 'nyx',
@@ -158,6 +185,63 @@ test('atomic fact operations reject stale revisions without changing authority',
   assert.deepEqual(await service.facts({ missionId: created.mission.id, key: 'SERVER_IP' }), [
     { id: 'server-ip-v3', key: 'SERVER_IP', value: '100.64.0.10', status: 'current' },
   ]);
+});
+
+test('fact operation IDs suppress exact retries and reject conflicting reuse', async () => {
+  const { service, created } = await createService();
+  const request = {
+    operationId: 'op-supersede-server-ip-1',
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    actor: 'nyx',
+    factId: 'server-ip-v3',
+    successor: { id: 'server-ip-v4', value: '100.64.0.11' },
+    reason: 'verified address change',
+    evidence: { source: 'runtime-probe' },
+  };
+
+  const first = await service.supersedeFact(request);
+  const retry = await service.supersedeFact(request);
+
+  assert.equal(first.revision, 2);
+  assert.equal(retry.revision, 2);
+  assert.equal(retry.duplicate, true);
+  assert.equal((await service.history({ missionId: created.mission.id })).length, 2);
+  await assert.rejects(
+    service.supersedeFact({ ...request, reason: 'different operation' }),
+    /idempotency conflict/i,
+  );
+});
+
+test('concurrent retries converge on one committed fact mutation', async () => {
+  const { service, created } = await createService();
+  const request = {
+    operationId: 'op-concurrent-revoke-1',
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    actor: 'nyx',
+    factId: 'server-ip-v3',
+    reason: 'concurrent verified revocation',
+  };
+
+  const results = await Promise.all([service.revokeFact(request), service.revokeFact(request)]);
+
+  assert.deepEqual(results.map(({ revision }) => revision), [2, 2]);
+  assert.equal(results.filter(({ duplicate }) => duplicate === true).length, 1);
+  assert.equal((await service.history({ missionId: created.mission.id })).length, 2);
+});
+
+test('fact mutations require a caller-supplied operation ID', async () => {
+  const { service, created } = await createService();
+  await assert.rejects(
+    service.recordFact({
+      missionId: created.mission.id,
+      expectedRevision: created.revision,
+      actor: 'nyx',
+      fact: { id: 'region-1', key: 'REGION', value: 'us-west', status: 'current' },
+    }),
+    /operation id must be a non-empty string/i,
+  );
 });
 
 test('mission creation rejects ambiguous current facts', async () => {

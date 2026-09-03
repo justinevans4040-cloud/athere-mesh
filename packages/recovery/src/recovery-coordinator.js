@@ -1,8 +1,10 @@
 import { readdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { transitionMission } from '../../contracts/src/mission.js';
+import { createAgentOperationEnvelope } from '../../contracts/src/agent-operation.js';
 import { loadMission, saveMission } from '../../mission/src/mission-store.js';
+import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 
 const SNAPSHOT = /^([A-Za-z0-9][A-Za-z0-9_-]{0,127})\.json$/;
 const RECOVERY_DETAIL = 'interrupted execution requires operator retry';
@@ -60,18 +62,39 @@ function retryableRecoveryConflict(error) {
   return error?.message === 'mission write already in progress' || /^revision conflict: /.test(error?.message);
 }
 
+function recoveryOperationId(missionId) {
+  const readable = `${missionId}-recovery-block`;
+  if (readable.length <= 128) return readable;
+  return `recovery-block-${createHash('sha256').update(missionId).digest('hex')}`;
+}
+
 async function convergeInterruptedMission({ root, missionId, clock, missionStore }) {
   for (let attempt = 0; attempt < RECOVERY_ATTEMPTS; attempt += 1) {
     const record = await missionStore.loadMission({ root, missionId });
     if (recoveryBlocked(record)) return true;
     if (record.mission.status !== 'accepted' && record.mission.status !== 'running') return false;
-    const blocked = transitionMission(record.mission, {
-      type: 'blocked',
-      agent: 'qra_recovery_driver',
-      detail: RECOVERY_DETAIL,
-    }, { clock });
+    const state = createMissionStateService({ root, clock, store: missionStore });
+    const operationId = recoveryOperationId(missionId);
     try {
-      await missionStore.saveMission({ root, mission: blocked, expectedRevision: record.revision });
+      await state.transition({
+        operationId,
+        missionId,
+        expectedRevision: record.revision,
+        signal: { type: 'blocked', agent: 'qra_recovery_driver', detail: RECOVERY_DETAIL },
+        update: {
+          activeAgents: [],
+          failedWork: record.mission.pendingWork ?? [],
+          pendingWork: [],
+        },
+        envelope: createAgentOperationEnvelope({
+          record,
+          operationId,
+          agentId: 'qra_recovery_driver',
+          objective: RECOVERY_DETAIL,
+          createdAt: record.mission.updatedAt,
+          taskId: 'recover-interrupted-mission',
+        }),
+      });
       return true;
     } catch (error) {
       if (!retryableRecoveryConflict(error) || attempt === RECOVERY_ATTEMPTS - 1) throw error;

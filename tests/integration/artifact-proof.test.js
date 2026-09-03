@@ -12,6 +12,7 @@ test('artifact proof binds exact artifact bytes to producer, verifier, mission s
   const ref = await writeArtifactProof({
     root,
     missionId: 'mission-1',
+    operationId: 'op-artifact-source-1',
     artifactId: 'source-main-js',
     artifact,
     predecessorHash: null,
@@ -25,6 +26,7 @@ test('artifact proof binds exact artifact bytes to producer, verifier, mission s
   assert.match(ref.proofHash, /^[a-f0-9]{64}$/);
   assert.deepEqual(await verifyArtifactProof({ root, ref, artifact }), {
     verified: true,
+    operationId: 'op-artifact-source-1',
     artifactId: 'source-main-js',
     artifactHash: ref.artifactHash,
     predecessorHash: null,
@@ -41,6 +43,7 @@ test('artifact proof rejects different bytes and malformed provenance', async ()
   const ref = await writeArtifactProof({
     root,
     missionId: 'mission-1',
+    operationId: 'op-artifact-config-1',
     artifactId: 'config-json',
     artifact: Buffer.from('{"a":1}\n'),
     predecessorHash: 'a'.repeat(64),
@@ -59,6 +62,7 @@ test('artifact proof rejects different bytes and malformed provenance', async ()
   await assert.rejects(() => writeArtifactProof({
     root,
     missionId: 'mission-1',
+    operationId: 'op-artifact-bad-1',
     artifactId: 'bad',
     artifact: Buffer.from('x'),
     predecessorHash: 'not-a-hash',
@@ -68,4 +72,48 @@ test('artifact proof rejects different bytes and malformed provenance', async ()
     missionStateVersion: 1,
     timestamp: '2026-08-28T14:16:00.000Z',
   }), /predecessor hash/i);
+});
+
+test('artifact proof retries cannot overwrite committed provenance', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'athere-artifact-idempotent-'));
+  const request = {
+    root,
+    missionId: 'mission-artifact-retry',
+    artifactId: 'artifact-1',
+    artifact: Buffer.from('stable artifact'),
+    operationId: 'op-artifact-proof-1',
+    predecessorHash: null,
+    agent: 'qra_emerge_audit',
+    action: 'verified_artifact',
+    verifierResult: { verifier: 'qra_emerge_audit', verified: true },
+    missionStateVersion: 2,
+    timestamp: '2026-08-31T00:00:00.000Z',
+  };
+  const first = await writeArtifactProof(request);
+  const retry = await writeArtifactProof(request);
+  assert.equal(retry.proofHash, first.proofHash);
+  assert.equal(retry.duplicate, true);
+  await assert.rejects(writeArtifactProof({ ...request, timestamp: '2026-08-31T00:00:01.000Z' }), /idempotency conflict/i);
+});
+
+test('artifact proof operation IDs cannot be reused for different artifact bytes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'athere-artifact-operation-binding-'));
+  const request = {
+    root,
+    missionId: 'mission-artifact-operation-binding',
+    artifactId: 'artifact-1',
+    artifact: Buffer.from('first artifact'),
+    operationId: 'op-artifact-proof-binding-1',
+    predecessorHash: null,
+    agent: 'qra_emerge_audit',
+    action: 'verified_artifact',
+    verifierResult: { verifier: 'qra_emerge_audit', verified: true },
+    missionStateVersion: 2,
+    timestamp: '2026-08-31T00:00:00.000Z',
+  };
+  await writeArtifactProof(request);
+  await assert.rejects(
+    writeArtifactProof({ ...request, artifact: Buffer.from('conflicting artifact') }),
+    /idempotency conflict/i,
+  );
 });

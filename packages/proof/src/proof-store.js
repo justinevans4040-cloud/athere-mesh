@@ -1,11 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const PROOF_PATH = /^proofs\/([A-Za-z0-9][A-Za-z0-9_-]{0,127})\.json$/;
 const ARTIFACT_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,191}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
+const OPERATION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
 function canonicalize(value) {
   if (Array.isArray(value)) {
@@ -38,6 +39,40 @@ function requireArtifactId(artifactId) {
   return value;
 }
 
+function requireOperationId(operationId) {
+  const value = requiredText(operationId, 'operation id');
+  if (!OPERATION_ID.test(value)) throw new Error('invalid operation id');
+  return value;
+}
+
+async function publishImmutable({ temporaryPath, finalPath, content, label }) {
+  let duplicate = false;
+  let publicationFailure;
+  try {
+    await writeFile(temporaryPath, content, { encoding: 'utf8', flag: 'wx' });
+    try {
+      await link(temporaryPath, finalPath);
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error;
+      const existing = await readFile(finalPath, 'utf8');
+      if (existing !== content) throw new Error(`idempotency conflict: ${label} already has different content`);
+      duplicate = true;
+    }
+  } catch (error) {
+    publicationFailure = error;
+  }
+  let cleanupFailure;
+  try {
+    await rm(temporaryPath, { force: true });
+  } catch (error) {
+    cleanupFailure = error;
+  }
+  if (publicationFailure && cleanupFailure) throw new AggregateError([publicationFailure, cleanupFailure], `${label} publication and cleanup failed`);
+  if (publicationFailure) throw publicationFailure;
+  if (cleanupFailure) throw cleanupFailure;
+  return duplicate;
+}
+
 function requireSha256(value, label) {
   if (typeof value !== 'string' || !SHA256.test(value)) throw new Error(`invalid ${label}`);
   return value;
@@ -67,12 +102,13 @@ function requireMissionId(missionId) {
   }
 }
 
-function artifactProofPath(root, missionId, artifactId, artifactHash) {
+function artifactProofPath(root, missionId, artifactId, operationId) {
   requireMissionId(missionId);
   const safeArtifactId = requireArtifactId(artifactId);
-  requireSha256(artifactHash, 'artifact hash');
+  const operation = requireOperationId(operationId);
+  const operationPathId = digest(operation).slice(0, 32);
   const proofRoot = path.resolve(root, 'proofs', 'artifacts', missionId);
-  const relativePath = `proofs/artifacts/${missionId}/${safeArtifactId}-${artifactHash}.json`;
+  const relativePath = `proofs/artifacts/${missionId}/${safeArtifactId}-${operationPathId}.json`;
   const resolved = path.resolve(root, ...relativePath.split('/'));
   if (path.dirname(resolved) !== proofRoot) throw new Error('artifact proof path escapes root');
   return { relativePath, resolved, proofRoot };
@@ -90,30 +126,27 @@ function containedProofPath(root, relativePath) {
   return resolved;
 }
 
-export async function writeProof({ root, missionId, payload }) {
+export async function writeProof({ root, missionId, operationId, payload }) {
   requireMissionId(missionId);
-  const relativePath = `proofs/${missionId}.json`;
+  const operation = requireOperationId(operationId);
+  const operationPathId = digest(operation).slice(0, 32);
+  const relativePath = `proofs/${missionId}-${operationPathId}.json`;
   const finalPath = containedProofPath(root, relativePath);
   const proofRoot = path.dirname(finalPath);
   await mkdir(proofRoot, { recursive: true });
 
-  const content = `${JSON.stringify(canonicalize(payload))}\n`;
-  const temporaryPath = path.join(proofRoot, `.${missionId}.${randomUUID()}.tmp`);
-  try {
-    await writeFile(temporaryPath, content, { encoding: 'utf8', flag: 'wx' });
-    await rename(temporaryPath, finalPath);
-  } catch (error) {
-    await rm(temporaryPath, { force: true }).catch(() => {});
-    throw error;
-  }
+  const content = `${JSON.stringify(canonicalize({ operationId: operation, payload }))}\n`;
+  const temporaryPath = path.join(proofRoot, `.${missionId}.${operationPathId}.${randomUUID()}.tmp`);
+  const duplicate = await publishImmutable({ temporaryPath, finalPath, content, label: 'mission proof' });
 
-  return { path: relativePath, sha256: digest(content), verified: true };
+  return { path: relativePath, sha256: digest(content), verified: true, operationId: operation, ...(duplicate ? { duplicate: true } : {}) };
 }
 
 export async function verifyProof({ root, ref }) {
   if (!ref || typeof ref.sha256 !== 'string') {
     throw new Error('invalid proof reference');
   }
+  const operationId = requireOperationId(ref.operationId);
   const proofPath = containedProofPath(root, ref.path);
   const content = await readFile(proofPath);
   const actual = digest(content);
@@ -124,6 +157,15 @@ export async function verifyProof({ root, ref }) {
       reason: 'hash_mismatch',
     };
   }
+  let record;
+  try {
+    record = JSON.parse(content);
+  } catch {
+    return { verified: false, sha256: ref.sha256, reason: 'invalid_proof_record' };
+  }
+  if (record.operationId !== operationId || !Object.hasOwn(record, 'payload')) {
+    return { verified: false, sha256: ref.sha256, reason: 'proof_binding_mismatch' };
+  }
   return { verified: true, sha256: actual };
 }
 
@@ -132,6 +174,7 @@ export async function writeArtifactProof({
   missionId,
   artifactId,
   artifact,
+  operationId,
   predecessorHash = null,
   agent,
   action,
@@ -141,6 +184,7 @@ export async function writeArtifactProof({
 }) {
   requireMissionId(missionId);
   const id = requireArtifactId(artifactId);
+  const operation = requireOperationId(operationId);
   const bytes = requireArtifactBytes(artifact);
   if (predecessorHash !== null) requireSha256(predecessorHash, 'predecessor hash');
   const producerAgent = requiredText(agent, 'agent');
@@ -151,10 +195,11 @@ export async function writeArtifactProof({
   }
   const at = requireTimestamp(timestamp);
   const artifactHash = digest(bytes);
-  const { relativePath, resolved, proofRoot } = artifactProofPath(root, missionId, id, artifactHash);
+  const { relativePath, resolved, proofRoot } = artifactProofPath(root, missionId, id, operation);
   await mkdir(proofRoot, { recursive: true });
 
   const record = Object.freeze({
+    operationId: operation,
     artifactId: id,
     artifactHash,
     predecessorHash,
@@ -167,24 +212,19 @@ export async function writeArtifactProof({
   const content = `${JSON.stringify(canonicalize(record))}\n`;
   const proofHash = digest(content);
   const temporaryPath = path.join(proofRoot, `.${id}.${randomUUID()}.tmp`);
-  try {
-    await writeFile(temporaryPath, content, { encoding: 'utf8', flag: 'wx' });
-    await rename(temporaryPath, resolved);
-  } catch (error) {
-    await rm(temporaryPath, { force: true }).catch(() => {});
-    throw error;
-  }
+  const duplicate = await publishImmutable({ temporaryPath, finalPath: resolved, content, label: 'artifact proof' });
 
-  return Object.freeze({ path: relativePath, proofHash, artifactHash, artifactId: id, verified: true });
+  return Object.freeze({ path: relativePath, proofHash, artifactHash, artifactId: id, operationId: operation, verified: true, ...(duplicate ? { duplicate: true } : {}) });
 }
 
 export async function verifyArtifactProof({ root, ref, artifact }) {
   if (!ref || typeof ref !== 'object') throw new Error('invalid artifact proof reference');
+  const operationId = requireOperationId(ref.operationId);
   const artifactId = requireArtifactId(ref.artifactId);
   const artifactHash = requireSha256(ref.artifactHash, 'artifact hash');
   const proofHash = requireSha256(ref.proofHash, 'proof hash');
   const bytes = requireArtifactBytes(artifact);
-  const { relativePath, resolved } = artifactProofPath(root, ref.missionId ?? ref.path?.split('/')[2], artifactId, artifactHash);
+  const { relativePath, resolved } = artifactProofPath(root, ref.missionId ?? ref.path?.split('/')[2], artifactId, operationId);
   if (ref.path !== relativePath) throw new Error('invalid artifact proof path');
 
   const content = await readFile(resolved);
@@ -201,7 +241,7 @@ export async function verifyArtifactProof({ root, ref, artifact }) {
   } catch {
     return { verified: false, artifactId, artifactHash, reason: 'invalid_proof_record' };
   }
-  if (record.artifactId !== artifactId || record.artifactHash !== artifactHash) {
+  if (record.operationId !== operationId || record.artifactId !== artifactId || record.artifactHash !== artifactHash) {
     return { verified: false, artifactId, artifactHash, reason: 'proof_binding_mismatch' };
   }
   if (record.predecessorHash !== null) requireSha256(record.predecessorHash, 'predecessor hash');
@@ -212,6 +252,7 @@ export async function verifyArtifactProof({ root, ref, artifact }) {
   const at = requireTimestamp(record.timestamp);
   return Object.freeze({
     verified: true,
+    operationId,
     artifactId,
     artifactHash,
     predecessorHash: record.predecessorHash,

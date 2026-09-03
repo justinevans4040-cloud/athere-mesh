@@ -5,7 +5,7 @@ import { createAgentRuntime } from '../../packages/agent/src/agent-runtime.js';
 
 function envelope(overrides = {}) {
   return {
-    mission_id: ' mission-1 ', task_id: 'task-1', agent_id: 'agent-vale', capability_id: 'ollama-chat',
+    mission_id: ' mission-1 ', task_id: 'task-1', operation_id: 'operation-1', agent_id: 'agent-vale', capability_id: 'ollama-chat',
     state_version: 3, objective: ' Give me a live response. ', allowed_actions: ['respond'],
     required_inputs: [], evidence_requirements: ['non-empty response'], timeout: 30000,
     resource_budget: { max_agent_calls: 1, max_tool_calls: 0 },
@@ -19,10 +19,18 @@ function envelope(overrides = {}) {
 test('parseAgentEnvelope returns an immutable normalized protocol record', () => {
   const parsed = parseAgentEnvelope(envelope());
   assert.equal(parsed.mission_id, 'mission-1');
+  assert.equal(parsed.operation_id, 'operation-1');
   assert.equal(parsed.objective, 'Give me a live response.');
   assert.equal(Object.isFrozen(parsed), true);
   assert.equal(Object.isFrozen(parsed.allowed_actions), true);
   assert.equal(Object.isFrozen(parsed.expected_output_schema), true);
+});
+
+test('parseAgentEnvelope requires a stable operation ID', () => {
+  const { operation_id: ignored, ...missingOperationId } = envelope();
+  assert.throws(() => parseAgentEnvelope(missingOperationId), /missing field.*operation_id/i);
+  assert.throws(() => parseAgentEnvelope(envelope({ operation_id: '../retry' })), /operation_id/i);
+  assert.throws(() => parseAgentEnvelope(envelope({ operation_id: 'a'.repeat(129) })), /operation_id/i);
 });
 
 test('parseAgentEnvelope rejects unknown protocol fields', () => {
@@ -58,6 +66,23 @@ test('malformed or incompatible envelopes are rejected before provider execution
   await assert.rejects(() => runtime.respond({ profile: 'owner', envelope: envelope({ capability_id: 'repository-inspector' }) }), /not bound to capability/);
   await assert.rejects(() => runtime.respond({ profile: 'owner', envelope: envelope({ allowed_actions: ['inspect'] }) }), /does not permit respond/);
   assert.equal(calls, 0);
+});
+
+test('agent runtime enforces the operation timeout and exposes an abort signal', async () => {
+  let receivedSignal;
+  const runtime = createAgentRuntime({
+    complete: async ({ signal }) => {
+      receivedSignal = signal;
+      await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+      return { content: 'too late' };
+    },
+  });
+
+  await assert.rejects(
+    runtime.respond({ profile: 'owner', envelope: envelope({ timeout: 10 }) }),
+    (error) => error.code === 'OPERATION_TIMEOUT' && /10ms/.test(error.message),
+  );
+  assert.equal(receivedSignal.aborted, true);
 });
 
 test('legacy advisory chat is wrapped into the universal envelope before provider execution', async () => {
