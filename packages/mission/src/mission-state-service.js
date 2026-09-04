@@ -36,6 +36,9 @@ import { loadMission, saveMission } from './mission-store.js';
 import { projectMissionMemory, authorizeMemoryWrite } from '../../memory/src/typed-memory.js';
 import { retrieveStateAwareMemory } from '../../memory/src/state-aware-retrieval.js';
 import { decideNext, assertExecutiveActor } from '../../executive/src/executive-controller.js';
+import { resolveAuthorityFromHistory } from '../../contracts/src/agent-identity.js';
+import { createAgentIdentityRegistry } from '../../identity/src/agent-identity-registry.js';
+import { createGatedLearningPipeline } from '../../learning/src/gated-learning-pipeline.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const FACT_STATUSES = new Set(['current', 'superseded', 'revoked', 'corrected', 'historical', 'tentative']);
@@ -316,6 +319,9 @@ function validateUpdate(update, mission) {
     if (field === 'epistemicClaims') {
       throw new Error('epistemicClaims must be changed through epistemic operations');
     }
+    if (field === 'learnedKnowledge' || field === 'learningPipeline') {
+      throw new Error('learnedKnowledge must be changed through the gated learning pipeline');
+    }
     if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`);
   }
   const validated = {};
@@ -362,10 +368,24 @@ export function createMissionStateService({
   root,
   clock = () => new Date().toISOString(),
   store = { loadMission, saveMission },
+  identities = createAgentIdentityRegistry(),
+  learning = createGatedLearningPipeline(),
   operationRetryTimeoutMs = OPERATION_RETRY_TIMEOUT_MS,
   operationRetryDelayMs = OPERATION_RETRY_DELAY_MS,
 } = {}) {
   requiredText(root, 'root'); if (typeof clock !== 'function') throw new TypeError('clock must be a function'); if (typeof store?.loadMission !== 'function' || typeof store?.saveMission !== 'function') throw new TypeError('store must provide loadMission and saveMission');
+  if (!identities || typeof identities.assertActive !== 'function' || typeof identities.get !== 'function') {
+    throw new TypeError('identities registry must provide get and assertActive');
+  }
+  if (!learning || typeof learning.runPipeline !== 'function' || typeof learning.storePermanent !== 'function') {
+    throw new TypeError('learning pipeline must provide runPipeline and storePermanent');
+  }
+  function assertRegisteredIdentityActive(actorId) {
+    if (typeof identities.has === 'function' && !identities.has(actorId)) {
+      return;
+    }
+    identities.assertActive(actorId);
+  }
   const retryTimeoutMs = boundedInteger(operationRetryTimeoutMs, 'operationRetryTimeoutMs', { min: 1, max: 60_000 });
   const retryDelayMs = boundedInteger(operationRetryDelayMs, 'operationRetryDelayMs', { min: 1, max: retryTimeoutMs });
   async function saveOperation({ mission, expectedRevision, operationId, operationHash }) {
@@ -416,6 +436,7 @@ export function createMissionStateService({
       return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
     }
     const authorization = requiredFactPermission(current.mission, actor, action);
+    assertRegisteredIdentityActive(authorization.actor);
     const timestamp = clock();
     const authoritativeFacts = validateFacts(mutate(current.mission, timestamp));
     const nextState = Object.freeze({ ...current.mission, authoritativeFacts, updatedAt: timestamp });
@@ -461,6 +482,7 @@ export function createMissionStateService({
       return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
     }
     const authorization = requiredFactPermission(current.mission, actor, action);
+    assertRegisteredIdentityActive(authorization.actor);
     const timestamp = clock();
     const epistemicClaims = Object.freeze(mutate(current.mission, timestamp));
     if (epistemicClaims.length > EPISTEMIC_MAX_CLAIMS) {
@@ -526,6 +548,7 @@ export function createMissionStateService({
       throw new Error(`recovery action mismatch: expected ${action}`);
     }
     const authorizedAgentId = authorization.envelope.agent_id;
+    identities.assertActive(authorizedAgentId);
     const operationHashInput = { envelope: authorization.envelope, action, input };
     const prior = history.find((entry) => entry.operationId === operation);
     if (prior) {
@@ -639,6 +662,7 @@ export function createMissionStateService({
       const stateUpdate = validateUpdate(update, current.mission);
       const authorization = authorizeAgentOperation({ envelope, mission: current.mission, expectedRevision, operationId: operation, signalType: signal?.type });
       const authorizedAgentId = authorization.envelope.agent_id;
+      identities.assertActive(authorizedAgentId);
       if (signal?.agent !== authorizedAgentId) {
         throw new Error(`signal agent ${signal?.agent ?? '<missing>'} does not match envelope agent_id ${authorizedAgentId}`);
       }
@@ -767,6 +791,47 @@ export function createMissionStateService({
     async assessUncertainty({ missionId }) {
       const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
       return assessEpistemicState(record.mission.epistemicClaims ?? []);
+    },
+    async authorityFor({ missionId, operationId }) {
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      const history = record.mission.transitionHistory ?? [];
+      const entry = history.find((item) => item?.operationId === operationId);
+      if (!entry) throw new Error(`unknown operation: ${operationId}`);
+      const identity = identities.get(entry.actor);
+      const answered = resolveAuthorityFromHistory({
+        transitionHistory: history,
+        operationId,
+        identity,
+      });
+      return Object.freeze({
+        ...answered,
+        missionId: record.mission.id,
+        revision: record.revision,
+      });
+    },
+    async agentAuditHistory({ missionId, agentId }) {
+      const id = requiredId(agentId, 'agent id');
+      identities.get(id);
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      const history = record.mission.transitionHistory ?? [];
+      return Object.freeze(history
+        .filter((entry) => entry?.actor === id && entry?.authorization?.granted === true)
+        .map((entry) => Object.freeze({
+          operationId: entry.operationId,
+          action: entry.action ?? null,
+          stateVersion: entry.stateVersion,
+          timestamp: entry.timestamp,
+          identityFingerprint: identities.get(id).identityFingerprint,
+        })));
+    },
+    async storeLearningPermanent(payload) {
+      return learning.storePermanent(payload);
+    },
+    async runLearningPipeline(input) {
+      return learning.runPipeline(input);
+    },
+    listPermanentLearning() {
+      return learning.listPermanent();
     },
     async recordFact({ operationId, missionId, expectedRevision, actor, fact, evidence }) {
       const normalized = recordableFact(fact);

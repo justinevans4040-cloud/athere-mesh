@@ -11,7 +11,7 @@ ATHERE MESH — CONTINUE ONLY. DO NOT REBUILD.
 
 You are continuing justinevans4040-cloud/athere-mesh on master.
 Repo: C:\Users\justi\WORKSPACE\athere-mesh
-HEAD: check runtime/ATHERE_ACTIVE_RUN.md + git log -1 (Items 17–19 may be uncommitted until Justin orders commit/push).
+HEAD: 5dd9eb5 pushed (Items 17–19 + harden 12–19). Items 20–21 may be uncommitted — check git status + ACTIVE_RUN.
 
 HARD LAW (Justin will erase and force start-over if you violate):
 1. ZERO skill load before material work = INSTANT DELETION. No exceptions for “urgent,” “small,” or “obvious.”
@@ -26,12 +26,12 @@ HARD LAW (Justin will erase and force start-over if you violate):
 Authoritative truth (read first, in order):
 1. runtime/ATHERE_ACTIVE_RUN.md
 2. research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md
-3. docs/current/ATHERE_MCP_A2A_INTEROP.md (Item 19)
+3. docs/current/ATHERE_GATED_LEARNING.md (Item 21)
 4. docs/current/ATHERE_THREAD_TIE_IN.md (this file)
 
 Current state (do not reopen as unfinished):
-- Items 2–19 landed in tree (see ACTIVE_RUN). Item 20 (agent cryptographic identity) NOT started.
-- Item 19: MCP/A2A thin transport adapters; Athere keeps moat capabilities; transports cannot carry mission control fields.
+- Items 2–19 + harden pushed at 5dd9eb5.
+- Items 20–21 in tree per ACTIVE_RUN; Item 22 (validated skill library) NOT started unless ordered.
 
 First move every turn with material work:
 List skills/tools you are loading → Read them → Then act.

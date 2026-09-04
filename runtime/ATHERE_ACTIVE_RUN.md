@@ -2,7 +2,7 @@
 
 
 
-**Status:** Active — Items 2–19 landed. **Item 19 MCP/A2A interop** (`docs/current/ATHERE_MCP_A2A_INTEROP.md`). Item 20 not started.
+**Status:** Active — Items 2–21 landed. **Item 21 gated learning** (`docs/current/ATHERE_GATED_LEARNING.md`). Item 22 not started.
 
 **New-thread tie-in (paste block):** `docs/current/ATHERE_THREAD_TIE_IN.md` — continue only; zero skill load = deletion; no rebuild.
 
@@ -11,7 +11,7 @@ This file is the live operator view for the current Athere implementation run.
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **Item 19 landed** — MCP/A2A transport adapters; Athere keeps mission authority / memory / verification / policy / state / learning / executive control. Item 20 not started.
+- Current focus: **Item 21 landed** — gated Experience→Learning pipeline; retained learning must improve vs control without regression. Item 22 not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -369,3 +369,28 @@ This file is the live operator view for the current Athere implementation run.
 - **Tests:** `tests/integration/mea-hostile-items-12-19-harden.test.js` (7/7). Full suite **388 pass / 0 fail / 17 skip** (mesh Redis offline skips). First full run had one unrelated perf flake (`10000 lifecycles` 322ms vs 250ms budget); re-run green.
 - Docs updated for security closes on Items 12–19 current docs.
 - Item 20 not started. No commit/push (harden-only order).
+
+76. **Item 20 — Agent cryptographic identity and capability boundary.** Acceptance: Athere can answer exactly which agent had authority to perform any consequential action.
+
+- **Added:** `packages/contracts/src/agent-identity.js`, `packages/identity/src/agent-identity-registry.js`, `tests/contract/agent-identity.test.js`, `tests/integration/agent-identity-item20.test.js`, `docs/current/ATHERE_AGENT_IDENTITY.md`.
+- **Wired:** default identity registry on mission-state-service; `authorityFor` / `agentAuditHistory`; transition + recovery assert identity not revoked; SHA-256 fingerprints over canonical agent material; capability boundaries (tools / state access / mutation scope / budget / revoke).
+- **Hostile security (local, no GitHub):** revoked agent REJECT on transition; authority from ledger only; unknown operationId REJECT; no caller actor override; no new HTTP; signed envelopes deferred (documented).
+- **Suite:** 394 pass / 0 fail / 17 skip.
+- Item 21 not started.
+
+77. **Safety audit pass — Items 12–20 (local only).** Ordered confirmation that all safety audits were performed before further backlog.
+
+- **Re-ran:** `mea-hostile-items-12-19-harden` (7/7), Item 12 hostile, Item 10–11 reaudit, signal↔envelope + same-update self-cert, Item 20 contract/integration.
+- **Secret scan:** no secrets in Item 20 identity packages/docs.
+- **Hole found OPEN and closed during audit:** revoked registered identities could still `recordFact` / `recordEpistemicClaim` → `assertRegisteredIdentityActive` on fact + epistemic commit paths.
+- **Residual:** unregistered fact actors (e.g. test `fact-keeper`) remain permission-gated only until enrolled in the identity registry; `create` ledger actor `titan` is not a fleet identity (authorityFor fails closed); signed envelopes still deferred.
+- **Suite after close:** 395 pass / 0 fail / 17 skip.
+- Item 21 not started. No commit ordered in this audit step.
+
+78. **Item 21 — Gated Experience → Learning pipeline.** Acceptance: retained learning improves future performance without unacceptable regressions.
+
+- **Added:** `packages/contracts/src/learning-pipeline.js`, `packages/learning/src/gated-learning-pipeline.js`, `tests/contract/learning-pipeline.test.js`, `tests/integration/learning-pipeline-item21.test.js`, `docs/current/ATHERE_GATED_LEARNING.md`.
+- **Wired:** `service.runLearningPipeline` / `storeLearningPermanent` (always reject) / `listPermanentLearning`; stage-ordered gates; QR18-style verify; control comparison; approver allowlist; `learnedKnowledge` forge via transition REJECT.
+- **Hostile security (local, no GitHub):** direct permanent write REJECT; stage skip REJECT; regression REJECT; executor approve REJECT; no new HTTP; mission revision unchanged by learning store.
+- **Suite:** 400 pass / 0 fail / 17 skip (expected +5 Item 21 tests from 395 baseline; re-verify if Windows concurrent-rename flake).
+- Item 22 not started.
