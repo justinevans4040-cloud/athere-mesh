@@ -2,15 +2,15 @@
 
 
 
-**Status:** Active — Items 2–9 acceptance-audited and landed; doctrine-baseline **blocker 1 (cross-host signal transport) READY** — see checkpoint 56. Blockers 2–3 (shared mission state, remote executor dispatch) still open. Item 10 not started.
+**Status:** Active — Items 2–9 landed; Redis bus (blocker 1) landed as `5a9f7d8`. **Founder authority + QRA Sentinel Governor locked** (Vale Prime + The Britt hold dangerous keys; Sentinel makes the blast-radius call). Blockers 2–3 still open. Item 10 not started.
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
-- State: **Item 9 landed as `ea74e0d`.** Doctrine-baseline **blocker 1 (Redis resonance bus) implemented and cross-host proven** — uncommitted until this landing. Transport only: shared mission state and remote executor dispatch are still missing, so the Agent A → Agent B baseline loop is **NOT** complete. Item 10 not started.
-
-- Current focus: doctrine baseline after Items 2–9. Next after this land: either wire the bus into the orchestrator (requires fixing the publish-error swallow first) or shared mission state (blocker 2).
+- State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
+- Current focus: doctrine baseline blocker 2 (shared mission state) next.
+- Transport (`5a9f7d8`) remains proven; orchestrator publish-error swallow still a residual before wiring the bus into missions.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
 

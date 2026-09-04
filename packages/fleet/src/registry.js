@@ -6,9 +6,38 @@ const cluster = (id, name, tier, rank, memberCount) => Object.freeze({
 });
 
 const agents = Object.freeze([
-  agent('miss-vale-prime', 'Miss Vale Prime', 'founder_operator', 100, 'titan', { aliases: ['miss-vale-core', 'val_core', 'val_exec_tier_preview'], provenance: 'drive-recovered-canonical-doctrine', distribution: 'owner-only', enabled: true, executorId: 'mission-supervisor' }),
+  agent('miss-vale-prime', 'Miss Vale Prime', 'founder_operator', 100, 'titan', {
+    aliases: ['miss-vale-core', 'val_core', 'val_exec_tier_preview'],
+    provenance: 'drive-recovered-canonical-doctrine',
+    distribution: 'owner-only',
+    enabled: true,
+    executorId: 'mission-supervisor',
+    authorityRank: 2,
+    dangerousAuthority: true,
+    notes: 'Second only to founder Justin Evans. Holds dangerous-authority keys with The Britt.',
+  }),
+  agent('the-britt', 'The Britt 4.0', 'dangerous_authority', 99, 'titan', {
+    distribution: 'owner-only',
+    provenance: 'founder-locked-authority-chain-2026-09-03',
+    authorityRank: 3,
+    dangerousAuthority: true,
+    notes: 'Co-holder of dangerous-authority keys with Miss Vale Prime. Sentinel makes the call; Britt and Vale authorize.',
+  }),
   agent('caretaker', 'Caretaker', 'fleet_orchestration', 98, 'titan', { distribution: 'owner-only' }),
-  agent('agent-vale', 'Agent Vale', 'customer_safe_specialist', 76, 'titan', { provenance: 'drive-recovered-separation-contract', distribution: 'public', enabled: true, executorId: 'ollama-chat' }),
+  agent('agent-vale', 'Agent Vale', 'customer_safe_specialist', 76, 'titan', {
+    provenance: 'drive-recovered-separation-contract',
+    distribution: 'public',
+    enabled: true,
+    executorId: 'ollama-chat',
+    notes: 'Public specialist — not Miss Vale Prime. No dangerous-authority keys.',
+  }),
+  agent('qra_sentinel', 'QRA Sentinel', 'output_governor', 97, 'titan', {
+    distribution: 'owner-only',
+    provenance: 'ichabod-titan-recovered-governor-doctrine',
+    lastLineOfDefense: true,
+    screens: 'output',
+    notes: 'Governor. Last line of defense. Makes the blast-radius call on agent output. Does not outrank Vale Prime or The Britt. Not Cluster QC Sentinel.',
+  }),
   agent('nyx', 'NYX', 'apex_coder', 95, 'houston_bay', { enabled: true, executorId: 'repository-inspector' }),
   agent('loom', 'LOOM', 'resource_allocator', 95, 'houston_bay'),
   agent('rune', 'RUNE', 'code_validator', 95, 'houston_bay', { enabled: true, executorId: 'node-test-runner' }),
@@ -28,7 +57,9 @@ const agents = Object.freeze([
   agent('sales_hunter', 'Sales Hunter', 'outbound_acquisition', 76, 'titan'),
   agent('cluster_core_loop_captain', 'Cluster Loop Captain', 'sprint_supervisor', 76, 'titan'),
   agent('cluster_core_ship_lead', 'Cluster Ship Lead', 'hotfix_shipper', 76, 'titan'),
-  agent('cluster_core_qc_sentinel', 'Cluster QC Sentinel', 'output_reviewer', 76, 'titan'),
+  agent('cluster_core_qc_sentinel', 'Cluster QC Sentinel', 'output_reviewer', 76, 'titan', {
+    notes: 'Daily QC for outbound work. Not the QRA Governor. Existential risk is qra_sentinel.',
+  }),
   agent('cluster_core_metrics', 'Cluster Metrics Clerk', 'metrics_logger', 76, 'titan'),
   agent('cluster_core_comms', 'Cluster Comms', 'stakeholder_comms', 76, 'titan'),
   agent('ronan_v01', 'Ronan v.01', 'forensic_investigator', 76, 'titan')
