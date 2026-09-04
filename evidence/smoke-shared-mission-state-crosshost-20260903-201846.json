@@ -1,0 +1,100 @@
+{
+  "ok": true,
+  "smoke": "shared-mission-state-crosshost",
+  "stamp": "20260903-201846",
+  "proves": [
+    "Lenovo createMissionStateService write persisted into Ichabod Postgres athere_mesh",
+    "Ichabod createMissionStateService read recovered the same revision and objective",
+    "Byte-identical adapter/service smoke sources on both hosts"
+  ],
+  "doesNotProve": [
+    "doctrine baseline Agent A → Agent B complete",
+    "remote executor dispatch (blocker 3)",
+    "orchestrator auto-wiring of shared store from env",
+    "Postgres listening on Tailscale without SSH tunnel",
+    "multi-writer orchestration beyond revision CAS"
+  ],
+  "transportNote": "Lenovo reached Ichabod Postgres through an SSH local forward 127.0.0.1:15432→127.0.0.1:5432 because cluster 18 listens on loopback only. Ichabod read used the host loopback directly. Same database, two OS hosts.",
+  "singleWriterAssumption": "unchanged — operational contract remains one logical writer; Postgres CAS fail-closes stale revisions",
+  "sourceHashes": {
+    "packages/postgres/src/postgres-mission-state-store.js": "09db9c8c52d6d45248a82d895209ce91c81ba3a0689471e6899370204b7a6c7f",
+    "packages/postgres/src/postgres-mission-store.js": "3b94a8521974657212d1196c9aae1ee0a151819bd690ffd5ab4779af3dff6ec6",
+    "packages/postgres/src/postgres-client.js": "92c3aa5a62021b126637608e568770a51085dd4f6eff64db442e29494dec8496",
+    "packages/mission/src/mission-state-service.js": "54af2bcd4841112bdf2b362511f8cb6b10a935ec3d25848650411be6cac30663",
+    "scripts/smoke-shared-mission-state.js": "0ab03e5ee959a38eb7bbda50ff5d87eb9730116654d5dd61ff567e7a6be5a7fc"
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "missionId": "mission-shared-20260903-201846-r1",
+      "writer": {
+        "hostname": "JustinLenovo",
+        "pid": 17836,
+        "revision": 1,
+        "objective": "Lenovo writer round 1 at 20260903-201846",
+        "storeHost": "127.0.0.1:15432"
+      },
+      "reader": {
+        "hostname": "ichabodcrane",
+        "pid": 2249949,
+        "revision": 1,
+        "objective": "Lenovo writer round 1 at 20260903-201846",
+        "storeHost": "127.0.0.1:5432",
+        "writerObservation": {
+          "key": "writer_host",
+          "value": "JustinLenovo",
+          "source": "smoke",
+          "observedAt": "2026-09-04T03:18:47.135Z"
+        }
+      }
+    },
+    {
+      "round": 2,
+      "missionId": "mission-shared-20260903-201846-r2",
+      "writer": {
+        "hostname": "JustinLenovo",
+        "pid": 19464,
+        "revision": 1,
+        "objective": "Lenovo writer round 2 at 20260903-201846",
+        "storeHost": "127.0.0.1:15432"
+      },
+      "reader": {
+        "hostname": "ichabodcrane",
+        "pid": 2250011,
+        "revision": 1,
+        "objective": "Lenovo writer round 2 at 20260903-201846",
+        "storeHost": "127.0.0.1:5432",
+        "writerObservation": {
+          "key": "writer_host",
+          "value": "JustinLenovo",
+          "source": "smoke",
+          "observedAt": "2026-09-04T03:18:47.867Z"
+        }
+      }
+    },
+    {
+      "round": 3,
+      "missionId": "mission-shared-20260903-201846-r3",
+      "writer": {
+        "hostname": "JustinLenovo",
+        "pid": 348,
+        "revision": 1,
+        "objective": "Lenovo writer round 3 at 20260903-201846",
+        "storeHost": "127.0.0.1:15432"
+      },
+      "reader": {
+        "hostname": "ichabodcrane",
+        "pid": 2250075,
+        "revision": 1,
+        "objective": "Lenovo writer round 3 at 20260903-201846",
+        "storeHost": "127.0.0.1:5432",
+        "writerObservation": {
+          "key": "writer_host",
+          "value": "JustinLenovo",
+          "source": "smoke",
+          "observedAt": "2026-09-04T03:18:48.842Z"
+        }
+      }
+    }
+  ]
+}

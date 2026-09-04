@@ -41,10 +41,20 @@ The service persists this record through the existing atomic, revision-checked m
 ## Production locations
 
 - Service: `packages/mission/src/mission-state-service.js`
-- Durable store: `packages/mission/src/mission-store.js`
-- Titan integration: `packages/orchestrator/src/mission-orchestrator.js`
+- Durable store (offline default): `packages/mission/src/mission-store.js`
+- Shared durable store (opt-in Postgres): `packages/postgres/src/postgres-mission-state-store.js`
+- Titan integration: `packages/orchestrator/src/mission-orchestrator.js` (optional `store` injection; default remains filesystem)
 - Service tests: `tests/integration/mission-state-service.test.js`
+- Shared-store tests: `tests/integration/postgres-mission-state-store.test.js`
 - Orchestrator integration: `tests/integration/mission-orchestrator.test.js`
+
+## Shared state across hosts
+
+When `ATHERE_MESH_POSTGRES_URL` (or `DATABASE_URL`) is configured, callers may open the
+Postgres-backed store and inject it into `createMissionStateService` /
+`createMissionOrchestrator`. The offline default is unchanged. See
+`docs/current/ATHERE_SHARED_MISSION_STATE.md`. The single-writer operational assumption
+is deliberately unchanged; Postgres revision CAS fail-closes stale writers.
 
 ## Implemented reliability layers
 

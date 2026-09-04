@@ -2,15 +2,15 @@
 
 
 
-**Status:** Active — Items 2–9 landed; Redis bus (blocker 1) landed as `5a9f7d8`. **Founder authority + QRA Sentinel Governor locked** (Vale Prime + The Britt hold dangerous keys; Sentinel makes the blast-radius call). Blockers 2–3 still open. Item 10 not started.
+**Status:** Active — Items 2–9 landed; Redis bus (blocker 1) landed as `5a9f7d8`; **shared mission state (blocker 2) landed** (Postgres adapter wired into mission-state-service when configured). **Founder authority + QRA Sentinel Governor locked**. Blocker 3 (remote executor dispatch) still open. Item 10 not started.
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: doctrine baseline blocker 2 (shared mission state) next.
-- Transport (`5a9f7d8`) remains proven; orchestrator publish-error swallow still a residual before wiring the bus into missions.
+- Current focus: doctrine baseline **blocker 3** (remote executor dispatch) next. Blockers 1–2 proven; A→B loop still incomplete.
+- Transport (`5a9f7d8`) remains proven; shared mission state (Postgres opt-in) proven with cross-host evidence; orchestrator publish-error swallow still a residual before wiring the bus into missions.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
 
@@ -188,3 +188,19 @@ This file is the live operator view for the current Athere implementation run.
 - **Documented boundary.** The memory bus stores object references, so a field valued `undefined` or a `Date` survives locally but not across a transport. The Redis bus fingerprints the signal before and after a JSON round trip and throws if they differ. This is the one intentional contract divergence and it fails safe rather than transporting a changed signal.
 
 - **Documentation debt cleared.** `evidence/README.md` documented `pnpm run smoke:redis-s24`, which does not exist in this repository. Replaced with the real `smoke:redis-resonance` reproduce command, and the two S24 artifacts are now explicitly labelled historical and not reproducible from here.
+
+57. **Blocker 2 (shared mission state across hosts) implemented and cross-host proven. State only — the doctrine baseline loop is NOT done; blocker 3 remains.**
+
+- **Inspection.** `createMissionStateService` already accepted a `store` with `loadMission`/`saveMission`. `createPostgresMissionStore` already existed with `load`/`save` + revision CAS but was never adapted onto that contract. `createMissionOrchestrator` always constructed the filesystem-backed service. Single-writer assumption remains documented in `ATHERE_ARCHITECTURE_BASELINE_2026-08-26.md` / `TITAN.md` and is **deliberately unchanged**.
+
+- **TDD.** RED first failed for the right reason (`ERR_MODULE_NOT_FOUND` on `postgres-mission-state-store.js`). GREEN added the adapter + env resolve + `openSharedMissionStateStore`, optional orchestrator `store` injection (default still filesystem), hermetic PGlite cases, and live cases that skip when unconfigured.
+
+- **Added:** `packages/postgres/src/postgres-mission-state-store.js`, `tests/integration/postgres-mission-state-store.test.js`, `scripts/smoke-shared-mission-state.js`, `docs/current/ATHERE_SHARED_MISSION_STATE.md`, `evidence/smoke-shared-mission-state-crosshost-20260903-201846.json`. **Changed:** `packages/orchestrator/src/mission-orchestrator.js` (optional `store` only), `package.json` (`smoke:shared-mission-state`), `docs/current/ATHERE_MISSION_STATE_SERVICE.md`, `docs/current/ATHERE_REDIS_RESONANCE_BUS.md` (blocker-2 pointer), `evidence/README.md`, this file. **No new npm dependencies.** Mission-state-service mutation semantics untouched.
+
+- **Secrets.** Password via `ATHERE_MESH_POSTGRES_PASSWORD_FILE` (mode 600 on Ichabod under `~/.config/athere-mesh-postgres/`). No password in git. Dedicated DB/role `athere_mesh` on Ichabod Postgres 18 (loopback).
+
+- **Offline-first.** With no `ATHERE_MESH_POSTGRES_*` / `DATABASE_URL`, resolve returns `null`, live cases skip with a stated reason, and orchestrator/default service stay on the filesystem store. Full offline suite after this change: **289 tests, 274 pass, 15 skipped, 0 fail** (baseline before change: 281 / 267 pass / 14 skip; delta +8 = hermetic shared-store cases + 1 live skip).
+
+- **Cross-host evidence.** 3 rounds. Process on `JustinLenovo` wrote via SSH local forward `127.0.0.1:15432→ichabod:5432` (cluster listens on loopback only — not Tailscale-native Postgres). Process on `ichabodcrane` read via host loopback. Same revision + objective + writer observation recovered; byte-identical adapter/service smoke sources hashed both ways. Evidence: `evidence/smoke-shared-mission-state-crosshost-20260903-201846.json`.
+
+- **What this does NOT prove:** Agent A → Agent B complete; remote executor dispatch (blocker 3); orchestrator auto-wiring from env; shared proof/artifact stores; multi-writer orchestration beyond revision CAS; Postgres exposed on Tailscale without a tunnel.

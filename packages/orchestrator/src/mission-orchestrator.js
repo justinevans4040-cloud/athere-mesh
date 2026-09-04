@@ -69,6 +69,7 @@ export function createMissionOrchestrator({
   root,
   repositoryRoot,
   bus = createMemoryResonanceBus(),
+  store,
   executor,
   clock = () => new Date().toISOString(),
   idFactory = randomUUID,
@@ -76,8 +77,17 @@ export function createMissionOrchestrator({
   const workspaceRoot = requirePath(root, 'root');
   requirePath(repositoryRoot, 'repositoryRoot');
   if (!bus || typeof bus.publish !== 'function') throw new TypeError('bus must provide publish');
+  if (store !== undefined && (typeof store?.loadMission !== 'function' || typeof store?.saveMission !== 'function')) {
+    throw new TypeError('store must provide loadMission and saveMission');
+  }
   const testExecutor = executorForTests(executor);
-  const missionState = createMissionStateService({ root: workspaceRoot, clock });
+  // Default remains the hermetic filesystem store. Inject a shared store
+  // (Postgres adapter) only when the operator has configured one.
+  const missionState = createMissionStateService({
+    root: workspaceRoot,
+    clock,
+    ...(store === undefined ? {} : { store }),
+  });
 
   let signalSequence = 0;
   async function publish(signal) {

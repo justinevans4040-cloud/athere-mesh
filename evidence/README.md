@@ -12,6 +12,7 @@ Public smoke / demo artifacts for Athere Mesh Titan recreate.
 | [smoke-durable-postgres-20260730-123416.json](./smoke-durable-postgres-20260730-123416.json) | Postgres durable client contract (Lenovo PGlite; Ubuntu when online) |
 | [smoke-arweave-20260730-s24-redis.json](./smoke-arweave-20260730-s24-redis.json) | Arweave permanence — S24 Redis smoke pinned (`winc=0`) |
 | [smoke-redis-resonance-crosshost-20260903-182344.json](./smoke-redis-resonance-crosshost-20260903-182344.json) | Redis resonance bus — signal published on `JustinLenovo` read back by a process on `ichabodcrane`, 3 rounds. **Transport only**; the file's `doesNotProve` list is the authoritative scope. |
+| [smoke-shared-mission-state-crosshost-20260903-201846.json](./smoke-shared-mission-state-crosshost-20260903-201846.json) | Shared mission state — Lenovo `createMissionStateService` write into Ichabod Postgres `athere_mesh`, Ichabod read same revision/objective, 3 rounds. **State only**; blocker 3 (remote executor) still open. |
 | [arweave/](./arweave/) | Arweave permanence folder + README |
 | [demos/](./demos/) | Slice 0–3 demo MP4s |
 | [nosana/](./nosana/) | Nosana GPU smoke (started then stopped) |
@@ -36,6 +37,20 @@ node scripts/smoke-redis-resonance.js read --mission mission-demo
 
 The password is never stored in this repository. Supply it with
 `ATHERE_MESH_REDIS_PASSWORD_FILE` (preferred) or `ATHERE_MESH_REDIS_PASSWORD`.
+
+Cross-host shared mission state (Postgres). Write from this host through the
+configured URL, then read on the database host:
+
+```text
+ATHERE_MESH_POSTGRES_URL=postgres://athere_mesh@127.0.0.1:15432/athere_mesh \
+ATHERE_MESH_POSTGRES_PASSWORD_FILE=/path/to/mesh-postgres.pass \
+corepack pnpm run smoke:shared-mission-state write --mission mission-shared-demo
+
+# then, on the database host (loopback):
+ATHERE_MESH_POSTGRES_URL=postgres://athere_mesh@127.0.0.1:5432/athere_mesh \
+ATHERE_MESH_POSTGRES_PASSWORD_FILE=$HOME/.config/athere-mesh-postgres/mesh-postgres.pass \
+node scripts/smoke-shared-mission-state.js read --mission mission-shared-demo
+```
 
 **Stale command removed:** earlier revisions of this file documented
 `corepack pnpm run smoke:redis-s24` against the S24 Termux node. That script does

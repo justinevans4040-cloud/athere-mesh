@@ -107,14 +107,15 @@ unreachable; in the offline default they skip without touching the network.
 
 - **The doctrine baseline loop is not complete.** Agent A → Agent B with zero
   human intervention needs three things; this is one of them.
-- **No shared mission state.** `packages/mission/src/mission-store.js` is
-  local-filesystem only. Two hosts do not share authoritative mission state.
 - **No remote executor dispatch.** Nothing lets a mission on one host make an
   executor on another host perform work.
 - **Nothing in the orchestrator uses this yet.**
 - **No consumer semantics.** `read` returns the whole mission stream. There is
   no blocking read, no consumer group, no delivery tracking, no trimming.
 - **Single seed host.** No replication or failover.
+
+Shared authoritative mission state is a separate path — see
+`docs/current/ATHERE_SHARED_MISSION_STATE.md` (blocker 2).
 
 ## Known residual: the orchestrator swallows publish errors
 
