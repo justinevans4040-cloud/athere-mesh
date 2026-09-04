@@ -18,7 +18,15 @@
 - `workflowGraph` is immutable after create
 - QR18 Level 5 uses `assessMissionPath` when a graph is present
 
+## Path rules (enforced)
+
+- `depends_on` / `blocks`: dependent cannot complete before prerequisite/`from`
+- Plan order: later plan steps cannot complete while earlier steps are incomplete, unless an `alternate_path` edge to that later step is **armed** (`from` already completed)
+- Unknown ids in completed/pending/failed work are invalid
+- `supersedes` / `satisfies` do not waive `depends_on` or plan order
+- `workflowGraph` is immutable after create
+
 ## What this does not do
 
-- Item 12 checkpoints / branching / rollback / quarantine (edge kinds `rollback_to` / `retry_after` / `alternate_path` are representable but not yet an execution engine for recovery)
+- Item 12 checkpoints / branching / rollback / quarantine (edge kinds `rollback_to` / `retry_after` / `alternate_path` are representable; alternate_path is path-armed only — not a full recovery engine)
 - Mutating the plan graph mid-mission (still create-time authority)

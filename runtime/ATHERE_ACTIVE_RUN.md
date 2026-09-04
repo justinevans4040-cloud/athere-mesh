@@ -246,3 +246,12 @@ This file is the live operator view for the current Athere implementation run.
 - **Wired:** mission create persists `workflowGraph`; dependencies normalize to typed edges; work-partition updates call `assertValidMissionPath`; QR18 Level 5 uses path assessment when a graph exists.
 - **Unchanged:** MEA/QR18 completion gates; Item 12 recovery engine not started.
 - **Hostile probes:** certify `verify` before `inspect` → `mission path invalid`; mutate `workflowGraph` after create → REJECT; in-order certify ACCEPT.
+
+63. **Hostile re-audit after Item 11 READY (try-to-break).** Four holes found OPEN; READY retracted until closed.
+
+- **H1 alternate_path waive:** `assessMissionPath` treated any `alternate_path` target as plan-order exempt without requiring `from` completed — service accepted completing `c` with `a`/`b` pending. Closed: alternate only arms when `from` is completed.
+- **H2 QR18 L5 legacy:** with no `workflowGraph` and empty dependencies, Level 5 accepted skipped plan steps (`completedWork: ['c','b']`). Closed: legacy L5 also enforces `currentPlan` order.
+- **H3 case-skew orphans:** `completedWork: ['verify']` against nodes `Inspect`/`Verify` reported path valid (no edge fired). Closed: unknown work node ids are violations.
+- **H4 supersedes:** confirmed still REJECT for skipping depends_on (no hole).
+- **Kept RED→GREEN:** `tests/integration/mea-hostile-item10-item11-reaudit.test.js`. Forged QR18 bag still REJECT.
+- Item 12 not started.

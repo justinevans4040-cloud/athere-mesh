@@ -195,6 +195,21 @@ export function assessMissionPath({
   const failed = new Set(failedWork);
   const violations = [];
 
+  const knownWorkNodes = new Set();
+  for (const node of workflowGraph.nodes) {
+    if (node.kind === 'subgoal') knownWorkNodes.add(node.id);
+    if (node.kind === 'action' && typeof node.subgoalId === 'string') knownWorkNodes.add(node.subgoalId);
+  }
+  for (const id of completedWork) {
+    if (!knownWorkNodes.has(id)) violations.push(`unknown_work_node:${id}`);
+  }
+  for (const id of pendingWork) {
+    if (!knownWorkNodes.has(id)) violations.push(`unknown_work_node:${id}`);
+  }
+  for (const id of failedWork) {
+    if (!knownWorkNodes.has(id)) violations.push(`unknown_work_node:${id}`);
+  }
+
   for (const id of completed) {
     if (pending.has(id) || failed.has(id)) {
       violations.push(`partition_overlap:${id}`);
@@ -222,29 +237,30 @@ export function assessMissionPath({
     }
   }
 
-  // Plan order: if plan steps exist as subgoal nodes, earlier incomplete steps cannot
-  // be skipped while a later step is completed (unless an alternate_path edge covers it).
+  // Plan order: earlier incomplete steps cannot be skipped while a later step is
+  // completed, unless an alternate_path edge to that later step has its `from`
+  // node already completed (armed alternate). A bare alternate_path declaration
+  // does not waive order.
   const planActions = workflowGraph.nodes
     .filter((node) => node.kind === 'action' && typeof node.subgoalId === 'string')
     .map((node) => node.subgoalId);
-  const alternateTargets = new Set(
-    workflowGraph.edges.filter((edge) => edge.kind === 'alternate_path').map((edge) => edge.to),
-  );
   for (let index = 0; index < planActions.length; index += 1) {
     const step = planActions[index];
     if (!completed.has(step)) continue;
+    const alternateArmed = workflowGraph.edges.some(
+      (edge) => edge.kind === 'alternate_path'
+        && edge.to === step
+        && completed.has(edge.from),
+    );
+    if (alternateArmed) continue;
     for (let earlier = 0; earlier < index; earlier += 1) {
       const prior = planActions[earlier];
       if (completed.has(prior) || failed.has(prior)) continue;
-      if (alternateTargets.has(step)) continue;
-      // depends_on edges already cover explicit prerequisites; plan-order catches silent skips.
       const hasDepends = workflowGraph.edges.some(
         (edge) => edge.kind === 'depends_on' && edge.from === prior && edge.to === step,
       );
       if (hasDepends || earlier === index - 1) {
-        if (!completed.has(prior)) {
-          violations.push(`plan_order:${step}->skips:${prior}`);
-        }
+        violations.push(`plan_order:${step}->skips:${prior}`);
       }
     }
   }

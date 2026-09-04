@@ -162,6 +162,17 @@ function evaluateWorkflow(mission) {
         broken.push(`${dependent} without ${prerequisite}`);
       }
     }
+    const planSteps = Array.isArray(mission?.currentPlan?.steps) ? mission.currentPlan.steps : [];
+    for (let index = 0; index < planSteps.length; index += 1) {
+      const step = planSteps[index];
+      if (typeof step !== 'string' || !completedSet.has(step)) continue;
+      for (let earlier = 0; earlier < index; earlier += 1) {
+        const prior = planSteps[earlier];
+        if (typeof prior !== 'string') continue;
+        if (completedSet.has(prior) || failed.includes(prior)) continue;
+        broken.push(`plan_order:${step}->skips:${prior}`);
+      }
+    }
     const verified = pending.length === 0 && failed.length === 0 && broken.length === 0 && completed.length > 0;
     return levelRecord({
       level: 5,
