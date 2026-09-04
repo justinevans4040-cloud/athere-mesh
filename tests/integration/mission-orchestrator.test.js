@@ -414,3 +414,88 @@ test('telemetry publishing failures cannot overturn a durably completed mission'
   });
   assert.equal((await freshOrchestrator.getMission({ missionId: result.mission.id })).mission.status, 'completed');
 });
+
+// Network buses (Redis) set failClosedOnPublish. A swallowed transport failure
+ // would look like "signal delivered" while the remote stream stays empty —
+ // the exact silent-empty-stream failure the seed guard exists to prevent.
+test('network-bus publish failure fails closed and does not complete the mission', async () => {
+  const root = await workspace();
+  const throwingBus = {
+    failClosedOnPublish: true,
+    async publish() { throw new Error('redis connection failed: ECONNREFUSED'); },
+  };
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    bus: throwingBus,
+    executor: passingExecutor(),
+    clock: clock(),
+    idFactory: () => '44444444-4444-4444-8444-444444444444',
+  });
+
+  await assert.rejects(
+    () => orchestrator.execute({ profile: 'owner', text: 'Run every Titan test.' }),
+    /redis connection failed|ECONNREFUSED|resonance publish failed/i,
+  );
+});
+
+test('orchestrator dispatches run-node-tests through an injected remote work queue', async () => {
+  const root = await workspace();
+  const { createMemoryRemoteWorkQueue } = await import('../../packages/execution/src/remote-work-queue.js');
+  const { runRemoteExecutorWorkerOnce } = await import('../../packages/execution/src/remote-executor-worker.js');
+  const queue = createMemoryRemoteWorkQueue();
+
+  const worker = (async () => {
+    for (;;) {
+      const report = await runRemoteExecutorWorkerOnce({
+        workQueue: queue,
+        workerId: 'orchestrator-remote-worker',
+        identity: { hostname: 'ichabodcrane', pid: 77 },
+        claimTimeoutMs: 50,
+        executor: {
+          async runTests() {
+            return {
+              command: 'node --test',
+              exitCode: 0,
+              tests: 4,
+              passed: 4,
+              failed: 0,
+              skipped: 0,
+              stdout: 'ok',
+              stderr: '',
+            };
+          },
+        },
+      });
+      if (report.reason !== 'no-job') return report;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  })();
+
+  const orchestrator = createMissionOrchestrator({
+    root,
+    repositoryRoot: root,
+    bus: createMemoryResonanceBus(),
+    executor: {
+      async inspect() {
+        return { package: { name: 'athere-mesh', version: '0.1.0' }, sourceFilesOnDisk: 3, testFilesOnDisk: 9 };
+      },
+      async runTests() {
+        throw new Error('local runTests must not run when remoteWorkQueue is injected');
+      },
+    },
+    remoteWorkQueue: queue,
+    remoteRepositoryRoot: '/remote/athere-mesh',
+    clock: clock(),
+    idFactory: () => '55555555-5555-4555-8555-555555555555',
+  });
+
+  const result = await orchestrator.execute({ profile: 'owner', text: 'test all of Titan' });
+  const workerReport = await worker;
+
+  assert.equal(result.mission.status, 'completed');
+  assert.deepEqual(result.tests, { tests: 4, passed: 4, failed: 0, skipped: 0 });
+  assert.equal(workerReport.ok, true);
+  assert.equal(workerReport.worker.hostname, 'ichabodcrane');
+  await queue.close();
+});

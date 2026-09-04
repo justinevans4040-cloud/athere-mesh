@@ -124,7 +124,14 @@ function requireRepositoryRoot(repositoryRoot) {
   if (typeof repositoryRoot !== 'string' || repositoryRoot.trim().length === 0) {
     throw new TypeError('repositoryRoot is required');
   }
-  return path.resolve(repositoryRoot);
+  const trimmed = repositoryRoot.trim();
+  // Remote dispatch may pass a POSIX absolute path for another host. Resolving
+  // that on Windows would rewrite it (e.g. C:\home\...) and break the input
+  // binding the worker recomputes on Linux.
+  if (trimmed.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(trimmed)) {
+    return trimmed.replace(/\/+$/, '') || '/';
+  }
+  return path.resolve(trimmed);
 }
 
 function text(value) {

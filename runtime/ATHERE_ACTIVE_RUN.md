@@ -2,15 +2,15 @@
 
 
 
-**Status:** Active — Items 2–9 landed; Redis bus (blocker 1) landed as `5a9f7d8`; **shared mission state (blocker 2) landed** (Postgres adapter wired into mission-state-service when configured). **Founder authority + QRA Sentinel Governor locked**. Blocker 3 (remote executor dispatch) still open. Item 10 not started.
+**Status:** Active — Items 2–9 landed; Redis bus (blocker 1) landed as `5a9f7d8`; shared mission state (blocker 2) landed as `eb77bdd`; **remote executor dispatch (blocker 3) implemented with cross-host evidence** (`evidence/smoke-remote-executor-crosshost-20260903-202947.json`). **Founder authority + QRA Sentinel Governor locked**. Item 10 not started.
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: doctrine baseline **blocker 3** (remote executor dispatch) next. Blockers 1–2 proven; A→B loop still incomplete.
-- Transport (`5a9f7d8`) remains proven; shared mission state (Postgres opt-in) proven with cross-host evidence; orchestrator publish-error swallow still a residual before wiring the bus into missions.
+- Current focus: doctrine baseline **blockers 1–3 have cross-host evidence**. Remaining honesty: full orchestrator env auto-wire (Redis bus + remote queue + shared Postgres together) is not a production start-script yet; inspect stays local; smoke used one pin test file. Item 10 not started.
+- Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; transport/auth/seed failure surfaces.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
 
@@ -204,3 +204,13 @@ This file is the live operator view for the current Athere implementation run.
 - **Cross-host evidence.** 3 rounds. Process on `JustinLenovo` wrote via SSH local forward `127.0.0.1:15432→ichabod:5432` (cluster listens on loopback only — not Tailscale-native Postgres). Process on `ichabodcrane` read via host loopback. Same revision + objective + writer observation recovered; byte-identical adapter/service smoke sources hashed both ways. Evidence: `evidence/smoke-shared-mission-state-crosshost-20260903-201846.json`.
 
 - **What this does NOT prove:** Agent A → Agent B complete; remote executor dispatch (blocker 3); orchestrator auto-wiring from env; shared proof/artifact stores; multi-writer orchestration beyond revision CAS; Postgres exposed on Tailscale without a tunnel.
+
+58. **Blocker 3 (remote executor dispatch) implemented and cross-host proven. Narrow path — not a backlog advance; Item 10 not started.**
+
+- **Named residual closed first.** Orchestrator `publish()` still swallows errors for the default memory bus (existing contract: telemetry cannot overturn durable completion). When `bus.failClosedOnPublish === true` (Redis bus), transport/auth/seed failure rethrows as `resonance publish failed: …`. Test: `network-bus publish failure fails closed and does not complete the mission`.
+
+- **Added:** `packages/execution/src/remote-work-queue.js` (memory + Redis, seed-guarded, zero new npm deps), `remote-dispatch-executor.js` (inspect local / `runTests` remote), `remote-executor-worker.js`, `scripts/smoke-remote-executor-dispatch.js`, `scripts/remote-executor-worker.js`, `docs/current/ATHERE_REMOTE_EXECUTOR_DISPATCH.md`, `tests/contract/remote-executor-smoke-pin.test.js`, `evidence/smoke-remote-executor-crosshost-20260903-202947.json`. **Changed:** orchestrator optional `remoteWorkQueue` / `remoteRepositoryRoot`; Redis bus `failClosedOnPublish`; `node-test-executor` preserves POSIX absolute roots so Windows dispatchers do not rewrite Linux worker paths in the input binding; package.json `smoke:remote-executor`; evidence README; this file.
+
+- **Cross-host evidence.** 3 rounds. Process A on `JustinLenovo` enqueued `run-node-tests` to mesh Redis `100.77.131.28:6380`. Process B on `ichabodcrane` claimed the job, ran `createNodeTestExecutor` against `~/athere-mesh-crosshost` on pin test `tests/contract/remote-executor-smoke-pin.test.js` (`passed: 1`, `exitCode: 0`). Result visible back on A via `await`. Worker hostname on every round: `ichabodcrane`.
+
+- **What this does NOT prove (doesNotProve in evidence):** orchestrator auto-wire from env of Redis bus + remote queue + Postgres together; remote inspect; multi-worker leasing beyond LPOP; full suite remotely; Item 10 / QR18.

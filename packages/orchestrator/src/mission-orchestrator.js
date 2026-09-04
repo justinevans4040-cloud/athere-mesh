@@ -6,6 +6,7 @@ import { authorizeAgentOperation, createAgentOperationEnvelope } from '../../con
 import { parseAgentEnvelope } from '../../contracts/src/agent-envelope.js';
 import { parseNodeTestExecutionResult, parseRepositoryInspectionResult } from '../../contracts/src/execution-results.js';
 import { nodeExecutionInputBinding } from '../../execution/src/node-test-executor.js';
+import { createRemoteDispatchExecutor } from '../../execution/src/remote-dispatch-executor.js';
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 import { writeArtifactProof, writeProof, verifyArtifactProof, verifyProof } from '../../proof/src/proof-store.js';
 import { inspectRecovery } from '../../recovery/src/recovery-coordinator.js';
@@ -71,6 +72,8 @@ export function createMissionOrchestrator({
   bus = createMemoryResonanceBus(),
   store,
   executor,
+  remoteWorkQueue,
+  remoteRepositoryRoot,
   clock = () => new Date().toISOString(),
   idFactory = randomUUID,
 } = {}) {
@@ -80,7 +83,21 @@ export function createMissionOrchestrator({
   if (store !== undefined && (typeof store?.loadMission !== 'function' || typeof store?.saveMission !== 'function')) {
     throw new TypeError('store must provide loadMission and saveMission');
   }
-  const testExecutor = executorForTests(executor);
+  if (remoteWorkQueue !== undefined) {
+    if (typeof remoteWorkQueue?.enqueue !== 'function' || typeof remoteWorkQueue?.awaitResult !== 'function') {
+      throw new TypeError('remoteWorkQueue must provide enqueue and awaitResult');
+    }
+  }
+  const localExecutor = executorForTests(executor);
+  // Narrow remote path: inspect stays local; run-node-tests is dispatched when
+  // a work queue is injected. Offline hermetic tests omit the queue.
+  const testExecutor = remoteWorkQueue === undefined
+    ? localExecutor
+    : createRemoteDispatchExecutor({
+      localExecutor,
+      workQueue: remoteWorkQueue,
+      workerRepositoryRoot: remoteRepositoryRoot ?? repositoryRoot,
+    });
   // Default remains the hermetic filesystem store. Inject a shared store
   // (Postgres adapter) only when the operator has configured one.
   const missionState = createMissionStateService({
@@ -89,20 +106,33 @@ export function createMissionOrchestrator({
     ...(store === undefined ? {} : { store }),
   });
 
+  // Memory / local telemetry buses keep the historical swallow so a publish
+  // outage cannot overturn durable mission state. Network buses (Redis) set
+  // failClosedOnPublish so transport/auth/seed failure surfaces instead of
+  // looking like a delivered empty stream.
+  const failClosedOnPublish = bus.failClosedOnPublish === true;
+
   let signalSequence = 0;
   async function publish(signal) {
     signalSequence += 1;
+    const payload = {
+      id: `${signal.missionId}-signal-${signalSequence}`,
+      missionId: signal.missionId,
+      type: signal.type,
+      agent: signal.agent,
+      at: signal.at,
+      ...(signal.detail ? { detail: signal.detail } : {}),
+      ...(signal.proof ? { proof: signal.proof } : {}),
+    };
     try {
-      await bus.publish({
-        id: `${signal.missionId}-signal-${signalSequence}`,
-        missionId: signal.missionId,
-        type: signal.type,
-        agent: signal.agent,
-        at: signal.at,
-        ...(signal.detail ? { detail: signal.detail } : {}),
-        ...(signal.proof ? { proof: signal.proof } : {}),
-      });
-    } catch {
+      await bus.publish(payload);
+    } catch (error) {
+      if (failClosedOnPublish) {
+        const reason = error instanceof Error ? error.message : String(error);
+        const wrapped = new Error(`resonance publish failed: ${reason}`);
+        wrapped.cause = error;
+        throw wrapped;
+      }
       return false;
     }
     return true;

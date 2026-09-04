@@ -51,6 +51,17 @@ runResonanceBusContract({
 // Hermetic cases: no mesh seed required, so these run in the offline default.
 // ---------------------------------------------------------------------------
 
+test('redis resonance bus marks failClosedOnPublish for orchestrator injection', () => {
+  const bus = createRedisResonanceBus({
+    host: '127.0.0.1',
+    port: 1,
+    password: 'unused',
+    expectedSeedId: 'never-reached',
+    namespace: runNamespace,
+  });
+  assert.equal(bus.failClosedOnPublish, true);
+});
+
 test('redis resonance bus reports an unreachable host instead of failing silently', async () => {
   const bus = createRedisResonanceBus({
     host: '127.0.0.1',

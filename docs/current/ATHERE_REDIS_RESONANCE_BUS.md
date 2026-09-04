@@ -105,35 +105,25 @@ unreachable; in the offline default they skip without touching the network.
 
 ## What this does NOT do
 
-- **The doctrine baseline loop is not complete.** Agent A → Agent B with zero
-  human intervention needs three things; this is one of them.
-- **No remote executor dispatch.** Nothing lets a mission on one host make an
-  executor on another host perform work.
-- **Nothing in the orchestrator uses this yet.**
+- **The doctrine baseline loop is not complete until blocker 3 evidence holds.**
+  Agent A → Agent B with zero human intervention needs transport (this), shared
+  mission state, and remote executor dispatch.
 - **No consumer semantics.** `read` returns the whole mission stream. There is
   no blocking read, no consumer group, no delivery tracking, no trimming.
 - **Single seed host.** No replication or failover.
 
-Shared authoritative mission state is a separate path — see
-`docs/current/ATHERE_SHARED_MISSION_STATE.md` (blocker 2).
+Shared authoritative mission state: `docs/current/ATHERE_SHARED_MISSION_STATE.md`
+(blocker 2). Remote executor dispatch: `docs/current/ATHERE_REMOTE_EXECUTOR_DISPATCH.md`
+(blocker 3).
 
-## Known residual: the orchestrator swallows publish errors
+## Orchestrator publish fail-closed (residual closed)
 
-`publish()` in `packages/orchestrator/src/mission-orchestrator.js` wraps
-`bus.publish` in `try { … } catch { return false }`, and every call site
-discards the returned value. For the in-memory bus that is close to harmless,
-because the only realistic throw is a contract violation.
-
-For a network bus it is not acceptable. A connection failure, an auth failure or
-a seed-guard refusal would be swallowed, and the mission would continue as
-though the signal had been delivered — which is exactly the silent-empty-stream
-failure the seed guard exists to prevent, reintroduced one layer up.
-
-**This behaviour was left unchanged in this run** because fixing it changes
-orchestrator semantics and needs its own test-first cycle with a decision about
-whether a transport failure should block a mission or be recorded and continue.
-It is recorded here as a blocker on wiring this bus into the orchestrator, not
-as an accepted design.
+`createRedisResonanceBus` exposes `failClosedOnPublish: true`. When that bus is
+injected, `createMissionOrchestrator` rethrows transport/auth/seed failures from
+`publish()` instead of swallowing them. The default memory bus still swallows
+publish errors so a local telemetry outage cannot overturn durable mission
+state. See `tests/integration/mission-orchestrator.test.js` ("network-bus
+publish failure fails closed").
 
 ## Evidence
 

@@ -183,6 +183,11 @@ export function createRedisResonanceBus({
   }
 
   return Object.freeze({
+    // Orchestrator publish() fails closed when this marker is present. A
+    // swallowed network failure would look like delivery while the remote
+    // stream stayed empty — the silent-empty-stream mode this bus refuses.
+    failClosedOnPublish: true,
+
     // Returns the seed identity Redis actually served, so evidence records the
     // observed value instead of echoing the configured expectation.
     async verifySeed() {

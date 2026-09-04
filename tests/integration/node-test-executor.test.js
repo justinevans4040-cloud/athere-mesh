@@ -294,3 +294,32 @@ test('node test executor rejects duplicate complete Node footers even when total
 
   await assert.rejects(() => executor.runTests({ envelope: operationEnvelope(repositoryRoot) }), /ambiguous test summary/i);
 });
+
+test('input binding preserves POSIX absolute repository roots for remote dispatch', () => {
+  const root = '/home/the_founder/athere-mesh-crosshost';
+  const binding = nodeExecutionInputBinding({
+    repositoryRoot: root,
+    operation: 'test',
+    testFiles: ['tests/contract/remote-executor-smoke-pin.test.js'],
+  });
+  assert.match(binding, /^node_execution_input_sha256:[a-f0-9]{64}$/);
+  // A Windows path.resolve rewrite would change the digest; pin the known digest.
+  assert.equal(
+    binding,
+    nodeExecutionInputBinding({
+      repositoryRoot: `${root}/`,
+      operation: 'test',
+      testFiles: ['tests/contract/remote-executor-smoke-pin.test.js'],
+    }),
+  );
+  if (process.platform === 'win32') {
+    assert.notEqual(
+      binding,
+      nodeExecutionInputBinding({
+        repositoryRoot: path.resolve(root),
+        operation: 'test',
+        testFiles: ['tests/contract/remote-executor-smoke-pin.test.js'],
+      }),
+    );
+  }
+});

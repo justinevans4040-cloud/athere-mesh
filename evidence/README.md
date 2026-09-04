@@ -12,7 +12,8 @@ Public smoke / demo artifacts for Athere Mesh Titan recreate.
 | [smoke-durable-postgres-20260730-123416.json](./smoke-durable-postgres-20260730-123416.json) | Postgres durable client contract (Lenovo PGlite; Ubuntu when online) |
 | [smoke-arweave-20260730-s24-redis.json](./smoke-arweave-20260730-s24-redis.json) | Arweave permanence — S24 Redis smoke pinned (`winc=0`) |
 | [smoke-redis-resonance-crosshost-20260903-182344.json](./smoke-redis-resonance-crosshost-20260903-182344.json) | Redis resonance bus — signal published on `JustinLenovo` read back by a process on `ichabodcrane`, 3 rounds. **Transport only**; the file's `doesNotProve` list is the authoritative scope. |
-| [smoke-shared-mission-state-crosshost-20260903-201846.json](./smoke-shared-mission-state-crosshost-20260903-201846.json) | Shared mission state — Lenovo `createMissionStateService` write into Ichabod Postgres `athere_mesh`, Ichabod read same revision/objective, 3 rounds. **State only**; blocker 3 (remote executor) still open. |
+| [smoke-shared-mission-state-crosshost-20260903-201846.json](./smoke-shared-mission-state-crosshost-20260903-201846.json) | Shared mission state — Lenovo write into Ichabod Postgres `athere_mesh`, Ichabod read same revision/objective, 3 rounds. **State only.** |
+| [smoke-remote-executor-crosshost-20260903-202947.json](./smoke-remote-executor-crosshost-20260903-202947.json) | Remote executor dispatch — Lenovo enqueues `run-node-tests`; Ichabod worker runs `createNodeTestExecutor` on staged checkout; result visible back on Lenovo via mesh Redis work queue, 3 rounds. See `doesNotProve`. |
 | [arweave/](./arweave/) | Arweave permanence folder + README |
 | [demos/](./demos/) | Slice 0–3 demo MP4s |
 | [nosana/](./nosana/) | Nosana GPU smoke (started then stopped) |
@@ -50,6 +51,31 @@ corepack pnpm run smoke:shared-mission-state write --mission mission-shared-demo
 ATHERE_MESH_POSTGRES_URL=postgres://athere_mesh@127.0.0.1:5432/athere_mesh \
 ATHERE_MESH_POSTGRES_PASSWORD_FILE=$HOME/.config/athere-mesh-postgres/mesh-postgres.pass \
 node scripts/smoke-shared-mission-state.js read --mission mission-shared-demo
+```
+
+Cross-host remote executor dispatch (blocker 3). Dispatcher on this host,
+worker on the seed host against the same work namespace:
+
+```text
+ATHERE_MESH_REDIS_HOST=100.77.131.28 \
+ATHERE_MESH_REDIS_PORT=6380 \
+ATHERE_MESH_REDIS_PASSWORD_FILE=/path/to/mesh-redis.pass \
+ATHERE_MESH_REDIS_SEED_ID=<seed-uuid>@ichabodcrane \
+ATHERE_MESH_WORK_NAMESPACE=athere:mesh:work:smoke:<id> \
+corepack pnpm run smoke:remote-executor -- dispatch \
+  --job job-demo --mission mission-demo \
+  --repository-root /home/the_founder/athere-mesh-crosshost \
+  --test-file tests/contract/remote-executor-smoke-pin.test.js
+
+# then, on the seed host (same WORK_NAMESPACE):
+ATHERE_MESH_REDIS_HOST=127.0.0.1 ATHERE_MESH_REDIS_PORT=6380 \
+ATHERE_MESH_REDIS_PASSWORD_FILE=$HOME/.config/athere-mesh-redis/mesh-redis.pass \
+ATHERE_MESH_REDIS_SEED_ID=<seed-uuid>@ichabodcrane \
+ATHERE_MESH_WORK_NAMESPACE=athere:mesh:work:smoke:<id> \
+node scripts/smoke-remote-executor-dispatch.js worker-once
+
+# then await on the dispatcher host:
+corepack pnpm run smoke:remote-executor -- await --job job-demo --await-ms 60000
 ```
 
 **Stale command removed:** earlier revisions of this file documented

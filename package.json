@@ -16,6 +16,7 @@
     "smoke:postgres": "node scripts/smoke-postgres.js",
     "smoke:redis-resonance": "node scripts/smoke-redis-resonance.js",
     "smoke:shared-mission-state": "node scripts/smoke-shared-mission-state.js",
+    "smoke:remote-executor": "node scripts/smoke-remote-executor-dispatch.js",
     "smoke:functional-team": "node scripts/smoke-functional-team.js",
     "start:agent-api": "node scripts/start-agent-api.js",
     "chat": "node scripts/chat.js"

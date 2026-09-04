@@ -1,0 +1,271 @@
+﻿{
+    "ok":  true,
+    "smoke":  "remote-executor-dispatch-crosshost",
+    "claim":  "Process A on JustinLenovo enqueues run-node-tests work; Process B on ichabodcrane claims it, runs createNodeTestExecutor against a staged checkout, and the result is visible back on A via the mesh Redis work queue — three rounds, no mid-flight human steps.",
+    "at":  "2026-09-04T03:29:49.7422049Z",
+    "runtime":  "athere-mesh",
+    "workNamespace":  "athere:mesh:work:smoke:20260903-202947",
+    "testFile":  "tests/contract/remote-executor-smoke-pin.test.js",
+    "workerRepositoryRoot":  "/home/the_founder/athere-mesh-crosshost",
+    "seed":  {
+                 "tailscaleIp":  "100.77.131.28",
+                 "host":  "ichabodcrane",
+                 "port":  6380,
+                 "seedId":  "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane"
+             },
+    "hosts":  {
+                  "dispatcher":  {
+                                     "tailscaleIp":  "100.125.245.10",
+                                     "node":  "v24.14.1",
+                                     "hostname":  "JustinLenovo"
+                                 },
+                  "worker":  {
+                                 "tailscaleIp":  "100.77.131.28",
+                                 "node":  "v24.19.0",
+                                 "hostname":  "ichabodcrane"
+                             }
+              },
+    "sourceParity":  {
+                         "gitBlobHashes":  {
+                                               "packages/execution/src/remote-dispatch-executor.js":  "84167088c2c82f9425ca738ff5d64c1089a9c382",
+                                               "packages/execution/src/node-test-executor.js":  "9f18b78417413216c0be69d16e34d39b1995160d",
+                                               "packages/execution/src/remote-executor-worker.js":  "8d93743d7d6f68e28bcb8b3e97f0f9a3c6a41bbd",
+                                               "scripts/smoke-remote-executor-dispatch.js":  "1aaaad6abbc98784c53097f1cc92493dfd808539",
+                                               "packages/execution/src/remote-work-queue.js":  "0eb3148c4dc9a32e9fd1c7024711896443affcfe"
+                                           },
+                         "note":  "Worker ran staged copies under ~/athere-mesh-crosshost; git blob hashes are from the Lenovo working tree at evidence time.",
+                         "stagedOnWorker":  "~the_founder/athere-mesh-crosshost"
+                     },
+    "rounds":  [
+                   {
+                       "round":  1,
+                       "jobId":  "job-remote-20260903-202947-r1",
+                       "missionId":  "mission-remote-20260903-202947-r1",
+                       "processA":  {
+                                        "tailnet":  [
+                                                        {
+                                                            "interface":  "Tailscale",
+                                                            "address":  "100.125.245.10"
+                                                        }
+                                                    ],
+                                        "pid":  25232,
+                                        "enqueued":  {
+                                                         "accepted":  true,
+                                                         "duplicate":  false
+                                                     },
+                                        "hostname":  "JustinLenovo",
+                                        "role":  "dispatcher"
+                                    },
+                       "processB":  {
+                                        "tailnet":  [
+                                                        {
+                                                            "interface":  "tailscale0",
+                                                            "address":  "100.77.131.28"
+                                                        }
+                                                    ],
+                                        "pid":  2254209,
+                                        "hostname":  "ichabodcrane",
+                                        "worker":  {
+                                                       "ok":  true,
+                                                       "jobId":  "job-remote-20260903-202947-r1",
+                                                       "missionId":  "mission-remote-20260903-202947-r1",
+                                                       "worker":  {
+                                                                      "hostname":  "ichabodcrane",
+                                                                      "platform":  "linux 7.0.0-30-generic",
+                                                                      "nodeVersion":  "v24.19.0",
+                                                                      "pid":  2254209
+                                                                  },
+                                                       "result":  {
+                                                                      "command":  "node --test tests/contract/remote-executor-smoke-pin.test.js",
+                                                                      "exitCode":  0,
+                                                                      "tests":  1,
+                                                                      "passed":  1,
+                                                                      "failed":  0,
+                                                                      "skipped":  0,
+                                                                      "stdout":  "Γ£ö remote executor smoke pin (0.810391ms)\nΓä╣ tests 1\nΓä╣ suites 0\nΓä╣ pass 1\nΓä╣ fail 0\nΓä╣ cancelled 0\nΓä╣ skipped 0\nΓä╣ todo 0\nΓä╣ duration_ms 70.579643\n",
+                                                                      "stderr":  ""
+                                                                  }
+                                                   },
+                                        "role":  "worker"
+                                    },
+                       "resultOnA":  {
+                                         "jobId":  "job-remote-20260903-202947-r1",
+                                         "ok":  true,
+                                         "worker":  {
+                                                        "hostname":  "ichabodcrane",
+                                                        "platform":  "linux 7.0.0-30-generic",
+                                                        "nodeVersion":  "v24.19.0",
+                                                        "pid":  2254209
+                                                    },
+                                         "result":  {
+                                                        "command":  "node --test tests/contract/remote-executor-smoke-pin.test.js",
+                                                        "exitCode":  0,
+                                                        "tests":  1,
+                                                        "passed":  1,
+                                                        "failed":  0,
+                                                        "skipped":  0,
+                                                        "stdout":  "Γ£ö remote executor smoke pin (0.810391ms)\nΓä╣ tests 1\nΓä╣ suites 0\nΓä╣ pass 1\nΓä╣ fail 0\nΓä╣ cancelled 0\nΓä╣ skipped 0\nΓä╣ todo 0\nΓä╣ duration_ms 70.579643\n",
+                                                        "stderr":  ""
+                                                    },
+                                         "startedAt":  "2026-09-04T03:29:47.448Z",
+                                         "completedAt":  "2026-09-04T03:29:47.570Z"
+                                     }
+                   },
+                   {
+                       "round":  2,
+                       "jobId":  "job-remote-20260903-202947-r2",
+                       "missionId":  "mission-remote-20260903-202947-r2",
+                       "processA":  {
+                                        "tailnet":  [
+                                                        {
+                                                            "interface":  "Tailscale",
+                                                            "address":  "100.125.245.10"
+                                                        }
+                                                    ],
+                                        "pid":  15940,
+                                        "enqueued":  {
+                                                         "accepted":  true,
+                                                         "duplicate":  false
+                                                     },
+                                        "hostname":  "JustinLenovo",
+                                        "role":  "dispatcher"
+                                    },
+                       "processB":  {
+                                        "tailnet":  [
+                                                        {
+                                                            "interface":  "tailscale0",
+                                                            "address":  "100.77.131.28"
+                                                        }
+                                                    ],
+                                        "pid":  2254278,
+                                        "hostname":  "ichabodcrane",
+                                        "worker":  {
+                                                       "ok":  true,
+                                                       "jobId":  "job-remote-20260903-202947-r2",
+                                                       "missionId":  "mission-remote-20260903-202947-r2",
+                                                       "worker":  {
+                                                                      "hostname":  "ichabodcrane",
+                                                                      "platform":  "linux 7.0.0-30-generic",
+                                                                      "nodeVersion":  "v24.19.0",
+                                                                      "pid":  2254278
+                                                                  },
+                                                       "result":  {
+                                                                      "command":  "node --test tests/contract/remote-executor-smoke-pin.test.js",
+                                                                      "exitCode":  0,
+                                                                      "tests":  1,
+                                                                      "passed":  1,
+                                                                      "failed":  0,
+                                                                      "skipped":  0,
+                                                                      "stdout":  "Γ£ö remote executor smoke pin (0.814203ms)\nΓä╣ tests 1\nΓä╣ suites 0\nΓä╣ pass 1\nΓä╣ fail 0\nΓä╣ cancelled 0\nΓä╣ skipped 0\nΓä╣ todo 0\nΓä╣ duration_ms 76.156113\n",
+                                                                      "stderr":  ""
+                                                                  }
+                                                   },
+                                        "role":  "worker"
+                                    },
+                       "resultOnA":  {
+                                         "jobId":  "job-remote-20260903-202947-r2",
+                                         "ok":  true,
+                                         "worker":  {
+                                                        "hostname":  "ichabodcrane",
+                                                        "platform":  "linux 7.0.0-30-generic",
+                                                        "nodeVersion":  "v24.19.0",
+                                                        "pid":  2254278
+                                                    },
+                                         "result":  {
+                                                        "command":  "node --test tests/contract/remote-executor-smoke-pin.test.js",
+                                                        "exitCode":  0,
+                                                        "tests":  1,
+                                                        "passed":  1,
+                                                        "failed":  0,
+                                                        "skipped":  0,
+                                                        "stdout":  "Γ£ö remote executor smoke pin (0.814203ms)\nΓä╣ tests 1\nΓä╣ suites 0\nΓä╣ pass 1\nΓä╣ fail 0\nΓä╣ cancelled 0\nΓä╣ skipped 0\nΓä╣ todo 0\nΓä╣ duration_ms 76.156113\n",
+                                                        "stderr":  ""
+                                                    },
+                                         "startedAt":  "2026-09-04T03:29:48.054Z",
+                                         "completedAt":  "2026-09-04T03:29:48.178Z"
+                                     }
+                   },
+                   {
+                       "round":  3,
+                       "jobId":  "job-remote-20260903-202947-r3",
+                       "missionId":  "mission-remote-20260903-202947-r3",
+                       "processA":  {
+                                        "tailnet":  [
+                                                        {
+                                                            "interface":  "Tailscale",
+                                                            "address":  "100.125.245.10"
+                                                        }
+                                                    ],
+                                        "pid":  19140,
+                                        "enqueued":  {
+                                                         "accepted":  true,
+                                                         "duplicate":  false
+                                                     },
+                                        "hostname":  "JustinLenovo",
+                                        "role":  "dispatcher"
+                                    },
+                       "processB":  {
+                                        "tailnet":  [
+                                                        {
+                                                            "interface":  "tailscale0",
+                                                            "address":  "100.77.131.28"
+                                                        }
+                                                    ],
+                                        "pid":  2254349,
+                                        "hostname":  "ichabodcrane",
+                                        "worker":  {
+                                                       "ok":  true,
+                                                       "jobId":  "job-remote-20260903-202947-r3",
+                                                       "missionId":  "mission-remote-20260903-202947-r3",
+                                                       "worker":  {
+                                                                      "hostname":  "ichabodcrane",
+                                                                      "platform":  "linux 7.0.0-30-generic",
+                                                                      "nodeVersion":  "v24.19.0",
+                                                                      "pid":  2254349
+                                                                  },
+                                                       "result":  {
+                                                                      "command":  "node --test tests/contract/remote-executor-smoke-pin.test.js",
+                                                                      "exitCode":  0,
+                                                                      "tests":  1,
+                                                                      "passed":  1,
+                                                                      "failed":  0,
+                                                                      "skipped":  0,
+                                                                      "stdout":  "Γ£ö remote executor smoke pin (0.791703ms)\nΓä╣ tests 1\nΓä╣ suites 0\nΓä╣ pass 1\nΓä╣ fail 0\nΓä╣ cancelled 0\nΓä╣ skipped 0\nΓä╣ todo 0\nΓä╣ duration_ms 68.641291\n",
+                                                                      "stderr":  ""
+                                                                  }
+                                                   },
+                                        "role":  "worker"
+                                    },
+                       "resultOnA":  {
+                                         "jobId":  "job-remote-20260903-202947-r3",
+                                         "ok":  true,
+                                         "worker":  {
+                                                        "hostname":  "ichabodcrane",
+                                                        "platform":  "linux 7.0.0-30-generic",
+                                                        "nodeVersion":  "v24.19.0",
+                                                        "pid":  2254349
+                                                    },
+                                         "result":  {
+                                                        "command":  "node --test tests/contract/remote-executor-smoke-pin.test.js",
+                                                        "exitCode":  0,
+                                                        "tests":  1,
+                                                        "passed":  1,
+                                                        "failed":  0,
+                                                        "skipped":  0,
+                                                        "stdout":  "Γ£ö remote executor smoke pin (0.791703ms)\nΓä╣ tests 1\nΓä╣ suites 0\nΓä╣ pass 1\nΓä╣ fail 0\nΓä╣ cancelled 0\nΓä╣ skipped 0\nΓä╣ todo 0\nΓä╣ duration_ms 68.641291\n",
+                                                        "stderr":  ""
+                                                    },
+                                         "startedAt":  "2026-09-04T03:29:48.705Z",
+                                         "completedAt":  "2026-09-04T03:29:48.822Z"
+                                     }
+                   }
+               ],
+    "doesNotProve":  [
+                         "Full mission orchestrator auto-wired from env to Redis bus + remote queue in production start scripts",
+                         "Shared Postgres mission-state mutation during the remote executor handoff",
+                         "Inspect (nyx) dispatched remotely — only run-node-tests is remote in this path",
+                         "Multi-worker lease/fairness beyond LPOP claim",
+                         "Entire Node suite remotely — smoke uses one pin test file",
+                         "Item 10 / QR18"
+                     ]
+}
