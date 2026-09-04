@@ -198,8 +198,6 @@ export function createMissionOrchestrator({
           detail: 'repository inspection completed',
           evidence: nyxEvidence,
         }, {
-          completedWork: ['inspect-repository'],
-          pendingWork: ['run-node-tests', 'verify-proof'],
           evidence: [{ agent: 'nyx', ...nyxEvidence }],
           activeAgents: ['nyx'],
         });
@@ -228,8 +226,6 @@ export function createMissionOrchestrator({
           detail: 'node test execution completed',
           evidence: runeEvidence,
         }, {
-          completedWork: ['inspect-repository', 'run-node-tests'],
-          pendingWork: ['verify-proof'],
           evidence: [...record.mission.evidence, { agent: 'rune', ...runeEvidence }],
           activeAgents: ['rune'],
         });
@@ -307,13 +303,16 @@ export function createMissionOrchestrator({
             tests: validatedCounts,
             agentEvidence,
             proofSha256: ref.sha256,
+            auditorVerification: verification,
           },
         }, {
           completedWork: ['inspect-repository', 'run-node-tests', 'verify-proof'],
           pendingWork: [],
           failedWork: [],
-          evidence: [...record.mission.evidence, { agent: 'qra_emerge_audit', executor: 'proof-verifier', result: verification }],
+          // The auditor does not write mission evidence: recording work evidence is what
+          // makes an agent a recorded performer, and performers cannot certify.
           activeAgents: [],
+          // Item 6: artifact lineage keeps producer agent/action and the verifier decision.
           artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
         });
         return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });

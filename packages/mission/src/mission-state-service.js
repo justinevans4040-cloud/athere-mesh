@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { authorizeAgentOperation } from '../../contracts/src/agent-operation.js';
+import { authorizeCompletedWorkClaim } from '../../contracts/src/execution-roles.js';
 import { createMission, transitionMission } from '../../contracts/src/mission.js';
 import { verifyProof } from '../../proof/src/proof-store.js';
 import { loadMission, saveMission } from './mission-store.js';
@@ -309,6 +310,20 @@ export function createMissionStateService({
       const history = existingHistory.length > 0 ? existingHistory : [legacyImportRecord(current.mission, current.revision, clock())];
       const stateUpdate = validateUpdate(update, current.mission);
       const authorization = authorizeAgentOperation({ envelope, mission: current.mission, expectedRevision, operationId: operation, signalType: signal?.type });
+      const authorizedAgentId = authorization.envelope.agent_id;
+      if (signal?.agent !== authorizedAgentId) {
+        throw new Error(`signal agent ${signal?.agent ?? '<missing>'} does not match envelope agent_id ${authorizedAgentId}`);
+      }
+      // Independence is decided from the service-written ledger: the authorized envelope
+      // agent against the recorded actors of this mission's performance transitions.
+      // Caller-supplied evidence, results, and artifact references are not identity sources.
+      authorizeCompletedWorkClaim({
+        agentId: authorizedAgentId,
+        transitionHistory: history,
+        update: stateUpdate,
+        signalType: signal?.type,
+        mission: current.mission,
+      });
       const input = { envelope: authorization.envelope, signal, update: stateUpdate };
       const prior = history.find((entry) => entry.operationId === operation);
       if (prior) {
@@ -326,13 +341,13 @@ export function createMissionStateService({
         previousVersion: expectedRevision,
         previousTransitionHash: history.at(-1).transitionHash,
         operationId: operation,
-        actor: signal.agent,
+        actor: authorizedAgentId,
         action: authorization.action,
         timestamp: nextState.updatedAt,
         input,
         before: current.mission,
         after: nextState,
-        authorization: { actor: signal.agent, actions: authorization.permission.actions, granted: true },
+        authorization: { actor: authorizedAgentId, actions: authorization.permission.actions, granted: true },
         evidence: signal.evidence,
       });
       const mission = Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) });

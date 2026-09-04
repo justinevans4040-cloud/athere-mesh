@@ -69,6 +69,7 @@ test('restart retrieval preserves NYX and RUNE evidence plus proof-bound validat
   assert.equal(stored.mission.artifactReferences[0].id, 'mission-proof');
   assert.match(stored.mission.artifactReferences[0].artifactHash, /^[a-f0-9]{64}$/);
   assert.match(stored.mission.artifactReferences[0].proofHash, /^[a-f0-9]{64}$/);
+  // Item 6: artifact lineage keeps producer action and verifier decision.
   assert.equal(stored.mission.artifactReferences[0].agent, 'qra_emerge_audit');
   assert.equal(stored.mission.artifactReferences[0].action, 'verified_mission_proof');
   assert.equal(stored.mission.artifactReferences[0].missionStateVersion, 4);
@@ -296,9 +297,16 @@ test('orchestrator records the complete mission in the authoritative state servi
   assert.deepEqual(stored.mission.pendingWork, []);
   assert.deepEqual(stored.mission.failedWork, []);
   assert.deepEqual(stored.mission.activeAgents, []);
-  assert.deepEqual(stored.mission.evidence.map(({ agent }) => agent), ['nyx', 'rune', 'qra_emerge_audit']);
+  // MEA: the auditor is not a recorded performer, so authoritative evidence stays nyx/rune.
+  assert.deepEqual(stored.mission.evidence.map(({ agent }) => agent), ['nyx', 'rune']);
+  assert.equal(stored.mission.result.auditorVerification.verified, true);
   assert.equal(stored.mission.artifactReferences[0].id, 'mission-proof');
   assert.equal(stored.mission.artifactReferences[0].artifactHash, stored.mission.proof.sha256);
+  // Item 6: producer action and verifier decision are part of artifact lineage.
+  assert.equal(stored.mission.artifactReferences[0].agent, 'qra_emerge_audit');
+  assert.equal(stored.mission.artifactReferences[0].action, 'verified_mission_proof');
+  assert.equal(stored.mission.artifactReferences[0].verifierResult.verifier, 'qra_emerge_audit');
+  assert.equal(stored.mission.artifactReferences[0].verifierResult.verified, true);
   assert.equal(stored.mission.artifactReferences[0].verifierResult.proofSha256, stored.mission.proof.sha256);
   assert.equal(stored.mission.artifactReferences[0].verified, true);
   assert.equal(stored.mission.currentPlan.version, 1);

@@ -1,4 +1,5 @@
 import { parseAgentEnvelope } from './agent-envelope.js';
+import { assertRoleMayEmitSignal, assertRoleMayPerformAction, roleForAgent } from './execution-roles.js';
 
 const OPERATIONS = Object.freeze({
   'miss-vale-prime': Object.freeze({ capabilityId: 'mission-supervisor', action: 'supervise_mission', signalType: 'running' }),
@@ -53,6 +54,7 @@ export function createAgentOperationEnvelope({
 export function authorizeAgentOperation({ envelope, mission, expectedRevision, operationId, signalType }) {
   const parsed = parseAgentEnvelope(envelope);
   const operation = operationFor(parsed.agent_id);
+  const role = roleForAgent(parsed.agent_id);
   if (parsed.mission_id !== mission.id) throw new Error('agent envelope mission binding mismatch');
   if (parsed.operation_id !== operationId) throw new Error('agent envelope operation binding mismatch');
   if (parsed.state_version !== expectedRevision) throw new Error('agent envelope state version mismatch');
@@ -60,8 +62,13 @@ export function authorizeAgentOperation({ envelope, mission, expectedRevision, o
   if (parsed.allowed_actions.length !== 1 || parsed.allowed_actions[0] !== operation.action) {
     throw new Error(`agent envelope does not exclusively permit ${operation.action}`);
   }
-  if (signalType !== undefined && signalType !== operation.signalType) {
-    throw new Error(`agent ${parsed.agent_id} cannot perform ${signalType} transition with ${operation.action}`);
+  assertRoleMayPerformAction(role, operation.action);
+  if (signalType !== undefined) {
+    try {
+      assertRoleMayEmitSignal(role, signalType);
+    } catch {
+      throw new Error(`agent ${parsed.agent_id} cannot perform ${signalType} transition with ${operation.action}`);
+    }
   }
   const permission = (mission.permissions ?? []).find(({ actor }) => actor === parsed.agent_id);
   const legacyRecovery = (mission.permissions ?? []).length === 0
@@ -73,6 +80,7 @@ export function authorizeAgentOperation({ envelope, mission, expectedRevision, o
   return Object.freeze({
     envelope: parsed,
     action: operation.action,
+    role,
     permission: Object.freeze(structuredClone(permission ?? { actor: parsed.agent_id, actions: [operation.action] })),
   });
 }

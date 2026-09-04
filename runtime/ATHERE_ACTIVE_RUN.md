@@ -1,60 +1,164 @@
 # Athere Active Run
 
-**Status:** Active — Items 2–8 acceptance-audited; founder agent IP restore in progress after registry demotion
+
+
+**Status:** Active — Items 2–8 acceptance-audited; **Item 9 READY (uncommitted)** after I1–I9 class close
+
+
 
 This file is the live operator view for the current Athere implementation run.
 
+
+
 ## Current run
 
-- State: Item 8 landed on master (`98ebc4c`, tag `item-8-complete`). Founder agent IP demotion (Caretaker parked in `jobs`) was reversed.
-- Current backlog item: Item 9 paused pending operator direction after agent-IP correction
-- Agent IP restore: Caretaker returned to `agents[]` as `fleet_orchestration`; LOOM, ECHO, Cluster QC Sentinel remain agents; `jobs` no longer holds Caretaker
-- Verification: corepack pnpm test 177/177 pass
-- Next action: operator review of agent IP restore; then resume Item 9 only with explicit go
+
+
+- State: **Item 9 READY (uncommitted).** The payload scrape was **removed** and replaced with structural provenance from the service-written transition ledger. Item 6 artifact provenance (certifier `agent` / `action` / `verifierResult.verifier`) is **restored** on the completion path. Item 10 not started. No commit. `store.saveMission` remains out-of-scope (not used to fail).
+
+- Current backlog item: **Item 9** — Manager / Executor / Auditor separation. Item 10 not started.
+
+- **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
+
+- **Enforcement (structural).** `authorizeCompletedWorkClaim` now takes the mission's hash-chained `transitionHistory` and the validated update, and consults **no caller payload content at all**. `recordedWorkPerformers` collects the `actor` of every ledger entry that performed work — a non-empty service-computed change to the authoritative `evidence` array, or a recorded executor action. Actors are written from `authorization.envelope.agent_id`, so they cannot be forged without passing envelope authorization. A certifier is rejected if it is in that set, or if its own transition would write work evidence (perform-and-certify in one act). `normalizeAgentId` is trim + casefold only, valid because recorded ids come from the closed fleet registry / `OPERATIONS` map.
+
+- **Deleted as a security boundary:** equals-OR-contains matching, base64 and `decodeURIComponent` leaf expansion, char/codepoint-array joining, the 100k-node iterative walk, the hand-rolled Cyrillic/Greek/Latin lookalike map, NFKD + Mn/Cf stripping, and `normalizeEvidenceEntries` / `collectPerformanceStringLeaves` / `normalizePerformerId`. Verified absent from `execution-roles.js` by grep.
+
+- **Kept unchanged:** signal↔envelope bind, role taxonomy (manager/executor/auditor/recovery), `completed` requires plan-covering `completedWork` + empty `pendingWork` + empty `failedWork`, executor cannot emit `completed`, recovery cannot advance `completedWork`, operation-ID idempotency.
+
+- **Structural verdict table (ACCEPT/REJECT as designed):**
+
+  | Probe | Channel | Verdict |
+  | --- | --- | --- |
+  | honest orchestrator | nyx/rune perform, auditor certifies, Item 6 provenance present | ACCEPT |
+  | recorded performer | auditor is ledger `actor` of a prior evidence write, then certifies | REJECT |
+  | same transition | auditor writes `update.evidence` while advancing `completedWork` | REJECT |
+  | recorded performer | auditor is ledger `actor` of a prior evidence write, then emits `completed` | REJECT |
+  | forged `signal.agent` | executor envelope + auditor signal agent | REJECT |
+  | executor completedWork / executor+manager `completed` | role gate | REJECT |
+  | `completed` with pending/failed work | work-coverage gate | REJECT |
+  | recovery completedWork | role gate | REJECT |
+  | payload games | base64, URI, homoglyphs, combining marks, synonyms, bags, depth-40, char arrays, substring embeds, `artifactReferences[].agent`, `activeAgents` | **IRRELEVANT** — do not influence the decision in either direction |
+
+- Full suite **257/257** (was 248/248). Personal adversarial re-probe **12/12** matched expectation, including the documented boundaries below.
+
+- **Documented boundaries / residual risk (not silently ignored):**
+  - `artifactReferences` writes are the auditor's own certification output and are required by Item 6, so they are deliberately not performance.
+  - `environmentObservations` writes and atomic fact operations are separate lifecycles and are not performance. The orchestrator grants the auditor `verify_proof` only, so the fact path is not reachable there.
+  - Clearing the evidence array is not a work-evidence write; the prior value survives in the ledger `changes`.
+  - A mission imported from a pre-ledger snapshot has no ledger, so its recorded performer set is empty and independence cannot bite. Ledger-backed missions are unaffected. Failing closed there would block completion of live legacy mission data, so behaviour was left unchanged and recorded here instead.
+  - Independence is mission-scoped, not per-subgoal: the ledger cannot attribute a transition to a specific subgoal without reading caller content. This is strictly stricter than per-item attribution.
+
+
 
 ## Checkpoint history
 
+
+
 1. Current `master`, ordered backlog, live run file, mission-state service, and existing supersession tests were re-read.
+
 2. Item 2 remained partial because no genuine persisted measured control exists; no synthetic benchmark data was created.
+
 3. Hostile-audit Item 5 gap confirmed: generic `transition()` accepted caller-supplied complete `authoritativeFacts` replacements, allowing lifecycle semantics to be bypassed.
+
 4. TDD RED reproduced the gap with six expected failures: raw replacement was accepted and the four semantic operations plus capability enforcement did not exist.
+
 5. Production implementation added permission-scoped `recordFact`, `supersedeFact`, `correctFact`, and `revokeFact`, and rejected post-creation raw fact-array replacement.
+
 6. TDD GREEN passed 6/6 focused tests.
+
 7. Existing supersession integration tests were found to exercise the intentionally retired raw-mutation path; their lineage-validation coverage was preserved in the dedicated semantic-operation suite rather than silently dropped.
+
 8. Stale-revision rejection plus ambiguous-current, broken-cross-key-lineage, and missing-revocation-timestamp guards were added; final focused suite passed 10/10.
+
 9. `node --check` passed on the production module and dedicated test file. Git blob hashes matched the exact committed production and dedicated-test bytes.
+
 10. Full repository Node >=24 regression could not be executed because the connected execution device was offline; no GitHub Actions workflow was used as a substitute.
+
 11. Node v24.14.1 became available; Item 6 operational provenance was implemented test-first and passed 9/9 focused plus 147/147 full repository tests.
+
 12. The prior broad completion label was rejected: Item 2 remains incomplete until real repeated controls are collected and frozen.
+
 13. Item 6 was committed and pushed as `04ff4132d8615ca781f193f8990e9b580382d008`; local and remote `master` matched after push.
+
 14. A persistent completion goal was armed for Items 1–8 with strict ordered acceptance, test-first implementation, hostile audit, security review, and evidence-before-claims requirements.
+
 15. TDD added a measured cohort collector, safe per-file Node regression execution, and seed-drift rejection; complete verification passed 151/151.
+
 16. TDD connected the collector to the safe Node executor and immutable writer; a permanent eight-task `titan-core-v1` suite and clean-commit CLI are ready for the first genuine three-trial run.
+
 17. Hostile audit preserved v1 but rejected it as final because it omitted evaluator self-coverage.
+
 18. The self-covering `titan-core-v2` control ran 12 pinned tasks three times from clean commit `42b3a4fc8a85`; all trials passed and the frozen artifact validated at SHA-256 `08f56024a5b4be47c3e8edcd1c48aa7dc2388785392233178d1bb0631b254498`.
+
 19. Final Item 2 verification passed the full 152-test suite and production dependency audit. Item 2 is complete; no improvement claim is implied without a future comparative candidate run.
+
 20. Ordered acceptance audit found direct evidence for Items 3–7 and confirmed Item 8 incomplete due to missing universal operation IDs.
+
 21. Item 8 TDD RED reproduced duplicate transition execution; GREEN now returns exact retries without a new revision and rejects conflicting ID reuse. Full verification passes 153/153; Item 8 remains partial.
+
 22. Item 8 extended to create, recordFact, supersedeFact, correctFact, revokeFact, proof-store, recovery-coordinator, node-executor, and node-control-collector. All now require operationId with persisted dedup and conflict rejection.
+
 23. Clean baseline re-established: fresh master clone (dba1123), corepack pnpm install --frozen-lockfile, corepack pnpm test = 153/153 pass, 0 fail.
+
 24. 21-file changeset carried onto clean master with per-file scope proof; every file tied to Item 8 idempotency contract. No scope creep.
+
 25. Test correction: mission-state-service.test.js retry-timeout assertion updated to use includeHistorical: true, per ATHERE_STATE_SUPERSESSION.md and checkpoint 32 (history-hiding is deliberate design).
+
 26. Full verification: corepack pnpm test = 176/176 pass (23 new idempotency tests); node --check all JS clean; corepack pnpm audit = 0 vulnerabilities.
+
 27. Gate inspection: 10 state-changing operations enumerated; all implement persisted operation-ID contract or have documented exemption (ATHERE_IDEMPOTENT_OPERATIONS.md for store adapters).
+
 28. Security review: no medium+ vulnerabilities found. Optional hardening noted for signal.agent vs envelope.agent_id cross-check.
+
 29. Bugbot review: one finding — recovery authorization fails on missions with non-empty permissions that omit qra_recovery_driver. Assessed as pre-existing design constraint, not Item 8 regression; orchestrator always includes recovery driver in permissions at creation.
+
 30. Hostile audit verdict: READY. Item 8 complete. Residual: future callers must include qra_recovery_driver in mission permissions for recovery to work.
+
 31. Founder agent IP restore: Caretaker removed from `jobs` and restored as agent `fleet_orchestration` in `agents[]`. Doctrine agents LOOM, ECHO, Caretaker, Cluster QC Sentinel asserted by contract tests. Docs/STATUS/baseline updated to forbid identity demotion. corepack pnpm test 177/177.
 
-## Checkpoint policy
+32. Item 9 started after operator go. Hole confirmed: nyx/rune advanced `completedWork` in orchestrator running transitions; mission-state-service accepted it; no MEA role taxonomy.
 
-A run updates this file when it:
-1. starts and selects a backlog item;
-2. finishes repository inspection and identifies the exact implementation target;
-3. completes a meaningful implementation step;
-4. begins or completes tests, linting, type checks, or security verification;
-5. encounters a blocker or changes to another independent backlog item;
-6. commits verified production work;
-7. finishes the run.
+33. TDD RED: 6/6 contract tests for `execution-roles` passed as pure contract; 6/6 integration MEA tests failed against production (executor/manager could still advance `completedWork`; orchestrator still self-certified).
 
-Each update states what is actually happening now, not what is merely planned.
+34. Production: added `packages/contracts/src/execution-roles.js`; wired role/action/signal checks into `authorizeAgentOperation`; wired `authorizeCompletedWorkClaim` into `mission-state-service.transition`; orchestrator nyx/rune updates record evidence/activeAgents only; auditor completion alone advances `completedWork`.
+
+35. Existing mission-state-service lineage/persistence tests corrected to MEA-correct actors (executor evidence, auditor certifies) without dropping coverage.
+
+36. Docs: `docs/current/ATHERE_MANAGER_EXECUTOR_AUDITOR.md`; baseline/skill updated so Item 8 no longer blocks Item 9. Doctrine rule verified present.
+
+37. Prior claim of Item 9 complete at 189/189 **retracted** after ruthless hostile audit found Hole 1 (signal↔envelope forge) and Hole 2 (same-update auditor self-cert) still OPEN.
+
+38. Hole 1 closed: every `transition` requires `signal.agent === envelope.agent_id` (fail closed); `authorizeCompletedWorkClaim` uses authorized envelope agent. Hostile test `mea-hostile-signal-envelope-mismatch.test.js` GREEN.
+
+39. Hole 2 closed: independence check includes `update.evidence` and same-transition `signal.evidence` performers. Hostile test `mea-hostile-same-update-self-cert.test.js` GREEN. Orchestrator completion no longer lists auditor as evidence performer when advancing `completedWork` (verification stays on signal/artifacts).
+
+40. Adversarial repro: forge REJECTED; same-update self-cert REJECTED; honest service + orchestrator paths OK. Focused MEA suite 37/37. Full suite **191/191**. Hostile audit: READY for Item 9 (uncommitted).
+
+41. Ruthless re-audit AFTER READY claim: original forge + same-update (array/update.evidence) still REJECT. NEW holes OPEN — object `signal.evidence` self-cert advances `completedWork`; `completed` without `completedWork` publishes mission success. RED tests left; READY retracted; Item 9 incomplete.
+
+42. Hole A/B closed on production path: `normalizeEvidenceEntries` + `performer` alias; `completed` requires plan-covering `completedWork` and empty `pendingWork` before proof re-read. Proof-boundary test updated to MEA-correct work update so ENOENT proof path still exercises. Personal re-probes 8/8; full suite **193/193**. Item 9 READY (uncommitted). Item 10 not started.
+
+43. Third ruthless re-audit AFTER Hole A/B READY: prior named forges still REJECT. NEW holes OPEN — nested `result.agent` / `executor` / `agents[]` self-cert advances `completedWork`; `completed` publishes with non-empty `failedWork`. RED tests left (5); READY retracted; Item 9 incomplete. No production fix this turn. No commit.
+
+44. C1–C4 + D closed in `execution-roles.js`: bounded evidence identity scrape covers top-level `agent`/`performer`/`executor`, `agents[]`, nested `result` identity fields (and bounded `result.result…`), plus object aliases; `completed` fail-closed on non-empty `failedWork` after update merge. Sibling aliases found in adversarial pass (`result.agents[]`, executor object, `result.performer`/`executor`, agents object entries, `result.result.agent`) also REJECT. Personal re-probe cannot reopen prior holes or C/D. Full suite **198/198**. Item 9 READY (uncommitted). Item 10 not started. No commit.
+
+45. Fourth ruthless re-audit AFTER C/D READY: prior named forges + C/D + recovery + mission-merge failedWork still REJECT. NEW holes OPEN — **E** `signal.result.agent` / `signal.result.executor` self-cert advances `completedWork` (and completed with identical re-assert); **F** `evidence.evidence.agent` double wrap on signal and update.evidence. RED tests left; READY retracted; Item 9 incomplete. No production fix this turn. No commit. `store.saveMission` remains out-of-scope (not used to fail).
+
+46. E/F + verifier closed: `signal.result` first-class performer source; nested `evidence` wraps walked; string `verifier` + `agentEvidence[]` scraped. Personal re-probe 21/21 attack REJECT, honest ACCEPT; full suite **206/206**. Item 9 READY (uncommitted). Item 10 not started. No commit.
+
+47. Fifth ruthless re-audit AFTER E/F READY: prior named forges + E/F/verifier + recovery + dual-role wipe still REJECT. NEW holes OPEN — **G1/G2** object-shaped `agentEvidence`/`agents` self-cert; **G3/G4** case-variant / ZWSP performer id; **G5** missed keys `author`/`workers`/`actors`/`by`. RED tests left; READY retracted; Item 9 incomplete. No production fix this turn. No commit. `store.saveMission` remains out-of-scope.
+
+48. G1–G5 closed in `execution-roles.js`: bag scrape accepts array / object / object-map / string; identity keys add `author`/`by`/`actor` and bags `workers`/`actors`; `normalizePerformerId` (trim, Cf/ZWSP/BOM strip, NFKC, casefold) on independence compare. Personal sibling probes REJECT (map agentEvidence, actors.lead, evidence.by, BOM/ZWNJ/case/NFKC). Combining-mark + unbounded non-Mesh aliases documented residual. Fifth test **11/11**; full suite **217/217**. Item 9 READY (uncommitted). Item 10 not started. No commit.
+
+49. Sixth ruthless re-audit AFTER G1–G5 READY: prior A–G + fullwidth + workers string/object still REJECT. NEW holes OPEN — **H1** combining-mark id ACCEPT; **H2** synonym keys writer/operator/contributor/owner/createdBy/submittedBy/signedBy/principal ACCEPT; **H3** Cyrillic homoglyph ACCEPT; **H4** team/crew/participants/operators bags ACCEPT; **H5** priorEvidence combining-mark only then certify ACCEPT; **H6** `agent_id` key ACCEPT. Soft-note "out of scope" rejected as soft-pass against Item 9 acceptance. RED tests left; READY retracted; Item 9 incomplete. No production fix. No commit. Full suite **221/227** (6 RED fails). `store.saveMission` out-of-scope.
+
+50. H1–H6 **class-closed** in `execution-roles.js`: replaced identity-key allowlist with bounded deep string leaf scrape (depth 32) over priorEvidence / update.evidence / signal.evidence / signal.result; `normalizePerformerId` now NFKD + Mn/Cf strip + local Cyrillic/Greek lookalike map + casefold; any leaf normalizing to certifier REJECT. Orchestrator honest completion already omits auditor id string leaves from `signal.result`. Sibling probes (note/reviewedBy/authorizer/Greek α/depth-16) REJECT; honest nyx/rune ACCEPT. Sixth suite **14/14**; full suite **231/231**. Item 9 READY (uncommitted). Item 10 not started. No commit. `store.saveMission` out-of-scope.
+
+51. Seventh ruthless re-audit AFTER H1–H6 READY: prior A–G + H1–H6 + honest still hold. NEW holes OPEN — **I1–I3** lookalikes outside local map (script-g / Komi-d / Greek-iota) ACCEPT; **I4** depth-40 nest ACCEPT; **I5** substring / path / JSON-blob embedding ACCEPT; **I6** base64 / URI-encoded sole leaf ACCEPT; **I7** char-array / codepoint-array ACCEPT; **I8** `artifactReferences[].agent` only ACCEPT; **I9** `activeAgents` auditor list ACCEPT. Personal probes confirm each advances `completedWork: ['inspect']`. Call site does not pass `activeAgents` / `artifactReferences` into deep scrape. RED tests left in `mea-hostile-seventh-reaudit-self-cert.test.js` (13). READY retracted; Item 9 incomplete. No production fix. No commit. Full suite **235/248**. `store.saveMission` out-of-scope.
+
+52. I1–I9 **class-closed** in `execution-roles.js`: full-`update` scrape (not only `update.evidence`); iterative 100k-node walk (no depth-32 fail-open); leaf URI/base64 expansion; char/codepoint-array join; normalize equals-OR-contains certifier; lookalike map adds ɡ/ԁ/ι plus fuller Cyrillic/Greek set. Orchestrator honest completion keeps `activeAgents: []` and omits certifier `agent`/`verifier` from `artifactReferences` (proof hashes retained). Seventh suite **17/17**; personal re-probe I1–I9 + depth-60 + Cyrillic-м + honest **16/16**; full suite **248/248**. Item 9 READY (uncommitted). Item 10 not started. No commit. `store.saveMission` out-of-scope.
+
+53. **Scrape retracted as the security boundary; replaced with structural provenance; Item 6 regression fixed.** The I-class "class close" at checkpoint 52 was still whack-a-mole — its own residual admitted novel encodings could reopen it — and the sanitize it required had stripped the certifier `agent` and `verifier` out of `artifactReferences`, regressing Item 6 (artifact lineage requires producer action and verifier decision; `writeArtifactProof` takes `agent` and `verifierResult` by design). Independence now compares service-recorded identities only: `recordedWorkPerformers(transitionHistory)` collects the `actor` of ledger entries that wrote authoritative work evidence or performed an executor action, and `authorizeCompletedWorkClaim` rejects a certifier in that set or one whose own validated update writes work evidence. Caller `evidence` / `result` / `artifactReferences` / `activeAgents` content is no longer an identity source at all. Deleted: equals-OR-contains match, base64 and URI leaf decoding, char/codepoint-array join, the 100k-node walk, the lookalike map, and NFKD + Mn/Cf normalization (`normalizeAgentId` is trim + casefold on closed-set ids). Orchestrator completion restored to `{ id: 'mission-proof', ...artifactRef, ...artifactVerification }`, so certifier `agent`, `action`, and `verifierResult.verifier` are back in artifact lineage; `tests/integration/artifact-proof.test.js` and `packages/proof/src/proof-store.js` were not modified and remain green.
+
+54. Test accounting for checkpoint 53, delta **248 → 257** (+9): +7 new `mea-structural-provenance.test.js` (recorded-actor reject on `completedWork` and on `completed`, same-transition perform-and-certify reject, planted-payload irrelevance across every retired channel, hostile-shape mission, plus 2 documented-boundary pins); +1 contract test deriving performers from ledger entries; +1 from splitting the sixth-re-audit `workers` test so its `update.evidence` half stays a genuine reject. **No hostile file was deleted and no case was silently dropped.** 49 former scrape probes were converted in place: each now asserts both that the payload does not influence authorization (independent auditor still certifies) and that the recorded-actor rule still rejects the genuine case, with the intent stated in the test name and comment. Cases that expressed a real acceptance requirement were kept and restated structurally (perform-and-certify in one update, forged `signal.agent`, executor/manager success claims, `completed` work-coverage and `failedWork` gates). Personal adversarial re-probe **12/12** matched expectation. Full suite **257/257**, 0 fail. Item 9 READY (uncommitted). Item 10 not started. No commit.

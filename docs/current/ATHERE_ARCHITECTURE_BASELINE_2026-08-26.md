@@ -111,7 +111,7 @@ The runtime has deterministic JavaScript contract validation for missions, polic
 
 #### Manager / Executor / Auditor separation
 
-The architecture already separates orchestration, deterministic executor work, and proof verification in several flows. The separation is not yet universal across every operation, and the current QRA proof verifier is not the complete layered QR18 architecture proposed by backlog Items 9–10.
+The runtime enforces Manager / Executor / Auditor roles for operational agents on the authoritative mission transition path. Executors may record evidence but cannot advance `completedWork` or emit `completed`; only the auditor may certify subgoal success and mission completion (still proof-gated). See `docs/current/ATHERE_MANAGER_EXECUTOR_AUDITOR.md`. Layered QR18 Level 1–6 verification remains backlog Item 10.
 
 #### Durable storage options
 
@@ -134,7 +134,6 @@ The following are present as architecture/backlog direction but are not complete
 - explicit supersession/revocation/correction lineage for authoritative facts;
 - universal typed agent envelope across all agent operations;
 - operation-ID idempotency and universal duplicate suppression;
-- full Manager / Executor / Auditor enforcement for every state-changing action;
 - layered QR18 Level 1–6 verification model;
 - persisted workflow/plan graph with dependency, retry, rollback, supersession, and alternate-path edges;
 - verified checkpoints, mission branching, failed-branch quarantine, and arbitrary rollback;
