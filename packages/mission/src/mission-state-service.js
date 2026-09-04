@@ -26,6 +26,7 @@ import {
   withAppendedTrace,
 } from './mission-execution-trace.js';
 import { loadMission, saveMission } from './mission-store.js';
+import { projectMissionMemory, authorizeMemoryWrite } from '../../memory/src/typed-memory.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const FACT_STATUSES = new Set(['current', 'superseded', 'revoked', 'corrected', 'historical', 'tentative']);
@@ -297,6 +298,10 @@ function validateUpdate(update, mission) {
     }
     if (field === 'executionTrace') {
       throw new Error('executionTrace must be changed through mission observability');
+    }
+    if (field === 'memory') {
+      authorizeMemoryWrite({ writer: 'caller' });
+      throw new Error('memory must not be mutated through transition; typed memory is a projection');
     }
     if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`);
   }
@@ -638,6 +643,13 @@ export function createMissionStateService({
     async reconstruct({ missionId }) {
       const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
       return reconstructFailedMission(record.mission);
+    },
+    async memory({ missionId, types, reader } = {}) {
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      return projectMissionMemory(record.mission, {
+        reader,
+        ...(types === undefined ? {} : { types }),
+      });
     },
     async recordFact({ operationId, missionId, expectedRevision, actor, fact, evidence }) {
       const normalized = recordableFact(fact);

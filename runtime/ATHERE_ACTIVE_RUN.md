@@ -2,7 +2,7 @@
 
 
 
-**Status:** Active — Items 2–13 landed. **Item 13 observability/execution tracing** (`docs/current/ATHERE_OBSERVABILITY_TRACING.md`). Item 14 not started.
+**Status:** Active — Items 2–14 landed. **Item 14 typed memory projection** (`docs/current/ATHERE_TYPED_MEMORY.md`). Item 15 not started.
 
 **New-thread tie-in (paste block):** `docs/current/ATHERE_THREAD_TIE_IN.md` — continue only; zero skill load = deletion; no rebuild.
 
@@ -11,7 +11,7 @@ This file is the live operator view for the current Athere implementation run.
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **Item 13 landed** — durable `executionTrace` + reconstruct API; Items 2–12 unchanged. Item 14 not started.
+- Current focus: **Item 14 landed** — typed memory projection over mission authority (no parallel DB). Item 15 not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -305,3 +305,12 @@ This file is the live operator view for the current Athere implementation run.
 - **Suite:** 344 pass / 0 fail / 17 skip (mesh Redis offline skips).
 - **Security close:** unbounded observability + spoofable tool_call agentId closed (caps + actor bind, fail closed). Reconstruct remains forensic-only (trace still excluded from stateHash).
 - Item 14 not started.
+
+69. **Item 14 — Typed memory split (projection, not a parallel DB).** Acceptance: Athere can tell current state vs remembered history vs learned knowledge vs executable skill.
+
+- **Added:** `packages/memory/src/typed-memory.js`, `tests/contract/typed-memory.test.js`, `tests/integration/typed-memory-item14.test.js`, `docs/current/ATHERE_TYPED_MEMORY.md`.
+- **Wired:** `service.memory({ missionId, types? })` projects working/episodic/semantic/procedural/artifact/state_history from existing mission authority; generic `transition` cannot mutate `memory`.
+- **Hostile (local):** forge `memory` via transition REJECT; superseded semantic fact is not working current state; classify rejects unknown fields/types.
+- **Security close:** reader allowlist + enforced accessPolicy; projection caps; semantic/history/evidence redaction.
+- **Suite:** 351 pass / 0 fail / 17 skip (pre-close baseline); re-verified after security closes.
+- Item 15 (state-aware retrieval) not started.
