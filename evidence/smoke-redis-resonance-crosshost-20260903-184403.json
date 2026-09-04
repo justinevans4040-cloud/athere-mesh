@@ -1,0 +1,410 @@
+{
+  "ok": true,
+  "smoke": "redis-resonance-crosshost",
+  "claim": "A signal published by a process on JustinLenovo is read back, in order and byte-identical, by a separate process running on ichabodcrane against that host's own Redis. Repeated three times.",
+  "at": "2026-09-04T01:44:06.143Z",
+  "runtime": "athere-mesh",
+  "command": "ATHERE_MESH_REDIS_HOST=100.77.131.28 ATHERE_MESH_REDIS_PORT=6380 ATHERE_MESH_REDIS_PASSWORD_FILE=<path> ATHERE_MESH_REDIS_SEED_ID=<seed> corepack pnpm run smoke:redis-resonance publish --mission <id> --signal <id>",
+  "readerCommand": "on ichabodcrane: ATHERE_MESH_REDIS_HOST=127.0.0.1 ATHERE_MESH_REDIS_PORT=6380 ATHERE_MESH_REDIS_PASSWORD_FILE=$HOME/.config/athere-mesh-redis/mesh-redis.pass ATHERE_MESH_REDIS_SEED_ID=<seed> node scripts/smoke-redis-resonance.js read --mission <id>",
+  "transport": {
+    "implementation": "packages/resonance/src/redis-resonance-bus.js",
+    "client": "packages/resonance/src/resp-client.js (minimal RESP2 over node:net, zero npm dependencies)",
+    "npmDependenciesAdded": 0,
+    "dataModel": "per-mission Redis LIST for ordering, per-signal-id key for the content fingerprint and sequence, single atomic EVAL for publish",
+    "keyNamespace": "athere:mesh:resonance"
+  },
+  "seed": {
+    "host": "ichabodcrane",
+    "tailscaleIp": "100.77.131.28",
+    "port": 6380,
+    "redisVersion": "8.0.5",
+    "unit": "systemd --user redis-athere-mesh.service",
+    "seedKey": "athere:mesh:seed:id",
+    "seedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+    "isolationNote": "Dedicated instance on 6380. Port 6379 on the same host does not hold athere:mesh:seed:id (verified EXISTS -> 0) and was not touched."
+  },
+  "hosts": {
+    "publisher": {
+      "hostname": "JustinLenovo",
+      "tailscaleIp": "100.125.245.10",
+      "platform": "win32 10.0.26200",
+      "node": "v24.14.1"
+    },
+    "reader": {
+      "hostname": "ichabodcrane",
+      "tailscaleIp": "100.77.131.28",
+      "platform": "linux 7.0.0-30-generic",
+      "node": "v24.19.0"
+    }
+  },
+  "sourceParity": {
+    "note": "Both hosts executed byte-identical bus sources. Values are git blob hashes of the committed files; the staged copies on ichabodcrane were verified with sha256sum against the same bytes.",
+    "gitBlobHashes": {
+      "packages/resonance/src/resonance-bus.js": "e73ebadb5fee359097a1b067b7d5f356c7ff98ed",
+      "packages/resonance/src/resp-client.js": "d8d4a7eb6b004c1632c854c47411f3232e87f1f3",
+      "packages/resonance/src/redis-resonance-bus.js": "a20d9394599958a9d4ef9cc2cca3ca9f19554386",
+      "scripts/smoke-redis-resonance.js": "876dd3dce6c0659a09b587658fb790fed417728c"
+    },
+    "stagedOnReader": "~the_founder/athere-mesh-crosshost"
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "missionId": "mission-crosshost-20260903-184403-r1",
+      "processA": {
+        "role": "publisher",
+        "hostname": "JustinLenovo",
+        "tailnet": [
+          {
+            "interface": "Tailscale",
+            "address": "100.125.245.10"
+          }
+        ],
+        "platform": "win32 10.0.26200",
+        "nodeVersion": "v24.14.1",
+        "connectedTo": "100.77.131.28:6380",
+        "verifiedSeedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+        "publishes": [
+          {
+            "pid": 20024,
+            "at": "2026-09-04T01:44:04.073Z",
+            "signal": {
+              "id": "mission-crosshost-20260903-184403-r1-s1",
+              "missionId": "mission-crosshost-20260903-184403-r1",
+              "type": "accepted",
+              "agent": "titan",
+              "at": "2026-09-04T01:44:04.073Z",
+              "detail": "cross-host resonance handoff from JustinLenovo"
+            },
+            "result": {
+              "accepted": true,
+              "duplicate": false,
+              "sequence": 1
+            }
+          },
+          {
+            "pid": 20724,
+            "at": "2026-09-04T01:44:04.250Z",
+            "signal": {
+              "id": "mission-crosshost-20260903-184403-r1-s2",
+              "missionId": "mission-crosshost-20260903-184403-r1",
+              "type": "running",
+              "agent": "jarvis",
+              "at": "2026-09-04T01:44:04.250Z",
+              "detail": "cross-host resonance handoff from JustinLenovo"
+            },
+            "result": {
+              "accepted": true,
+              "duplicate": false,
+              "sequence": 2
+            }
+          },
+          {
+            "pid": 25308,
+            "at": "2026-09-04T01:44:04.387Z",
+            "note": "identical re-publish from a separate process",
+            "signal": {
+              "id": "mission-crosshost-20260903-184403-r1-s1",
+              "missionId": "mission-crosshost-20260903-184403-r1",
+              "type": "accepted",
+              "agent": "titan",
+              "at": "2026-09-04T01:44:04.073Z",
+              "detail": "cross-host resonance handoff from JustinLenovo"
+            },
+            "result": {
+              "accepted": true,
+              "duplicate": true,
+              "sequence": 1
+            }
+          }
+        ]
+      },
+      "processB": {
+        "role": "reader",
+        "hostname": "ichabodcrane",
+        "tailnet": [
+          {
+            "interface": "tailscale0",
+            "address": "100.77.131.28"
+          }
+        ],
+        "platform": "linux 7.0.0-30-generic",
+        "nodeVersion": "v24.19.0",
+        "connectedTo": "127.0.0.1:6380",
+        "verifiedSeedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+        "readAt": "2026-09-04T01:44:04.110Z",
+        "pid": 2219403,
+        "signalsRead": [
+          {
+            "id": "mission-crosshost-20260903-184403-r1-s1",
+            "missionId": "mission-crosshost-20260903-184403-r1",
+            "type": "accepted",
+            "agent": "titan",
+            "at": "2026-09-04T01:44:04.073Z",
+            "detail": "cross-host resonance handoff from JustinLenovo",
+            "sequence": 1
+          },
+          {
+            "id": "mission-crosshost-20260903-184403-r1-s2",
+            "missionId": "mission-crosshost-20260903-184403-r1",
+            "type": "running",
+            "agent": "jarvis",
+            "at": "2026-09-04T01:44:04.250Z",
+            "detail": "cross-host resonance handoff from JustinLenovo",
+            "sequence": 2
+          }
+        ]
+      },
+      "contentConfirmed": true
+    },
+    {
+      "round": 2,
+      "missionId": "mission-crosshost-20260903-184403-r2",
+      "processA": {
+        "role": "publisher",
+        "hostname": "JustinLenovo",
+        "tailnet": [
+          {
+            "interface": "Tailscale",
+            "address": "100.125.245.10"
+          }
+        ],
+        "platform": "win32 10.0.26200",
+        "nodeVersion": "v24.14.1",
+        "connectedTo": "100.77.131.28:6380",
+        "verifiedSeedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+        "publishes": [
+          {
+            "pid": 12772,
+            "at": "2026-09-04T01:44:04.809Z",
+            "signal": {
+              "id": "mission-crosshost-20260903-184403-r2-s1",
+              "missionId": "mission-crosshost-20260903-184403-r2",
+              "type": "accepted",
+              "agent": "titan",
+              "at": "2026-09-04T01:44:04.809Z",
+              "detail": "cross-host resonance handoff from JustinLenovo"
+            },
+            "result": {
+              "accepted": true,
+              "duplicate": false,
+              "sequence": 1
+            }
+          },
+          {
+            "pid": 22572,
+            "at": "2026-09-04T01:44:04.917Z",
+            "signal": {
+              "id": "mission-crosshost-20260903-184403-r2-s2",
+              "missionId": "mission-crosshost-20260903-184403-r2",
+              "type": "running",
+              "agent": "jarvis",
+              "at": "2026-09-04T01:44:04.917Z",
+              "detail": "cross-host resonance handoff from JustinLenovo"
+            },
+            "result": {
+              "accepted": true,
+              "duplicate": false,
+              "sequence": 2
+            }
+          },
+          {
+            "pid": 24052,
+            "at": "2026-09-04T01:44:05.014Z",
+            "note": "identical re-publish from a separate process",
+            "signal": {
+              "id": "mission-crosshost-20260903-184403-r2-s1",
+              "missionId": "mission-crosshost-20260903-184403-r2",
+              "type": "accepted",
+              "agent": "titan",
+              "at": "2026-09-04T01:44:04.809Z",
+              "detail": "cross-host resonance handoff from JustinLenovo"
+            },
+            "result": {
+              "accepted": true,
+              "duplicate": true,
+              "sequence": 1
+            }
+          }
+        ]
+      },
+      "processB": {
+        "role": "reader",
+        "hostname": "ichabodcrane",
+        "tailnet": [
+          {
+            "interface": "tailscale0",
+            "address": "100.77.131.28"
+          }
+        ],
+        "platform": "linux 7.0.0-30-generic",
+        "nodeVersion": "v24.19.0",
+        "connectedTo": "127.0.0.1:6380",
+        "verifiedSeedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+        "readAt": "2026-09-04T01:44:04.751Z",
+        "pid": 2219459,
+        "signalsRead": [
+          {
+            "id": "mission-crosshost-20260903-184403-r2-s1",
+            "missionId": "mission-crosshost-20260903-184403-r2",
+            "type": "accepted",
+            "agent": "titan",
+            "at": "2026-09-04T01:44:04.809Z",
+            "detail": "cross-host resonance handoff from JustinLenovo",
+            "sequence": 1
+          },
+          {
+            "id": "mission-crosshost-20260903-184403-r2-s2",
+            "missionId": "mission-crosshost-20260903-184403-r2",
+            "type": "running",
+            "agent": "jarvis",
+            "at": "2026-09-04T01:44:04.917Z",
+            "detail": "cross-host resonance handoff from JustinLenovo",
+            "sequence": 2
+          }
+        ]
+      },
+      "contentConfirmed": true
+    },
+    {
+      "round": 3,
+      "missionId": "mission-crosshost-20260903-184403-r3",
+      "processA": {
+        "role": "publisher",
+        "hostname": "JustinLenovo",
+        "tailnet": [
+          {
+            "interface": "Tailscale",
+            "address": "100.125.245.10"
+          }
+        ],
+        "platform": "win32 10.0.26200",
+        "nodeVersion": "v24.14.1",
+        "connectedTo": "100.77.131.28:6380",
+        "verifiedSeedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+        "publishes": [
+          {
+            "pid": 24548,
+            "at": "2026-09-04T01:44:05.452Z",
+            "signal": {
+              "id": "mission-crosshost-20260903-184403-r3-s1",
+              "missionId": "mission-crosshost-20260903-184403-r3",
+              "type": "accepted",
+              "agent": "titan",
+              "at": "2026-09-04T01:44:05.452Z",
+              "detail": "cross-host resonance handoff from JustinLenovo"
+            },
+            "result": {
+              "accepted": true,
+              "duplicate": false,
+              "sequence": 1
+            }
+          },
+          {
+            "pid": 13284,
+            "at": "2026-09-04T01:44:05.575Z",
+            "signal": {
+              "id": "mission-crosshost-20260903-184403-r3-s2",
+              "missionId": "mission-crosshost-20260903-184403-r3",
+              "type": "running",
+              "agent": "jarvis",
+              "at": "2026-09-04T01:44:05.575Z",
+              "detail": "cross-host resonance handoff from JustinLenovo"
+            },
+            "result": {
+              "accepted": true,
+              "duplicate": false,
+              "sequence": 2
+            }
+          },
+          {
+            "pid": 18368,
+            "at": "2026-09-04T01:44:05.686Z",
+            "note": "identical re-publish from a separate process",
+            "signal": {
+              "id": "mission-crosshost-20260903-184403-r3-s1",
+              "missionId": "mission-crosshost-20260903-184403-r3",
+              "type": "accepted",
+              "agent": "titan",
+              "at": "2026-09-04T01:44:05.452Z",
+              "detail": "cross-host resonance handoff from JustinLenovo"
+            },
+            "result": {
+              "accepted": true,
+              "duplicate": true,
+              "sequence": 1
+            }
+          }
+        ]
+      },
+      "processB": {
+        "role": "reader",
+        "hostname": "ichabodcrane",
+        "tailnet": [
+          {
+            "interface": "tailscale0",
+            "address": "100.77.131.28"
+          }
+        ],
+        "platform": "linux 7.0.0-30-generic",
+        "nodeVersion": "v24.19.0",
+        "connectedTo": "127.0.0.1:6380",
+        "verifiedSeedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+        "readAt": "2026-09-04T01:44:05.420Z",
+        "pid": 2219515,
+        "signalsRead": [
+          {
+            "id": "mission-crosshost-20260903-184403-r3-s1",
+            "missionId": "mission-crosshost-20260903-184403-r3",
+            "type": "accepted",
+            "agent": "titan",
+            "at": "2026-09-04T01:44:05.452Z",
+            "detail": "cross-host resonance handoff from JustinLenovo",
+            "sequence": 1
+          },
+          {
+            "id": "mission-crosshost-20260903-184403-r3-s2",
+            "missionId": "mission-crosshost-20260903-184403-r3",
+            "type": "running",
+            "agent": "jarvis",
+            "at": "2026-09-04T01:44:05.575Z",
+            "detail": "cross-host resonance handoff from JustinLenovo",
+            "sequence": 2
+          }
+        ]
+      },
+      "contentConfirmed": true
+    }
+  ],
+  "durableKeysOnSeed": {
+    "note": "Left in place on the seed so this evidence can be re-verified independently. Verified with SCAN after the run: these nine keys plus athere:mesh:seed:id were the entire keyspace, so no test residue remained.",
+    "dbsize": 10,
+    "keys": [
+      "athere:mesh:resonance:mission:mission-crosshost-20260903-184403-r1:signals",
+      "athere:mesh:resonance:mission:mission-crosshost-20260903-184403-r2:signals",
+      "athere:mesh:resonance:mission:mission-crosshost-20260903-184403-r3:signals",
+      "athere:mesh:resonance:signal:mission-crosshost-20260903-184403-r1-s1",
+      "athere:mesh:resonance:signal:mission-crosshost-20260903-184403-r1-s2",
+      "athere:mesh:resonance:signal:mission-crosshost-20260903-184403-r2-s1",
+      "athere:mesh:resonance:signal:mission-crosshost-20260903-184403-r2-s2",
+      "athere:mesh:resonance:signal:mission-crosshost-20260903-184403-r3-s1",
+      "athere:mesh:resonance:signal:mission-crosshost-20260903-184403-r3-s2"
+    ]
+  },
+  "proves": [
+    "Cross-host signal transport works: process A on one machine publishes, process B on another machine reads the same signal.",
+    "Signal ordering within a mission survives the transport (sequence 1 then 2, read back in that order).",
+    "Idempotency is persistent, not process-local: an identical re-publish from a third, separate OS process returned duplicate=true at the original sequence.",
+    "The seed identity guard read the expected seed id on both hosts before any read or write.",
+    "Content fidelity: every field of every signal read on ichabodcrane deep-equals what JustinLenovo published, plus the derived sequence."
+  ],
+  "doesNotProve": [
+    "The doctrine baseline loop (Agent A -> Agent B with zero human intervention) is NOT complete. This is transport only.",
+    "Shared mission state across hosts is still missing: packages/mission/src/mission-store.js is local-filesystem only, so the two hosts do not share authoritative mission state.",
+    "Remote executor dispatch is still missing: there is no path for a mission on one host to make an executor on another host perform work.",
+    "createMissionOrchestrator still defaults to the in-memory bus. Nothing in the orchestrator uses this transport yet; it is opt-in via injection.",
+    "The orchestrator publish() path still swallows bus errors and its return value is discarded, so a transport failure would not surface through the orchestrator today. Unchanged in this run and reported as a residual blocker.",
+    "No consumer/subscription semantics: read() returns the whole mission stream. There is no blocking read, no consumer group, no at-least-once delivery tracking.",
+    "Single seed host. No replication or failover; if ichabodcrane is down the transport is down."
+  ]
+}

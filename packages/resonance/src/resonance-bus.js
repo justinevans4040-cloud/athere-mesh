@@ -21,6 +21,10 @@ function fingerprint(signal) {
   return createHash('sha256').update(JSON.stringify(ordered)).digest('hex');
 }
 
+// Exported so every transport implements one signal contract rather than a
+// second copy of it. The memory bus below still uses these directly.
+export { requireId as requireSignalId, validate as validateSignal, fingerprint as fingerprintSignal };
+
 export function createMemoryResonanceBus() {
   const streams = new Map();
   const identities = new Map();
