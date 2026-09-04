@@ -2,7 +2,7 @@
 
 
 
-**Status:** Active — Items 2–14 landed. **Item 14 typed memory projection** (`docs/current/ATHERE_TYPED_MEMORY.md`). Item 15 not started.
+**Status:** Active — Items 2–16 landed. **Item 16 Executive Controller** (`docs/current/ATHERE_EXECUTIVE_CONTROLLER.md`). Item 17 not started.
 
 **New-thread tie-in (paste block):** `docs/current/ATHERE_THREAD_TIE_IN.md` — continue only; zero skill load = deletion; no rebuild.
 
@@ -11,7 +11,7 @@ This file is the live operator view for the current Athere implementation run.
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **Item 14 landed** — typed memory projection over mission authority (no parallel DB). Item 15 not started.
+- Current focus: **Item 16 landed** — executive decisions from authoritative state; strategy change without breaking mission integrity. Item 17 not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -314,3 +314,19 @@ This file is the live operator view for the current Athere implementation run.
 - **Security close:** reader allowlist + enforced accessPolicy; projection caps; semantic/history/evidence redaction.
 - **Suite:** 351 pass / 0 fail / 17 skip (pre-close baseline); re-verified after security closes.
 - Item 15 (state-aware retrieval) not started.
+
+70. **Item 15 — State-aware memory retrieval.** Acceptance: old but semantically similar memory cannot automatically override current verified state.
+
+- **Added:** `packages/memory/src/state-aware-retrieval.js`, `tests/contract/state-aware-retrieval.test.js`, `tests/integration/state-aware-retrieval-item15.test.js`, `docs/current/ATHERE_STATE_AWARE_RETRIEVAL.md`.
+- **Wired:** `service.retrieveMemory({ missionId, reader, query, types?, limit? })` ranks Item 14 projections with mission/state/goal/key/recency/authority/confidence; `similarity_only` rejected; current semantic wins for matching keys.
+- **Hostile security (local, no GitHub):** no HTTP route; MEA/orch untouched; unauthorized reader REJECT; query field inject REJECT; limit cap; redaction preserved; superseded cannot win selection.
+- **Suite:** 359 pass / 0 fail / 17 skip.
+- Item 16 not started.
+
+71. **Item 16 — Executive Controller.** Acceptance: dynamically change strategy while preserving mission integrity.
+
+- **Added:** `packages/executive/src/executive-controller.js`, `tests/contract/executive-controller.test.js`, `tests/integration/executive-controller-item16.test.js`, `docs/current/ATHERE_EXECUTIVE_CONTROLLER.md`.
+- **Wired:** `service.decideNext({ missionId, actor? })` advises allocate/verify/research/retry/change_strategy/stop/escalate from authoritative mission state only; never mutates or certifies.
+- **Hostile security (local, no GitHub):** no HTTP; MEA/orch untouched; unauthorized actor REJECT; path-skip REJECT; strategy change requires recovery driver; canCertifySuccess always false.
+- **Suite:** 365 pass / 0 fail / 17 skip.
+- Item 17 not started.

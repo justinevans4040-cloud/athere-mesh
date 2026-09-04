@@ -29,7 +29,7 @@ Athere can tell whether something is current state, remembered history, learned 
 
 ## Not in Item 14
 
-State-aware retrieval ranking is Item 15.
+State-aware retrieval ranking is Item 15 — see `ATHERE_STATE_AWARE_RETRIEVAL.md`.
 
 ## Security closes (local hostile audit)
 

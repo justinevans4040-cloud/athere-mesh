@@ -27,6 +27,8 @@ import {
 } from './mission-execution-trace.js';
 import { loadMission, saveMission } from './mission-store.js';
 import { projectMissionMemory, authorizeMemoryWrite } from '../../memory/src/typed-memory.js';
+import { retrieveStateAwareMemory } from '../../memory/src/state-aware-retrieval.js';
+import { decideNext, assertExecutiveActor } from '../../executive/src/executive-controller.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const FACT_STATUSES = new Set(['current', 'superseded', 'revoked', 'corrected', 'historical', 'tentative']);
@@ -649,6 +651,30 @@ export function createMissionStateService({
       return projectMissionMemory(record.mission, {
         reader,
         ...(types === undefined ? {} : { types }),
+      });
+    },
+    async retrieveMemory({ missionId, reader, query, types, limit } = {}) {
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      const projected = await this.memory({
+        missionId,
+        reader,
+        ...(types === undefined ? {} : { types }),
+      });
+      return retrieveStateAwareMemory({
+        mission: record.mission,
+        projected,
+        reader,
+        query,
+        ...(limit === undefined ? {} : { limit }),
+      });
+    },
+    async decideNext({ missionId, actor = 'mission-state-service', budget } = {}) {
+      assertExecutiveActor(actor);
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      return decideNext({
+        mission: record.mission,
+        actor,
+        ...(budget === undefined ? {} : { budget }),
       });
     },
     async recordFact({ operationId, missionId, expectedRevision, actor, fact, evidence }) {
