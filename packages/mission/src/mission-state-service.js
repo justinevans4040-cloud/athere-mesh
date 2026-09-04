@@ -39,6 +39,7 @@ import { decideNext, assertExecutiveActor } from '../../executive/src/executive-
 import { resolveAuthorityFromHistory } from '../../contracts/src/agent-identity.js';
 import { createAgentIdentityRegistry } from '../../identity/src/agent-identity-registry.js';
 import { createGatedLearningPipeline } from '../../learning/src/gated-learning-pipeline.js';
+import { createValidatedSkillLibrary } from '../../skills/src/validated-skill-library.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const FACT_STATUSES = new Set(['current', 'superseded', 'revoked', 'corrected', 'historical', 'tentative']);
@@ -322,6 +323,9 @@ function validateUpdate(update, mission) {
     if (field === 'learnedKnowledge' || field === 'learningPipeline') {
       throw new Error('learnedKnowledge must be changed through the gated learning pipeline');
     }
+    if (field === 'skillLibrary' || field === 'skills') {
+      throw new Error('skillLibrary must be changed through the validated skill library');
+    }
     if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`);
   }
   const validated = {};
@@ -370,6 +374,7 @@ export function createMissionStateService({
   store = { loadMission, saveMission },
   identities = createAgentIdentityRegistry(),
   learning = createGatedLearningPipeline(),
+  skills = null,
   operationRetryTimeoutMs = OPERATION_RETRY_TIMEOUT_MS,
   operationRetryDelayMs = OPERATION_RETRY_DELAY_MS,
 } = {}) {
@@ -379,6 +384,10 @@ export function createMissionStateService({
   }
   if (!learning || typeof learning.runPipeline !== 'function' || typeof learning.storePermanent !== 'function') {
     throw new TypeError('learning pipeline must provide runPipeline and storePermanent');
+  }
+  const skillLibrary = skills ?? createValidatedSkillLibrary({ learning, now: clock });
+  if (!skillLibrary || typeof skillLibrary.reuse !== 'function' || typeof skillLibrary.publishFromLesson !== 'function') {
+    throw new TypeError('skills library must provide reuse and publishFromLesson');
   }
   function assertRegisteredIdentityActive(actorId) {
     if (typeof identities.has === 'function' && !identities.has(actorId)) {
@@ -832,6 +841,15 @@ export function createMissionStateService({
     },
     listPermanentLearning() {
       return learning.listPermanent();
+    },
+    async publishSkillFromLesson(input) {
+      return skillLibrary.publishFromLesson(input);
+    },
+    async reuseSkill(input) {
+      return skillLibrary.reuse(input);
+    },
+    listSkills() {
+      return skillLibrary.list();
     },
     async recordFact({ operationId, missionId, expectedRevision, actor, fact, evidence }) {
       const normalized = recordableFact(fact);

@@ -2,7 +2,7 @@
 
 
 
-**Status:** Active — Items 2–21 landed. **Item 21 gated learning** (`docs/current/ATHERE_GATED_LEARNING.md`). Item 22 not started.
+**Status:** Active — Items 2–22 landed. **Item 22 validated skill library** (`docs/current/ATHERE_VALIDATED_SKILL_LIBRARY.md`). Item 23 not started.
 
 **New-thread tie-in (paste block):** `docs/current/ATHERE_THREAD_TIE_IN.md` — continue only; zero skill load = deletion; no rebuild.
 
@@ -11,7 +11,7 @@ This file is the live operator view for the current Athere implementation run.
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **Item 21 landed** — gated Experience→Learning pipeline; retained learning must improve vs control without regression. Item 22 not started.
+- Current focus: **Item 22 landed** — versioned validated skill library; reuse without re-deriving; no silent mutation. Item 23 not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -394,3 +394,29 @@ This file is the live operator view for the current Athere implementation run.
 - **Hostile security (local, no GitHub):** direct permanent write REJECT; stage skip REJECT; regression REJECT; executor approve REJECT; no new HTTP; mission revision unchanged by learning store.
 - **Suite:** 400 pass / 0 fail / 17 skip (expected +5 Item 21 tests from 395 baseline; re-verify if Windows concurrent-rename flake).
 - Item 22 not started.
+
+79. **Item 22 — Validated skill library.** Acceptance: reuse validated experience rather than re-deriving every procedure from scratch.
+
+- **Added:** `packages/contracts/src/skill-library.js`, `packages/skills/src/validated-skill-library.js`, `tests/contract/skill-library.test.js`, `tests/integration/skill-library-item22.test.js`, `docs/current/ATHERE_VALIDATED_SKILL_LIBRARY.md`.
+- **Wired:** skills from Item 21 permanent lessons only; versioning via `publishVersion`; `reuse` / `reuseSkill` with `derivedFromScratch: false`; `mutateInPlace` REJECT; transition forge of `skillLibrary` REJECT.
+- **Hostile security (local, no GitHub):** unpublished lesson REJECT; silent mutation REJECT; no new HTTP.
+- **Suite:** 404 pass / 0 fail / 17 skip.
+- Item 23 not started.
+
+80. **Item 22 security audit (local).** Hostile re-probe after Item 22 READY claim.
+
+- **Holes found OPEN and closed:**
+  1. Impossible rates (`historicalSuccessRate + failureRate > 1`) accepted → fail closed in `normalizeSkill`.
+  2. `publishVersion` accepted arbitrary unvalidated procedures while labeling provenance `gated_learning` → require a **new** permanent lesson id.
+- **Tests:** `tests/integration/skill-library-item22-security.test.js` + updated contract suite.
+- **Already closed:** unpublished lesson REJECT; mutateInPlace REJECT; transition forge REJECT; secret scan clean on skill/learning packages.
+- **Residual:** skill library remains process-local (not mission-hashed).
+- **Suite after close:** 405 pass / 0 fail / 17 skip.
+- Item 23 not started.
+
+81. **Deferred (operator skip):** mission-hash the skill library.
+
+- **Decision:** Skip for now; may swing back later. Do **not** start unless Justin re-orders.
+- **Intent when resumed:** mission-scoped bind (e.g. `mission.validatedSkills` id/version/contentHash/provenance) mutated only via gated skill ops, so `stateHash` covers it. Prefer mission-bound snapshots or root hashes — **not** stuffing the global process library into every mission.
+- **Why deferred:** residual only; Item 22 acceptance already holds without it.
+- Item 23 not started unless ordered.

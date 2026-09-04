@@ -11,7 +11,7 @@ ATHERE MESH — CONTINUE ONLY. DO NOT REBUILD.
 
 You are continuing justinevans4040-cloud/athere-mesh on master.
 Repo: C:\Users\justi\WORKSPACE\athere-mesh
-HEAD: 5dd9eb5 pushed (Items 17–19 + harden 12–19). Items 20–21 may be uncommitted — check git status + ACTIVE_RUN.
+HEAD: 7b811ad pushed (Items 20–21). Item 22 may be uncommitted — check git status + ACTIVE_RUN.
 
 HARD LAW (Justin will erase and force start-over if you violate):
 1. ZERO skill load before material work = INSTANT DELETION. No exceptions for “urgent,” “small,” or “obvious.”
@@ -26,12 +26,12 @@ HARD LAW (Justin will erase and force start-over if you violate):
 Authoritative truth (read first, in order):
 1. runtime/ATHERE_ACTIVE_RUN.md
 2. research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md
-3. docs/current/ATHERE_GATED_LEARNING.md (Item 21)
+3. docs/current/ATHERE_VALIDATED_SKILL_LIBRARY.md (Item 22)
 4. docs/current/ATHERE_THREAD_TIE_IN.md (this file)
 
 Current state (do not reopen as unfinished):
-- Items 2–19 + harden pushed at 5dd9eb5.
-- Items 20–21 in tree per ACTIVE_RUN; Item 22 (validated skill library) NOT started unless ordered.
+- Items 2–21 pushed through 7b811ad.
+- Item 22 (validated skill library) — see ACTIVE_RUN; Item 23 (self-improvement sandbox) NOT started unless ordered.
 
 First move every turn with material work:
 List skills/tools you are loading → Read them → Then act.
