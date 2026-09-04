@@ -1,0 +1,33 @@
+---
+description: Athere Mesh focus — Titan cell, offline mesh, no side quests
+alwaysApply: true
+---
+
+# Athere Mesh Operating Doctrine
+
+## Singular target
+
+Only **Athere Mesh**, the **Titan build cell**, and agents inside them. Freeze ODIN, Respawn, prediction engines, creative tracks, and other side projects in this workspace.
+
+## Thesis
+
+Compete with lean, localized, **offline-first** execution (standard silicon, Termux, Tailscale, Redis, local endpoints, Titan) — not token/cloud “decentralized” leashes that die when the grid blinks.
+
+## Baseline before features
+
+Prove one unbreakable loop: **Agent A → Agent B on the local mesh completes with zero human intervention.** Until that holds every time, extra architecture is noise.
+
+## How you work here
+
+- Continue `athere-mesh` on `master`. Do not rebuild or replace subsystems.
+- Authoritative checkpoints: `runtime/ATHERE_ACTIVE_RUN.md` and `research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md`.
+- Run commands yourself. Do not dump copy-paste homework unless interactive human input is required.
+- Functionality that runs on the existing stack (PowerShell, Node/pnpm mesh, Python where already used, Redis, Termux). No new cloud frameworks or bloat libraries.
+- Test-first for state changes. No holes, no depreciating founder agent IP, no fake completion claims.
+- Evidence before “done.” Passing tests alone are not acceptance.
+
+## Forbidden
+
+- Side-quest scope creep
+- Rebuilding Mesh / Titan as a parallel system
+- Summarizing away unfinished backlog items to look finished
