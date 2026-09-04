@@ -331,7 +331,7 @@ test('orchestrator records the complete mission in the authoritative state servi
   );
 });
 
-test('failed executor stores a blocked mission with its real failure and no proof completion', async () => {
+test('failed executor auto-heals to last checkpoint with no proof completion', async () => {
   const root = await workspace();
   const bus = createMemoryResonanceBus();
   const orchestrator = createMissionOrchestrator({
