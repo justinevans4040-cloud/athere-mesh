@@ -21,6 +21,10 @@ import {
   findBranch,
   findCheckpoint,
 } from './mission-checkpoints.js';
+import {
+  reconstructFailedMission,
+  withAppendedTrace,
+} from './mission-execution-trace.js';
 import { loadMission, saveMission } from './mission-store.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -32,6 +36,7 @@ const MUTABLE_FIELDS = new Set([
 ]);
 const SELECTABLE_FIELDS = new Set([
   'objective', 'permissions', 'currentFacts', 'checkpoints', 'branches', 'activeBranchId', 'workflowGraph',
+  'executionTrace',
   ...[...MUTABLE_FIELDS].filter((field) => field !== 'authoritativeFacts'),
 ]);
 const OPERATION_RETRY_TIMEOUT_MS = 5_000;
@@ -46,7 +51,7 @@ function canonicalize(value) {
 }
 
 function stateWithoutHistory(mission) {
-  const { transitionHistory: ignored, ...state } = mission;
+  const { transitionHistory: ignoredHistory, executionTrace: ignoredTrace, ...state } = mission;
   return state;
 }
 
@@ -268,6 +273,7 @@ function authoritativeState(input) {
     checkpoints: Object.freeze([]),
     branches: Object.freeze([]),
     activeBranchId: 'main',
+    executionTrace: Object.freeze([]),
   });
 }
 
@@ -288,6 +294,9 @@ function validateUpdate(update, mission) {
     if (field === 'workflowGraph') throw new Error('workflowGraph is immutable after create');
     if (field === 'checkpoints' || field === 'branches' || field === 'activeBranchId') {
       throw new Error(`${field} must be changed through recovery checkpoint operations`);
+    }
+    if (field === 'executionTrace') {
+      throw new Error('executionTrace must be changed through mission observability');
     }
     if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`);
   }
@@ -407,7 +416,10 @@ export function createMissionStateService({
       authorization,
       evidence,
     });
-    const mission = Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) });
+    const mission = withAppendedTrace(
+      Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) }),
+      lineage,
+    );
     return saveOperation({ mission, expectedRevision, operationId: operation, operationHash: hashValue(operationHashInput) });
   }
 
@@ -489,6 +501,7 @@ export function createMissionStateService({
         checkpoints: nextState.checkpoints,
         branches: nextState.branches,
         activeBranchId: nextState.activeBranchId,
+        executionTrace: nextState.executionTrace ?? current.mission.executionTrace ?? [],
         updatedAt: timestamp,
       });
     } else {
@@ -508,7 +521,10 @@ export function createMissionStateService({
       after: nextState,
       authorization: { actor: authorizedAgentId, actions: authorization.permission.actions, granted: true },
     });
-    const mission = Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) });
+    const mission = withAppendedTrace(
+      Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) }),
+      lineage,
+    );
     return saveOperation({
       mission,
       expectedRevision,
@@ -518,8 +534,31 @@ export function createMissionStateService({
   }
 
   return Object.freeze({
-    async create(input) { const id = requiredId(input?.id, 'mission id'); const operation = requiredId(input?.operationId, 'operation id'); const state = authoritativeState(input); const created = Object.freeze({ ...createMission({ id, intent: state.objective, clock }), ...state }); const lineage = transitionRecord({ stateVersion: 1, previousVersion: 0, previousTransitionHash: null, operationId: operation, actor: 'titan', action: 'create', timestamp: created.createdAt, input: state, before: Object.freeze({ id }), after: created, authorization: { actor: 'titan', actions: ['create_mission'], granted: true } }); const mission = Object.freeze({ ...created, transitionHistory: Object.freeze([lineage]) }); return saveOperation({ mission, operationId: operation, operationHash: hashValue(state) }); },
-    async transition({ operationId, missionId, expectedRevision, signal, update = {}, envelope }) {
+    async create(input) {
+      const id = requiredId(input?.id, 'mission id');
+      const operation = requiredId(input?.operationId, 'operation id');
+      const state = authoritativeState(input);
+      const created = Object.freeze({ ...createMission({ id, intent: state.objective, clock }), ...state });
+      const lineage = transitionRecord({
+        stateVersion: 1,
+        previousVersion: 0,
+        previousTransitionHash: null,
+        operationId: operation,
+        actor: 'titan',
+        action: 'create',
+        timestamp: created.createdAt,
+        input: state,
+        before: Object.freeze({ id }),
+        after: created,
+        authorization: { actor: 'titan', actions: ['create_mission'], granted: true },
+      });
+      const mission = withAppendedTrace(
+        Object.freeze({ ...created, transitionHistory: Object.freeze([lineage]) }),
+        lineage,
+      );
+      return saveOperation({ mission, operationId: operation, operationHash: hashValue(state) });
+    },
+    async transition({ operationId, missionId, expectedRevision, signal, update = {}, envelope, observability = null }) {
       const id = requiredId(missionId, 'mission id');
       if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) throw new TypeError('revision conflict: expectedRevision must be a positive integer');
       const operation = requiredId(operationId, 'operation id');
@@ -589,8 +628,16 @@ export function createMissionStateService({
         authorization: { actor: authorizedAgentId, actions: authorization.permission.actions, granted: true },
         evidence: signal.evidence,
       });
-      const mission = Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) });
+      const mission = withAppendedTrace(
+        Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) }),
+        lineage,
+        observability,
+      );
       return saveOperation({ mission, expectedRevision, operationId: operation, operationHash: hashValue(input) });
+    },
+    async reconstruct({ missionId }) {
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      return reconstructFailedMission(record.mission);
     },
     async recordFact({ operationId, missionId, expectedRevision, actor, fact, evidence }) {
       const normalized = recordableFact(fact);

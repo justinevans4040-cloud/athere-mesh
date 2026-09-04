@@ -2,14 +2,16 @@
 
 
 
-**Status:** Active — Items 2–12 landed. **Item 12 checkpoints/branching/rollback/quarantine** on mission-state recovery ops (`docs/current/ATHERE_CHECKPOINTS_BRANCHING.md`). Item 13 not started.
+**Status:** Active — Items 2–13 landed. **Item 13 observability/execution tracing** (`docs/current/ATHERE_OBSERVABILITY_TRACING.md`). Item 14 not started.
+
+**New-thread tie-in (paste block):** `docs/current/ATHERE_THREAD_TIE_IN.md` — continue only; zero skill load = deletion; no rebuild.
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **Items 2–12 hardened for durable self-heal** — auto-checkpoints, recoverAndHeal on startup, runtime block→heal from last verified checkpoint (cap 3). Item 13 not started.
+- Current focus: **Item 13 landed** — durable `executionTrace` + reconstruct API; Items 2–12 unchanged. Item 14 not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -294,3 +296,12 @@ This file is the live operator view for the current Athere implementation run.
 - **Hygiene:** `.gitignore` now excludes `workspace/`, `.env*`, `*.pass`.
 - Evidence: `tests/integration/mission-self-heal.test.js` + updated orchestrator/API suites.
 - Item 13 not started.
+
+68. **Item 13 — Observability / execution tracing.** Acceptance: any failed mission can be reconstructed afterward.
+
+- **Added:** `packages/mission/src/mission-execution-trace.js`, `tests/contract/mission-execution-trace.test.js`, `tests/integration/mission-execution-trace-item13.test.js`, `docs/current/ATHERE_OBSERVABILITY_TRACING.md`.
+- **Wired:** mission create initializes `executionTrace`; every create/transition/fact/recovery commit appends derived events; optional `observability` bag on `transition` for tool/latency/model/token/cost; generic `transition` cannot forge `executionTrace`; `executionTrace` excluded from state-hash (same class as `transitionHistory`); `service.reconstruct({ missionId })`.
+- **Orchestrator:** inspect + runTests record tool_call + latency into the observability bag.
+- **Suite:** 344 pass / 0 fail / 17 skip (mesh Redis offline skips).
+- **Security close:** unbounded observability + spoofable tool_call agentId closed (caps + actor bind, fail closed). Reconstruct remains forensic-only (trace still excluded from stateHash).
+- Item 14 not started.

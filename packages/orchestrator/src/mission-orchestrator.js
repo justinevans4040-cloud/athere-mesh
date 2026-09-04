@@ -146,7 +146,7 @@ export function createMissionOrchestrator({
     return true;
   }
 
-  async function persistTransition(record, operationId, signal, update = {}) {
+  async function persistTransition(record, operationId, signal, update = {}, observability = null) {
     const envelope = createAgentOperationEnvelope({
       record,
       operationId,
@@ -165,6 +165,7 @@ export function createMissionOrchestrator({
       signal,
       update,
       envelope,
+      ...(observability === null ? {} : { observability }),
     });
     if (saved.duplicate !== true) await publish(saved.mission.signals.at(-1));
     return saved;
@@ -268,6 +269,7 @@ export function createMissionOrchestrator({
       }, { activeAgents: ['miss-vale-prime'] });
 
       try {
+        const inspectStarted = Date.now();
         const inspection = parseRepositoryInspectionResult(await testExecutor.inspect({
           repositoryRoot: workerRepositoryRoot,
           envelope: executionEnvelope({
@@ -284,6 +286,7 @@ export function createMissionOrchestrator({
             inputBinding: nodeExecutionInputBinding({ repositoryRoot: workerRepositoryRoot, operation: 'inspect' }),
           }),
         }));
+        const inspectLatencyMs = Date.now() - inspectStarted;
         const nyxEvidence = Object.freeze({ executor: 'repository-inspector', result: inspection });
         record = await persistTransition(record, `${record.mission.id}-inspection`, {
           type: 'running',
@@ -293,8 +296,15 @@ export function createMissionOrchestrator({
         }, {
           evidence: [{ agent: 'nyx', ...nyxEvidence }],
           activeAgents: ['nyx'],
+        }, {
+          toolCalls: [{ tool: 'repository-inspector', agentId: 'nyx', ok: true }],
+          latencyMs: inspectLatencyMs,
+          models: [],
+          tokenUsage: 0,
+          costUsd: 0,
         });
         record = await durableCheckpoint(record, 'after-inspect');
+        const testStarted = Date.now();
         const result = parseNodeTestExecutionResult(await testExecutor.runTests({
           repositoryRoot: workerRepositoryRoot,
           envelope: executionEnvelope({
@@ -311,6 +321,7 @@ export function createMissionOrchestrator({
             inputBinding: nodeExecutionInputBinding({ repositoryRoot: workerRepositoryRoot, operation: 'test' }),
           }),
         }));
+        const testLatencyMs = Date.now() - testStarted;
         const validatedCounts = testCounts(result);
         const runeResult = Object.freeze({ command: result.command, exitCode: result.exitCode, ...validatedCounts });
         const runeEvidence = Object.freeze({ executor: 'node-test-runner', result: runeResult });
@@ -322,6 +333,12 @@ export function createMissionOrchestrator({
         }, {
           evidence: [...record.mission.evidence, { agent: 'rune', ...runeEvidence }],
           activeAgents: ['rune'],
+        }, {
+          toolCalls: [{ tool: 'node-test-runner', agentId: 'rune', ok: result.exitCode === 0 && result.failed === 0 }],
+          latencyMs: testLatencyMs,
+          models: [],
+          tokenUsage: 0,
+          costUsd: 0,
         });
         if (result.exitCode !== 0 || result.failed !== 0) throw new Error(failureMessage(result));
         record = await durableCheckpoint(record, 'after-tests');
