@@ -2,7 +2,7 @@
 
 
 
-**Status:** Active — Items 2–16 landed. **Item 16 Executive Controller** (`docs/current/ATHERE_EXECUTIVE_CONTROLLER.md`). Item 17 not started.
+**Status:** Active — Items 2–19 landed. **Item 19 MCP/A2A interop** (`docs/current/ATHERE_MCP_A2A_INTEROP.md`). Item 20 not started.
 
 **New-thread tie-in (paste block):** `docs/current/ATHERE_THREAD_TIE_IN.md` — continue only; zero skill load = deletion; no rebuild.
 
@@ -11,7 +11,7 @@ This file is the live operator view for the current Athere implementation run.
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **Item 16 landed** — executive decisions from authoritative state; strategy change without breaking mission integrity. Item 17 not started.
+- Current focus: **Item 19 landed** — MCP/A2A transport adapters; Athere keeps mission authority / memory / verification / policy / state / learning / executive control. Item 20 not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -330,3 +330,42 @@ This file is the live operator view for the current Athere implementation run.
 - **Hostile security (local, no GitHub):** no HTTP; MEA/orch untouched; unauthorized actor REJECT; path-skip REJECT; strategy change requires recovery driver; canCertifySuccess always false.
 - **Suite:** 365 pass / 0 fail / 17 skip.
 - Item 17 not started.
+
+72. **Item 17 — Explicit epistemic uncertainty / confidence.** Acceptance: "I do not know" ≠ verified false ≠ verified true.
+
+- **Added:** `packages/contracts/src/epistemic-state.js`, `tests/contract/epistemic-state.test.js`, `tests/integration/epistemic-state-item17.test.js`, `docs/current/ATHERE_EPISTEMIC_UNCERTAINTY.md`.
+- **Wired:** mission `epistemicClaims`; `recordEpistemicClaim` / `assessUncertainty`; executive consults unknown→research and verified_false→strategy/escalate; generic transition cannot forge claims.
+- **Hostile security (local, no GitHub):** no HTTP; executor cannot record verified_true/false; forge via transition REJECT; distinct triggers preserved.
+- **Suite:** 370 pass / 0 fail / 17 skip.
+- Item 18 not started.
+
+73. **Item 18 — Universal model/agent adapter.** Acceptance: Replacing a foundation model does not change Athere’s control protocol.
+
+- **Added:** `packages/contracts/src/model-capability-registry.js`, `packages/agent/src/model-adapter.js`, `tests/contract/model-adapter.test.js`, `tests/integration/model-adapter-item18.test.js`, `docs/current/ATHERE_MODEL_ADAPTER.md`.
+- **Wired:** `createModelAdapter` / `createCompletionFromAdapter`; Ollama wrapped (loopback); remotes need `allowRemote` + injected `complete`; `scripts/chat.js` routes through adapter; `createOllamaCompletion` still available.
+- **Hostile security (local, no GitHub):** `mission_control` cannot be true; remote fail-closed; result control fields REJECT; chat/runtime control surface unchanged across provider swap; no new command/mission HTTP surface.
+- **Suite:** 376 pass / 0 fail / 17 skip.
+- Item 19 not started.
+
+74. **Item 19 — MCP/A2A interoperability.** Acceptance: MCP/A2A connect tools/resources/agents without owning Athere’s moat (mission authority, memory, verification, policy, state, learning, executive control).
+
+- **Added:** `packages/contracts/src/protocol-interop.js`, `packages/interop/src/mcp-adapter.js`, `packages/interop/src/a2a-adapter.js`, `packages/interop/src/protocol-bridge.js`, `tests/contract/protocol-interop.test.js`, `tests/integration/protocol-interop-item19.test.js`, `docs/current/ATHERE_MCP_A2A_INTEROP.md`.
+- **Wired:** thin injected-transport adapters + advisory bridge; no proprietary MCP/A2A recreation; no mission mutation APIs on bridge.
+- **Hostile security (local, no GitHub):** remote fail-closed; control fields REJECT; bridge owns.* all false; mission revision unchanged after forge attempts; no new HTTP surface.
+- **Suite:** 381 pass / 0 fail / 17 skip.
+- Item 20 not started.
+
+75. **Items 12–19 hostile harden (residual risk close).** Local-only adversarial re-probe after Items 12–19 landed. TDD RED→GREEN; no Item 20.
+
+- **Holes found OPEN and closed:**
+  1. **H12** unbounded `createCheckpoint` DoS → `MAX_CHECKPOINTS = 32` + fail closed (`mission-checkpoints.js` / `mission-state-service.js`).
+  2. **H13** observability `models[]` accepted spoofed `agentId` + control fields → actor bind + forbidden-key reject (`mission-execution-trace.js`).
+  3. **H15** forged `projected` bags (missing reader / unredacted content) could bypass projection → reader mismatch fail closed; ranking always re-projects from mission (`state-aware-retrieval.js`).
+  4. **H16** executive allocated off-plan `pendingWork` (`skip-to-end`) → plan-first pending + off-plan throw (`executive-controller.js`).
+  5. **H17** unbounded `evidenceRefs` → `EPISTEMIC_MAX_EVIDENCE_REFS = 16` (`epistemic-state.js`).
+  6. **H18** `createCompletionFromAdapter` accepted missing capabilities and returned raw control fields → require capabilities + always re-wrap (`model-adapter.js`).
+  7. **H19** nested MCP/A2A control fields in `content[]`/`parts[]` and `listTools` `mission_control` accepted → nested assert + `normalizeMcpToolDescriptor` (`protocol-interop.js` / `mcp-adapter.js`).
+- **Already closed / no change:** forge-via-transition for checkpoints/branches/trace/memory/epistemic; remote fail-closed for model/MCP/A2A; bridge `owns.*` false; reader allowlist case-sensitive; MEA/QR18 path gates; auto-heal cap 3; no new HTTP surface.
+- **Tests:** `tests/integration/mea-hostile-items-12-19-harden.test.js` (7/7). Full suite **388 pass / 0 fail / 17 skip** (mesh Redis offline skips). First full run had one unrelated perf flake (`10000 lifecycles` 322ms vs 250ms budget); re-run green.
+- Docs updated for security closes on Items 12–19 current docs.
+- Item 20 not started. No commit/push (harden-only order).

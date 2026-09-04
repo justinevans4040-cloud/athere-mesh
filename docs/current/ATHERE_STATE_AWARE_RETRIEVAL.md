@@ -23,6 +23,7 @@ An old but semantically similar memory cannot automatically override current ver
 - Unknown query fields fail closed
 - Result limit capped (`1..32`)
 - Projection redaction preserved (no fact values / envelopes in retrieval output)
+- Caller-supplied `projected` bags cannot bypass redaction: missing/mismatched `reader` fails closed; ranking always re-projects from authoritative mission state
 - No HTTP route; does not feed MEA/QR18
 - `similarity_only` mode rejected
 

@@ -24,6 +24,7 @@ Any failed (or healed) mission with durable history can be reconstructed from `e
 - `observability` keys are closed; unknown fields reject.
 - Caps: max 8 tool calls, 8 models, 8192 serialized bytes.
 - `toolCalls[].agentId` must match the authorized transition actor (fail closed); recorded agent is always the actor.
+- `models[]` likewise bind `agentId` to the actor and reject control fields (`mission_control`, work partitions, `status`, …).
 - `executionTrace` remains non-authoritative for MEA/QR18/idempotency/checkpoints.
 
 ## Evidence

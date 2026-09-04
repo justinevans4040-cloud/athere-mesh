@@ -4,6 +4,7 @@
  * Does not mutate missions, certify success, or bypass MEA/path gates.
  */
 
+import { assessEpistemicState } from '../../contracts/src/epistemic-state.js';
 import { roleForAgent } from '../../contracts/src/execution-roles.js';
 
 export const EXECUTIVE_ACTIONS = Object.freeze([
@@ -54,6 +55,8 @@ function nextPendingWork(mission) {
   for (const step of plan) {
     if (pending.includes(step)) return step;
   }
+  // Off-plan pending ids are ignored when a plan exists (path integrity).
+  if (plan.length > 0) return null;
   return pending[0] ?? null;
 }
 
@@ -133,6 +136,9 @@ export function assertExecutivePreservesIntegrity(decision, mission) {
   if (typeof decision.nextWork === 'string' && decision.nextWork.length > 0) {
     const completed = mission.completedWork ?? [];
     const plan = mission.currentPlan?.steps ?? [];
+    if (plan.length > 0 && !plan.includes(decision.nextWork)) {
+      throw new Error('mission integrity: executive cannot allocate off-plan work');
+    }
     const index = plan.indexOf(decision.nextWork);
     if (index > 0) {
       const prior = plan.slice(0, index);
@@ -161,6 +167,50 @@ export function decideNext({ mission, actor = 'mission-state-service', budget } 
   assertExecutiveActor(actor);
   if (!plainObject(mission) || typeof mission.id !== 'string') {
     throw new TypeError('mission is required for executive decision');
+  }
+
+  const epistemic = assessEpistemicState(mission.epistemicClaims ?? []);
+  if (epistemic.primaryPolarity === 'unknown' && mission.status !== 'completed' && mission.status !== 'blocked') {
+    const decision = decisionRecord({
+      nextAction: 'research',
+      enoughInformation: false,
+      uncertainty: 'high',
+      researchRequired: true,
+      agentId: 'miss-vale-prime',
+      model: 'none',
+      budget: budget ?? { max_state_mutations: 0 },
+      rationale: ['epistemic_unknown', 'do_not_know_distinct_from_false', ...epistemic.triggers],
+    });
+    assertExecutivePreservesIntegrity(decision, mission);
+    return decision;
+  }
+  if (epistemic.primaryPolarity === 'verified_false' && mission.status !== 'completed' && mission.status !== 'blocked') {
+    const checkpointId = latestCheckpointId(mission);
+    if (checkpointId) {
+      const decision = decisionRecord({
+        nextAction: 'change_strategy',
+        enoughInformation: true,
+        uncertainty: 'high',
+        agentId: 'qra_recovery_driver',
+        strategyChange: { action: 'retry_from_checkpoint', checkpointId },
+        budget: budget ?? { max_state_mutations: 1 },
+        rationale: ['epistemic_verified_false', ...epistemic.triggers],
+      });
+      assertExecutivePreservesIntegrity(decision, mission);
+      return decision;
+    }
+    const decision = decisionRecord({
+      nextAction: 'escalate_human',
+      stop: true,
+      enoughInformation: true,
+      uncertainty: 'high',
+      humanInterventionRequired: true,
+      agentId: 'miss-vale-prime',
+      budget: budget ?? { max_state_mutations: 0 },
+      rationale: ['epistemic_verified_false', 'no_checkpoint', ...epistemic.triggers],
+    });
+    assertExecutivePreservesIntegrity(decision, mission);
+    return decision;
   }
 
   if (mission.status === 'completed') {
@@ -243,6 +293,11 @@ export function decideNext({ mission, actor = 'mission-state-service', budget } 
   }
 
   const nextWork = nextPendingWork(mission);
+  const pending = Array.isArray(mission.pendingWork) ? mission.pendingWork : [];
+  const planSteps = Array.isArray(mission.currentPlan?.steps) ? mission.currentPlan.steps : [];
+  if (!nextWork && pending.length > 0 && planSteps.length > 0) {
+    throw new Error('mission integrity: executive cannot allocate off-plan work');
+  }
   if (!nextWork) {
     if ((mission.completedWork ?? []).length > 0) {
       const decision = decisionRecord({

@@ -1,13 +1,18 @@
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { authorizeAgentOperation } from '../../contracts/src/agent-operation.js';
-import { authorizeCompletedWorkClaim } from '../../contracts/src/execution-roles.js';
+import { authorizeCompletedWorkClaim, roleForAgent } from '../../contracts/src/execution-roles.js';
 import { createMission, transitionMission } from '../../contracts/src/mission.js';
 import {
   assertValidMissionPath,
   buildWorkflowGraph,
   normalizeWorkflowEdges,
 } from '../../contracts/src/workflow-graph.js';
+import {
+  EPISTEMIC_MAX_CLAIMS,
+  assessEpistemicState,
+  normalizeEpistemicClaim,
+} from '../../contracts/src/epistemic-state.js';
 import { verifyProof } from '../../proof/src/proof-store.js';
 import {
   assertQr18LayersVerified,
@@ -15,11 +20,13 @@ import {
 } from '../../proof/src/qr18-layered-verification.js';
 import {
   applyCheckpointSnapshot,
+  assertCheckpointCap,
   assertCheckpointIntegrity,
   buildBranchRecord,
   buildCheckpointRecord,
   findBranch,
   findCheckpoint,
+  MAX_CHECKPOINTS,
 } from './mission-checkpoints.js';
 import {
   reconstructFailedMission,
@@ -277,6 +284,7 @@ function authoritativeState(input) {
     branches: Object.freeze([]),
     activeBranchId: 'main',
     executionTrace: Object.freeze([]),
+    epistemicClaims: Object.freeze([]),
   });
 }
 
@@ -304,6 +312,9 @@ function validateUpdate(update, mission) {
     if (field === 'memory') {
       authorizeMemoryWrite({ writer: 'caller' });
       throw new Error('memory must not be mutated through transition; typed memory is a projection');
+    }
+    if (field === 'epistemicClaims') {
+      throw new Error('epistemicClaims must be changed through epistemic operations');
     }
     if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`);
   }
@@ -428,6 +439,59 @@ export function createMissionStateService({
       lineage,
     );
     return saveOperation({ mission, expectedRevision, operationId: operation, operationHash: hashValue(operationHashInput) });
+  }
+
+  async function commitEpistemicOperation({ operationId, missionId, expectedRevision, actor, action, input, mutate }) {
+    const id = requiredId(missionId, 'mission id');
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+      throw new TypeError('revision conflict: expectedRevision must be a positive integer');
+    }
+    const operation = requiredId(operationId, 'operation id');
+    const current = await store.loadMission({ root, missionId: id });
+    const existingHistory = current.mission.transitionHistory ?? [];
+    const history = existingHistory.length > 0
+      ? existingHistory
+      : [legacyImportRecord(current.mission, current.revision, clock())];
+    const operationHashInput = { actor, action, input };
+    const prior = history.find((entry) => entry.operationId === operation);
+    if (prior) {
+      if (prior.operationHash !== hashValue(operationHashInput)) {
+        throw new Error(`idempotency conflict: operation id already has different content: ${operation}`);
+      }
+      return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
+    }
+    const authorization = requiredFactPermission(current.mission, actor, action);
+    const timestamp = clock();
+    const epistemicClaims = Object.freeze(mutate(current.mission, timestamp));
+    if (epistemicClaims.length > EPISTEMIC_MAX_CLAIMS) {
+      throw new Error(`epistemicClaims exceed cap (${EPISTEMIC_MAX_CLAIMS})`);
+    }
+    assessEpistemicState(epistemicClaims);
+    const nextState = Object.freeze({ ...current.mission, epistemicClaims, updatedAt: timestamp });
+    const lineage = transitionRecord({
+      stateVersion: expectedRevision + 1,
+      previousVersion: expectedRevision,
+      previousTransitionHash: history.at(-1).transitionHash,
+      operationId: operation,
+      operationHashInput,
+      actor: authorization.actor,
+      action,
+      timestamp,
+      input,
+      before: current.mission,
+      after: nextState,
+      authorization,
+    });
+    const mission = withAppendedTrace(
+      Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) }),
+      lineage,
+    );
+    return saveOperation({
+      mission,
+      expectedRevision,
+      operationId: operation,
+      operationHash: hashValue(operationHashInput),
+    });
   }
 
   async function commitRecoveryOperation({
@@ -677,6 +741,33 @@ export function createMissionStateService({
         ...(budget === undefined ? {} : { budget }),
       });
     },
+    async recordEpistemicClaim({ operationId, missionId, expectedRevision, actor, claim }) {
+      const normalized = normalizeEpistemicClaim(claim);
+      const actorId = requiredId(actor, 'epistemic actor');
+      const role = roleForAgent(actorId);
+      if (role === 'executor' && (normalized.polarity === 'verified_true' || normalized.polarity === 'verified_false')) {
+        throw new Error(`unauthorized epistemic: executor cannot record ${normalized.polarity}`);
+      }
+      return commitEpistemicOperation({
+        operationId,
+        missionId,
+        expectedRevision,
+        actor: actorId,
+        action: 'record_epistemic_claim',
+        input: { claim: normalized },
+        mutate(mission) {
+          const existing = mission.epistemicClaims ?? [];
+          if (existing.some((entry) => entry.id === normalized.id)) {
+            throw new Error(`duplicate epistemic claim id: ${normalized.id}`);
+          }
+          return Object.freeze([...existing, normalized]);
+        },
+      });
+    },
+    async assessUncertainty({ missionId }) {
+      const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      return assessEpistemicState(record.mission.epistemicClaims ?? []);
+    },
     async recordFact({ operationId, missionId, expectedRevision, actor, fact, evidence }) {
       const normalized = recordableFact(fact);
       return commitFactOperation({
@@ -745,8 +836,12 @@ export function createMissionStateService({
         action: 'create_checkpoint',
         input: { label: checkpointLabel },
         mutate(mission, authorization, timestamp) {
+          const existing = mission.checkpoints ?? [];
+          if (existing.length >= MAX_CHECKPOINTS) {
+            throw new Error(`checkpoints exceed cap (${MAX_CHECKPOINTS})`);
+          }
           const checkpointId = `cp-${hashValue({ operationId, missionId: mission.id, label: checkpointLabel }).slice(0, 24)}`;
-          if ((mission.checkpoints ?? []).some((entry) => entry.id === checkpointId)) {
+          if (existing.some((entry) => entry.id === checkpointId)) {
             throw new Error(`duplicate checkpoint id: ${checkpointId}`);
           }
           const checkpoint = buildCheckpointRecord({
@@ -757,9 +852,11 @@ export function createMissionStateService({
             createdAt: timestamp,
             mission,
           });
+          const checkpoints = Object.freeze([...existing, checkpoint]);
+          assertCheckpointCap(checkpoints);
           return Object.freeze({
             ...mission,
-            checkpoints: Object.freeze([...(mission.checkpoints ?? []), checkpoint]),
+            checkpoints,
           });
         },
       });

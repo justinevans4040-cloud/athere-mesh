@@ -34,6 +34,7 @@ Athere can dynamically change strategy (quarantine/retry/branch recommendations)
 - MEA untouched
 - Unauthorized executive actors fail closed
 - `canCertifySuccess` always false; `mutatesMission` always false
+- Off-plan `pendingWork` cannot be allocated; path-skip still rejected
 
 ## Evidence
 

@@ -239,13 +239,17 @@ export function retrieveStateAwareMemory({
     throw new Error(`retrieval limit must be between 1 and ${RETRIEVAL_MAX_RESULTS}`);
   }
   const normalizedQuery = normalizeQuery(query);
-  const memory = projected ?? projectMissionMemory(mission, {
+  // Never trust caller-supplied projected entry content. Optional projected bags are
+  // accepted only as a reader-binding check; ranking always re-projects from mission.
+  if (projected !== null && projected !== undefined) {
+    if (!plainObject(projected) || projected.reader !== readerId) {
+      throw new Error('projected memory reader mismatch');
+    }
+  }
+  const memory = projectMissionMemory(mission, {
     reader: readerId,
     ...(normalizedQuery.types ? { types: normalizedQuery.types } : {}),
   });
-  if (memory.reader && memory.reader !== readerId) {
-    throw new Error('projected memory reader mismatch');
-  }
 
   const types = normalizedQuery.types ?? MEMORY_TYPES;
   const entries = [];

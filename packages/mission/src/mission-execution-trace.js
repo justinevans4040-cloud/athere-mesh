@@ -28,6 +28,19 @@ export const OBSERVABILITY_MAX_BYTES = 8_192;
 
 const KIND_SET = new Set(TRACE_KINDS);
 const OBSERVABILITY_KEYS = new Set(['toolCalls', 'latencyMs', 'models', 'tokenUsage', 'costUsd']);
+const OBSERVABILITY_MODEL_FORBIDDEN = new Set([
+  'mission_control',
+  'completedWork',
+  'pendingWork',
+  'failedWork',
+  'status',
+  'transition',
+  'revision',
+  'certify',
+  'permissions',
+  'epistemicClaims',
+  'authoritativeFacts',
+]);
 
 function requiredText(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -234,11 +247,27 @@ export function eventsFromTransition(lineage, observability = null) {
         throw new Error(`observability models exceed cap (${OBSERVABILITY_MAX_MODELS})`);
       }
       for (const model of observability.models) {
+        if (!plainObject(model)) throw new TypeError('observability models entry must be an object');
+        for (const key of Object.keys(model)) {
+          if (OBSERVABILITY_MODEL_FORBIDDEN.has(key)) {
+            throw new Error(`observability model cannot include control field: ${key}`);
+          }
+        }
+        if (typeof model.agentId === 'string') {
+          const claimed = model.agentId.trim().toLowerCase();
+          const authorized = typeof actor === 'string' ? actor.trim().toLowerCase() : '';
+          if (claimed !== authorized) {
+            throw new Error('observability model agentId must match authorized actor');
+          }
+        }
         events.push(createTraceEvent({
           kind: 'model',
           at,
           agentId: actor,
-          detail: Object.freeze(structuredClone(model)),
+          detail: Object.freeze({
+            ...structuredClone(model),
+            agentId: actor,
+          }),
         }));
       }
     }

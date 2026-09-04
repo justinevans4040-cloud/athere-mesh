@@ -20,7 +20,7 @@ Checkpoints capture: `status`, `completedWork`, `pendingWork`, `failedWork`, `ev
 
 Immutable after create (as before): goals, subgoals, dependencies, `currentPlan`, `workflowGraph`.
 
-`checkpoints` / `branches` / `activeBranchId` cannot be mutated through generic `transition()` updates.
+`checkpoints` / `branches` / `activeBranchId` cannot be mutated through generic `transition()` updates. Checkpoint count is hard-capped (`MAX_CHECKPOINTS = 32`) to prevent recovery-op DoS.
 
 ## Authority
 

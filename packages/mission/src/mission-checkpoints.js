@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
 
+/** Hard cap against checkpoint DoS via recovery ops. */
+export const MAX_CHECKPOINTS = 32;
+
 const SNAPSHOT_FIELDS = Object.freeze([
   'status',
   'completedWork',
@@ -10,6 +13,14 @@ const SNAPSHOT_FIELDS = Object.freeze([
   'activeAgents',
   'environmentObservations',
 ]);
+
+export function assertCheckpointCap(checkpoints) {
+  if (!Array.isArray(checkpoints)) throw new TypeError('checkpoints must be an array');
+  if (checkpoints.length > MAX_CHECKPOINTS) {
+    throw new Error(`checkpoints exceed cap (${MAX_CHECKPOINTS})`);
+  }
+  return true;
+}
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
