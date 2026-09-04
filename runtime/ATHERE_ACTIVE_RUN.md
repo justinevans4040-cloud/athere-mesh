@@ -2,14 +2,14 @@
 
 
 
-**Status:** Active — Items 2–10 landed. Doctrine baseline residuals closed (`c0e6ae8`). **Item 10 layered QR18** evaluates Levels 1–6 on every completion claim (`docs/current/ATHERE_LAYERED_QR18.md`). Item 11 not started.
+**Status:** Active — Items 2–11 landed. **Item 11 workflow/plan graphs** persist `workflowGraph` at create and fail closed on out-of-path work partitions (`docs/current/ATHERE_WORKFLOW_PLAN_GRAPHS.md`). Item 12 not started.
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **Item 10 complete** — `evaluateQr18Layers` returns structured L1–L6 evidence; mission-state-service fails closed on completion without verified layers (caller `qr18` bags ignored); orchestrator attaches `result.qr18` on honest completion. Item 11 (workflow/plan graphs) not started.
+- Current focus: **Item 11 complete** — missions persist an explicit workflow graph; path validity is enforced on work-partition updates (role-legal but out-of-order completedWork REJECT). Item 12 (checkpoints/branching/rollback/quarantine) not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -239,3 +239,10 @@ This file is the live operator view for the current Athere implementation run.
 - **Wired:** mission-state-service re-evaluates QR18 on `completed` after `verifyProof` and ignores caller `qr18` bags; orchestrator attaches service-shaped `result.qr18` before completion.
 - **Unchanged:** proof-store write/verify primitives; MEA structural independence; Item 11 not started.
 - **Hostile probes:** forged qr18 bag + missing artifact lineage → REJECT at Level 2; certifier-as-performer → REJECT at Level 3; honest six-level ACCEPT.
+
+62. **Item 11 — Explicit workflow/plan graphs.** Acceptance: execution must remain on a valid mission path, not merely a role-legal action.
+
+- **Added:** `packages/contracts/src/workflow-graph.js`, `tests/contract/workflow-graph.test.js`, `tests/integration/workflow-path-gate.test.js`, `docs/current/ATHERE_WORKFLOW_PLAN_GRAPHS.md`.
+- **Wired:** mission create persists `workflowGraph`; dependencies normalize to typed edges; work-partition updates call `assertValidMissionPath`; QR18 Level 5 uses path assessment when a graph exists.
+- **Unchanged:** MEA/QR18 completion gates; Item 12 recovery engine not started.
+- **Hostile probes:** certify `verify` before `inspect` → `mission path invalid`; mutate `workflowGraph` after create → REJECT; in-order certify ACCEPT.

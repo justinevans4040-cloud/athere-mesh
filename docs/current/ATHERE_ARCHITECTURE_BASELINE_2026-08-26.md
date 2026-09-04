@@ -134,7 +134,6 @@ The following are present as architecture/backlog direction but are not complete
 - explicit supersession/revocation/correction lineage for authoritative facts;
 - universal typed agent envelope across all agent operations;
 - operation-ID idempotency and universal duplicate suppression;
-- persisted workflow/plan graph with dependency, retry, rollback, supersession, and alternate-path edges;
 - verified checkpoints, mission branching, failed-branch quarantine, and arbitrary rollback;
 - complete machine-readable observability trace including model/tool cost and token accounting;
 - working/episodic/semantic/procedural/artifact/state-history memory separation;

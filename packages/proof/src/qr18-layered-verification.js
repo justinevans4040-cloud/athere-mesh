@@ -1,4 +1,5 @@
 import { recordedWorkPerformers } from '../../contracts/src/execution-roles.js';
+import { assessMissionPath } from '../../contracts/src/workflow-graph.js';
 
 export const QR18_LEVELS = Object.freeze([
   Object.freeze({ level: 1, id: 'action', name: 'Action proof' }),
@@ -138,21 +139,54 @@ function evaluateSubgoal(mission) {
 }
 
 function evaluateWorkflow(mission) {
-  const completed = new Set(Array.isArray(mission?.completedWork) ? mission.completedWork : []);
+  const completed = Array.isArray(mission?.completedWork) ? mission.completedWork : [];
   const pending = Array.isArray(mission?.pendingWork) ? mission.pendingWork : [];
   const failed = Array.isArray(mission?.failedWork) ? mission.failedWork : [];
-  const dependencies = Array.isArray(mission?.dependencies) ? mission.dependencies : [];
-  const broken = [];
-  for (const edge of dependencies) {
-    if (!plainObject(edge)) continue;
-    const prerequisite = edge.prerequisite;
-    const dependent = edge.dependent;
-    if (typeof prerequisite !== 'string' || typeof dependent !== 'string') continue;
-    if (completed.has(dependent) && !completed.has(prerequisite)) {
-      broken.push(`${dependent} without ${prerequisite}`);
+  const path = assessMissionPath({
+    workflowGraph: mission?.workflowGraph ?? null,
+    completedWork: completed,
+    pendingWork: pending,
+    failedWork: failed,
+  });
+  // When a persisted/derived graph is absent, fall back to the pre-Item-11 checks so
+  // legacy fixtures without workflowGraph still evaluate Level 5 honestly.
+  if (path.reason === 'workflow graph missing') {
+    const dependencies = Array.isArray(mission?.dependencies) ? mission.dependencies : [];
+    const completedSet = new Set(completed);
+    const broken = [];
+    for (const edge of dependencies) {
+      const prerequisite = edge?.prerequisite ?? edge?.from;
+      const dependent = edge?.dependent ?? edge?.to;
+      if (typeof prerequisite !== 'string' || typeof dependent !== 'string') continue;
+      if (completedSet.has(dependent) && !completedSet.has(prerequisite)) {
+        broken.push(`${dependent} without ${prerequisite}`);
+      }
     }
+    const verified = pending.length === 0 && failed.length === 0 && broken.length === 0 && completed.length > 0;
+    return levelRecord({
+      level: 5,
+      id: 'workflow',
+      name: 'Workflow proof',
+      verified,
+      evidence: {
+        pendingWork: Object.freeze([...pending]),
+        failedWork: Object.freeze([...failed]),
+        dependencyViolations: Object.freeze(broken),
+        completedCount: completed.length,
+        pathSource: 'legacy-dependencies',
+      },
+      ...(verified ? {} : {
+        reason: broken.length > 0
+          ? `dependency violations: ${broken.join(';')}`
+          : pending.length > 0
+            ? 'pendingWork is not empty'
+            : failed.length > 0
+              ? 'failedWork is not empty'
+              : 'no completed work on the workflow path',
+      }),
+    });
   }
-  const verified = pending.length === 0 && failed.length === 0 && broken.length === 0 && completed.size > 0;
+  const verified = path.valid === true && pending.length === 0 && failed.length === 0 && completed.length > 0;
   return levelRecord({
     level: 5,
     id: 'workflow',
@@ -161,12 +195,14 @@ function evaluateWorkflow(mission) {
     evidence: {
       pendingWork: Object.freeze([...pending]),
       failedWork: Object.freeze([...failed]),
-      dependencyViolations: Object.freeze(broken),
-      completedCount: completed.size,
+      dependencyViolations: path.violations,
+      completedCount: completed.length,
+      pathSource: 'workflow-graph',
+      pathValid: path.valid === true,
     },
     ...(verified ? {} : {
-      reason: broken.length > 0
-        ? `dependency violations: ${broken.join(';')}`
+      reason: path.valid !== true
+        ? `mission path invalid: ${path.reason}`
         : pending.length > 0
           ? 'pendingWork is not empty'
           : failed.length > 0

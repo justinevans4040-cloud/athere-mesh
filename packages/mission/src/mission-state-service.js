@@ -3,6 +3,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { authorizeAgentOperation } from '../../contracts/src/agent-operation.js';
 import { authorizeCompletedWorkClaim } from '../../contracts/src/execution-roles.js';
 import { createMission, transitionMission } from '../../contracts/src/mission.js';
+import {
+  assertValidMissionPath,
+  buildWorkflowGraph,
+  normalizeWorkflowEdges,
+} from '../../contracts/src/workflow-graph.js';
 import { verifyProof } from '../../proof/src/proof-store.js';
 import {
   assertQr18LayersVerified,
@@ -148,7 +153,15 @@ function uniqueIds(items, label) { const ids = new Set(); for (const item of ite
 function records(value, label) { if (!Array.isArray(value)) throw new TypeError(`${label} must be an array`); return Object.freeze(value.map((item) => { if (!item || typeof item !== 'object' || Array.isArray(item)) throw new TypeError(`${label} entry must be an object`); return Object.freeze(structuredClone(item)); })); }
 function validateGoals(value) { const items = records(value, 'goals'); uniqueIds(items, 'goal'); for (const item of items) requiredText(item.objective, 'goal objective'); return items; }
 function validateSubgoals(value, goalIds) { const items = records(value, 'subgoals'); const ids = uniqueIds(items, 'subgoal'); for (const item of items) { requiredText(item.objective, 'subgoal objective'); if (!goalIds.has(requiredId(item.goalId, 'subgoal goalId'))) throw new Error(`subgoal references unknown goal: ${item.goalId}`); } return { items, ids }; }
-function validateDependencies(value, subgoalIds) { const items = records(value, 'dependencies'); for (const item of items) { const prerequisite = requiredId(item.prerequisite, 'dependency prerequisite'); const dependent = requiredId(item.dependent, 'dependency dependent'); if (!subgoalIds.has(prerequisite) || !subgoalIds.has(dependent)) throw new Error('dependency references unknown subgoal'); if (prerequisite === dependent) throw new Error('subgoal cannot depend on itself'); } return items; }
+function validateDependencies(value, subgoalIds, goalIds = new Set()) {
+  const items = normalizeWorkflowEdges(value);
+  for (const item of items) {
+    const fromOk = subgoalIds.has(item.from) || goalIds.has(item.from);
+    const toOk = subgoalIds.has(item.to) || goalIds.has(item.to);
+    if (!fromOk || !toOk) throw new Error('dependency references unknown node');
+  }
+  return items;
+}
 function validatePermissions(value) { const items = records(value, 'permissions'); for (const item of items) { requiredId(item.actor, 'permission actor'); stringArray(item.actions, 'permission actions'); } return items; }
 function validatePlan(value, subgoalIds) { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('currentPlan must be an object'); const plan = Object.freeze(structuredClone(value)); requiredId(plan.id, 'plan id'); if (!Number.isSafeInteger(plan.version) || plan.version < 1) throw new TypeError('plan version must be a positive integer'); const steps = stringArray(plan.steps, 'plan steps'); for (const step of steps) if (!subgoalIds.has(step)) throw new Error(`plan references unknown subgoal: ${step}`); return Object.freeze({ ...plan, steps }); }
 function validateObservations(value) { const items = records(value, 'environmentObservations'); for (const item of items) { requiredText(item.source, 'observation source'); requiredText(item.key, 'observation key'); if (!Object.hasOwn(item, 'value')) throw new TypeError('observation value is required'); const observedAt = requiredText(item.observedAt, 'observation observedAt'); if (Number.isNaN(Date.parse(observedAt))) throw new TypeError('observation observedAt must be an ISO timestamp'); } return items; }
@@ -220,8 +233,89 @@ function recordableFact(value) {
   if (fact.supersedes || fact.supersededBy || fact.correctedBy || fact.revokedAt) throw new Error('new facts cannot declare historical lineage');
   return fact;
 }
-function authoritativeState(input) { const goals = validateGoals(input.goals); const { items: subgoals, ids: subgoalIds } = validateSubgoals(input.subgoals, new Set(goals.map(({ id }) => id))); const currentPlan = validatePlan(input.currentPlan, subgoalIds); return Object.freeze({ objective: requiredText(input.objective, 'objective'), goals, subgoals, dependencies: validateDependencies(input.dependencies, subgoalIds), completedWork: Object.freeze([]), pendingWork: Object.freeze([...currentPlan.steps]), failedWork: Object.freeze([]), evidence: Object.freeze([]), constraints: stringArray(input.constraints, 'constraints'), permissions: validatePermissions(input.permissions), activeAgents: Object.freeze([]), artifactReferences: Object.freeze([]), currentPlan, environmentObservations: validateObservations(input.environmentObservations), authoritativeFacts: validateFacts(input.authoritativeFacts ?? []) }); }
-function validateUpdate(update, mission) { if (!update || typeof update !== 'object' || Array.isArray(update)) throw new TypeError('state update must be an object'); if (Object.hasOwn(update, 'authoritativeFacts')) throw new Error('authoritativeFacts must be changed through atomic fact operations'); for (const field of Object.keys(update)) if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`); const validated = {}; for (const field of ['completedWork', 'pendingWork', 'failedWork', 'constraints', 'activeAgents']) if (Object.hasOwn(update, field)) validated[field] = stringArray(update[field], field); for (const field of ['evidence', 'artifactReferences', 'environmentObservations']) if (Object.hasOwn(update, field)) validated[field] = field === 'environmentObservations' ? validateObservations(update[field]) : records(update[field], field); if (Object.hasOwn(update, 'goals') || Object.hasOwn(update, 'subgoals') || Object.hasOwn(update, 'dependencies') || Object.hasOwn(update, 'currentPlan')) throw new Error('mission graph and currentPlan are immutable in this service version'); const subgoalIds = new Set(mission.subgoals?.map(({ id }) => id) ?? []); const partitions = ['completedWork', 'pendingWork', 'failedWork'].map((field) => [field, validated[field] ?? mission[field] ?? []]); const assigned = new Map(); for (const [, workIds] of partitions) for (const id of workIds) { if (!subgoalIds.has(id)) throw new Error(`work references unknown subgoal: ${id}`); if (assigned.has(id)) throw new Error(`work partitions overlap: ${id}`); assigned.set(id, true); } const permittedActors = new Set((mission.permissions ?? []).map(({ actor }) => actor)); for (const agent of validated.activeAgents ?? mission.activeAgents ?? []) if (!permittedActors.has(agent)) throw new Error(`active agent lacks mission permission: ${agent}`); return Object.freeze(validated); }
+function authoritativeState(input) {
+  const goals = validateGoals(input.goals);
+  const goalIds = new Set(goals.map(({ id }) => id));
+  const { items: subgoals, ids: subgoalIds } = validateSubgoals(input.subgoals, goalIds);
+  const currentPlan = validatePlan(input.currentPlan, subgoalIds);
+  const dependencies = validateDependencies(input.dependencies, subgoalIds, goalIds);
+  const workflowGraph = buildWorkflowGraph({ goals, subgoals, dependencies, currentPlan });
+  return Object.freeze({
+    objective: requiredText(input.objective, 'objective'),
+    goals,
+    subgoals,
+    dependencies,
+    workflowGraph,
+    completedWork: Object.freeze([]),
+    pendingWork: Object.freeze([...currentPlan.steps]),
+    failedWork: Object.freeze([]),
+    evidence: Object.freeze([]),
+    constraints: stringArray(input.constraints, 'constraints'),
+    permissions: validatePermissions(input.permissions),
+    activeAgents: Object.freeze([]),
+    artifactReferences: Object.freeze([]),
+    currentPlan,
+    environmentObservations: validateObservations(input.environmentObservations),
+    authoritativeFacts: validateFacts(input.authoritativeFacts ?? []),
+  });
+}
+
+function workflowGraphFor(mission) {
+  if (mission?.workflowGraph && typeof mission.workflowGraph === 'object') return mission.workflowGraph;
+  return buildWorkflowGraph({
+    goals: mission?.goals ?? [],
+    subgoals: mission?.subgoals ?? [],
+    dependencies: mission?.dependencies ?? [],
+    currentPlan: mission?.currentPlan,
+  });
+}
+
+function validateUpdate(update, mission) {
+  if (!update || typeof update !== 'object' || Array.isArray(update)) throw new TypeError('state update must be an object');
+  if (Object.hasOwn(update, 'authoritativeFacts')) throw new Error('authoritativeFacts must be changed through atomic fact operations');
+  for (const field of Object.keys(update)) {
+    if (field === 'workflowGraph') throw new Error('workflowGraph is immutable after create');
+    if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`);
+  }
+  const validated = {};
+  for (const field of ['completedWork', 'pendingWork', 'failedWork', 'constraints', 'activeAgents']) {
+    if (Object.hasOwn(update, field)) validated[field] = stringArray(update[field], field);
+  }
+  for (const field of ['evidence', 'artifactReferences', 'environmentObservations']) {
+    if (Object.hasOwn(update, field)) {
+      validated[field] = field === 'environmentObservations'
+        ? validateObservations(update[field])
+        : records(update[field], field);
+    }
+  }
+  if (Object.hasOwn(update, 'goals') || Object.hasOwn(update, 'subgoals') || Object.hasOwn(update, 'dependencies') || Object.hasOwn(update, 'currentPlan')) {
+    throw new Error('mission graph and currentPlan are immutable in this service version');
+  }
+  const subgoalIds = new Set(mission.subgoals?.map(({ id }) => id) ?? []);
+  const partitions = ['completedWork', 'pendingWork', 'failedWork'].map((field) => [field, validated[field] ?? mission[field] ?? []]);
+  const assigned = new Map();
+  for (const [, workIds] of partitions) {
+    for (const id of workIds) {
+      if (!subgoalIds.has(id)) throw new Error(`work references unknown subgoal: ${id}`);
+      if (assigned.has(id)) throw new Error(`work partitions overlap: ${id}`);
+      assigned.set(id, true);
+    }
+  }
+  const permittedActors = new Set((mission.permissions ?? []).map(({ actor }) => actor));
+  for (const agent of validated.activeAgents ?? mission.activeAgents ?? []) {
+    if (!permittedActors.has(agent)) throw new Error(`active agent lacks mission permission: ${agent}`);
+  }
+  // Item 11: every work-partition mutation must keep execution on a valid path.
+  if (Object.hasOwn(validated, 'completedWork') || Object.hasOwn(validated, 'pendingWork') || Object.hasOwn(validated, 'failedWork')) {
+    assertValidMissionPath({
+      workflowGraph: workflowGraphFor(mission),
+      completedWork: validated.completedWork ?? mission.completedWork ?? [],
+      pendingWork: validated.pendingWork ?? mission.pendingWork ?? [],
+      failedWork: validated.failedWork ?? mission.failedWork ?? [],
+    });
+  }
+  return Object.freeze(validated);
+}
 
 export function createMissionStateService({
   root,

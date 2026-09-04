@@ -82,7 +82,18 @@ test('authoritative mission state survives service reconstruction with every own
   assert.equal(running.revision, 3);
   assert.deepEqual(loaded.mission.goals, [{ id: 'goal-1', objective: 'Persist authoritative state' }]);
   assert.deepEqual(loaded.mission.subgoals.map(({ id }) => id), ['inspect', 'verify']);
-  assert.deepEqual(loaded.mission.dependencies, [{ prerequisite: 'inspect', dependent: 'verify' }]);
+  assert.deepEqual(loaded.mission.dependencies, [{
+    id: 'edge-1',
+    kind: 'depends_on',
+    from: 'inspect',
+    to: 'verify',
+    prerequisite: 'inspect',
+    dependent: 'verify',
+  }]);
+  assert.equal(loaded.mission.workflowGraph.version, 1);
+  assert.ok(loaded.mission.workflowGraph.nodes.some((node) => node.kind === 'goal' && node.id === 'goal-1'));
+  assert.ok(loaded.mission.workflowGraph.nodes.some((node) => node.kind === 'action' && node.subgoalId === 'inspect'));
+  assert.ok(loaded.mission.workflowGraph.edges.some((edge) => edge.kind === 'depends_on' && edge.from === 'inspect' && edge.to === 'verify'));
   assert.deepEqual(loaded.mission.completedWork, ['inspect']);
   assert.deepEqual(loaded.mission.pendingWork, ['verify']);
   assert.deepEqual(loaded.mission.failedWork, []);
