@@ -66,16 +66,7 @@ Structural enforcement:
 - `tests/integration/mea-hostile-completed-with-failedWork.test.js`: rejects `completed` while `failedWork` remains non-empty.
 - `tests/integration/mea-hostile-same-update-self-cert.test.js`: rejects auditor perform+certify in one `completedWork` update.
 
-Retired-scrape suites, adapted rather than deleted. Cases that asserted a real acceptance requirement were kept and restated structurally; cases that only probed a string-scrape channel now assert both halves of the new boundary — the payload does not influence authorization, and the recorded-actor rule still rejects the genuine case:
-
-- `tests/integration/mea-hostile-nested-evidence-self-cert.test.js` (4): 3 nested `signal.evidence` channels converted; `update.evidence` write kept as a genuine reject, plus an identity-free variant proving the write is the signal.
-- `tests/integration/mea-hostile-nested-evidence-wrap-self-cert.test.js` (2): signal wrap converted; `update.evidence` wrap kept.
-- `tests/integration/mea-hostile-evidence-verifier-self-cert.test.js` (2): `signal.evidence.verifier` converted; `update.evidence` write kept.
-- `tests/integration/mea-hostile-signal-evidence-object-self-cert.test.js` (1): converted.
-- `tests/integration/mea-hostile-signal-result-self-cert.test.js` (4): all converted; `signal.result` never becomes authoritative state.
-- `tests/integration/mea-hostile-fifth-reaudit-self-cert.test.js` (11): 10 converted (object/map bags, case, ZWSP, NFKC, `author`/`workers`/`actors`/`by`); honest nyx/rune accept kept.
-- `tests/integration/mea-hostile-sixth-reaudit-self-cert.test.js` (15, was 14): 13 converted (combining marks, homoglyphs, synonym keys, unbounded bags, `agent_id`, nest depth, prior-evidence seed); the `update.evidence` half of the old `workers` test split out and kept as a genuine reject; honest accept kept.
-- `tests/integration/mea-hostile-seventh-reaudit-self-cert.test.js` (17): 16 converted (lookalikes outside the old map, depth-40, substring/path/JSON-blob embeds, base64/URI encodings, char/codepoint arrays, `artifactReferences[].agent`, `activeAgents`); honest accept kept.
+Retired scrape-channel re-audit files (fifth/sixth/seventh, nested evidence/wrap, signal-result, signal-evidence-object, evidence-verifier) were **deleted** in ckpt 92 bloat cleanup. Their genuine acceptance requirements already live in `mea-structural-provenance` and the kept hostile pins above; payload IRRELEVANT duplicates were not retained.
 
 Supporting:
 

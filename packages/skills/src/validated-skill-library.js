@@ -7,10 +7,16 @@ import {
   assertSkillImmutable,
   normalizeSkill,
 } from '../../contracts/src/skill-library.js';
+import { isBrandedGatedLearningPipeline } from '../../learning/src/gated-learning-pipeline.js';
 
 /** Hard caps against skill-library DoS. */
 export const MAX_SKILLS = 64;
 export const MAX_SKILL_VERSIONS = 32;
+
+/** Instance registry — not forgeable via method-shape injection. */
+const BRANDED_SKILL_LIBRARIES = new WeakSet();
+/** Binds each branded library to the exact learning pipeline used at create. */
+const SKILL_BOUND_LEARNING = new WeakMap();
 
 function requiredText(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -19,11 +25,22 @@ function requiredText(value, label) {
   return value.trim();
 }
 
+export function isBrandedValidatedSkillLibrary(value) {
+  return value != null && BRANDED_SKILL_LIBRARIES.has(value);
+}
+
+export function getValidatedSkillLearning(library) {
+  return SKILL_BOUND_LEARNING.get(library) ?? null;
+}
+
 export function createValidatedSkillLibrary({
   learning,
   now = () => new Date().toISOString(),
 } = {}) {
-  if (!learning || typeof learning.listPermanent !== 'function') {
+  if (!isBrandedGatedLearningPipeline(learning)) {
+    throw new TypeError('learning must be a branded gatedLearningPipeline from createGatedLearningPipeline');
+  }
+  if (typeof learning.listPermanent !== 'function') {
     throw new TypeError('learning pipeline with listPermanent is required');
   }
   if (typeof now !== 'function') throw new TypeError('now must be a function');
@@ -52,7 +69,7 @@ export function createValidatedSkillLibrary({
     return lesson;
   }
 
-  return Object.freeze({
+  const library = Object.freeze({
     async publishFromLesson({ lessonId, skill }) {
       const lesson = findPermanentLesson(lessonId);
       const id = requiredText(skill?.id, 'skill id');
@@ -153,4 +170,8 @@ export function createValidatedSkillLibrary({
       }));
     },
   });
+
+  BRANDED_SKILL_LIBRARIES.add(library);
+  SKILL_BOUND_LEARNING.set(library, learning);
+  return library;
 }

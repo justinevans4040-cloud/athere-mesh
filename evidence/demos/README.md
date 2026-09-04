@@ -3,12 +3,14 @@
 Short screen recordings of the Lenovo recreate path (2026-07-27).  
 Brand: *There is a there. It’s called Athere.*
 
-| Video | Slice | What it shows |
+**Not tracked in git** (bloat cleanup ckpt 92). MP4s may exist on this machine under this folder; they are gitignored. Prefer Releases / external store for sharing.
+
+| Video (local filename) | Slice | What it shows |
 |---|---|---|
-| [athere-titan-slice0-demo.mp4](./athere-titan-slice0-demo.mp4) | **0 — Redis RAM fabric** | Pool health + set/get probe. Redis is shared mesh hot memory (not durable archive). |
-| [athere-titan-slice1-demo.mp4](./athere-titan-slice1-demo.mp4) | **1 — Resonance Bus** | Mission run with typed signals `accepted → running → completed` plus proof SHA. Proof-over-“done.” |
-| [athere-titan-slice2-demo.mp4](./athere-titan-slice2-demo.mp4) | **2 — Mission command UI** | Operator UI: intent → Start mission → causal river → COMS DONE + proof path. |
-| [athere-titan-slice3-demo.mp4](./athere-titan-slice3-demo.mp4) | **3 — Durable + policy** | Tokenless-default; external models deny-by-default; mission saved to file durable store + audit. |
+| `athere-titan-slice0-demo.mp4` | **0 — Redis RAM fabric** | Pool health + set/get probe. Redis is shared mesh hot memory (not durable archive). |
+| `athere-titan-slice1-demo.mp4` | **1 — Resonance Bus** | Mission run with typed signals `accepted → running → completed` plus proof SHA. Proof-over-“done.” |
+| `athere-titan-slice2-demo.mp4` | **2 — Mission command UI** | Operator UI: intent → Start mission → causal river → COMS DONE + proof path. |
+| `athere-titan-slice3-demo.mp4` | **3 — Durable + policy** | Tokenless-default; external models deny-by-default; mission saved to file durable store + audit. |
 
 ## How these were captured
 

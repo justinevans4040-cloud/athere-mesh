@@ -38,7 +38,9 @@ After Items 2–23 proved the centralized spine (MEA, QR18, idempotency, shared 
 - Quorum bypass of revision CAS
 - Geo dual-primary
 - Forging `distributedState` / `replicas` / `stateEventLog` via `transition`
-- Unbranded injectable “distributed” wrappers (must be `true` or `createDistributedMissionStore` brand)
+- Unbranded injectable “distributed” wrappers (must be `true` or `createDistributedMissionStore` brand via **WeakSet**, not forgeable `Symbol.for`)
+- Unbranded injectable learning / improvement wrappers (factory WeakSet brands)
+- Revoked identities cannot submit learning experiences or propose improvements
 - Using replica snapshots for verification (`assertCannotVerifyFromReplica`)
 - Unsafe mission ids on replica/event APIs (SAFE_ID)
 - Uncapped shard count (`MAX_SHARDS=64`)
@@ -46,12 +48,16 @@ After Items 2–23 proved the centralized spine (MEA, QR18, idempotency, shared 
 ## What this does NOT prove
 
 - Multi-master orchestration or automatic failover
-- Cross-host physical replica processes (hermetic layer syncs in-process; compose with Postgres primary for cross-host authority)
 - Full geo distribution, CRDTs for mission authority, or consensus election
 - Mission-hash of process-local skill/improvement libraries (still deferred)
+
+## Durable / cross-process capacity
+
+Optional `durableReplicaDir` (or `createMissionStateService({ distributed: true, durableReplicaDir })`) writes replica snapshots to disk after each primary save. A second process with a fresh in-memory layer and the same durable directory can `loadMissionReplica` without touching the primary writer path. Primary remains sole writer; replica payloads stay `authoritative: false`.
 
 ## Evidence
 
 - `tests/contract/distributed-state.test.js`
 - `tests/integration/distributed-state-item24.test.js`
+- `tests/integration/distributed-state-item24-durable.test.js`
 - `tests/integration/distributed-state-item24-security.test.js`

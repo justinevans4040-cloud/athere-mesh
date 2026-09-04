@@ -9,6 +9,12 @@ import {
   assertCannotWritePermanentDirectly,
 } from '../../packages/contracts/src/learning-pipeline.js';
 import { createGatedLearningPipeline } from '../../packages/learning/src/gated-learning-pipeline.js';
+import { createAgentIdentityRegistry } from '../../packages/identity/src/agent-identity-registry.js';
+import {
+  ATHERE_REPO_ROOT,
+  loadItem21HarnessCandidate,
+} from '../support/learning-harness-control.js';
+import { buildEfficiencyCandidateCohort } from '../../packages/evaluation/src/evaluation-harness.js';
 
 test('Item 21 contract: gated stages are ordered and cannot be skipped', () => {
   assert.deepEqual([...LEARNING_STAGES], [
@@ -67,15 +73,20 @@ test('Item 21 contract: QR18-style learning verification fails closed when incom
     comparison: {
       improved: true,
       regression: false,
-      control: { taskSuccessRate: 0.5, failedHandoffs: 2 },
-      candidate: { taskSuccessRate: 0.8, failedHandoffs: 0 },
+      harnessVerdict: 'improvement_proven',
+      control: { taskSuccessRate: 1, failedHandoffs: 0 },
+      candidate: { taskSuccessRate: 1, failedHandoffs: 0 },
     },
   });
   assert.equal(complete.verified, true);
 });
 
 test('Item 21 contract: pipeline stores only after approve; regressions cannot be retained', async () => {
-  const pipeline = createGatedLearningPipeline();
+  const harness = await loadItem21HarnessCandidate();
+  const pipeline = createGatedLearningPipeline({
+    identities: createAgentIdentityRegistry(),
+    repositoryRoot: ATHERE_REPO_ROOT,
+  });
   const experience = await pipeline.submitExperience({
     id: 'exp-pipe-1',
     missionId: 'mission-pipe-1',
@@ -117,13 +128,37 @@ test('Item 21 contract: pipeline stores only after approve; regressions cannot b
       control: { taskSuccessRate: 0.9, failedHandoffs: 0 },
       candidate: { taskSuccessRate: 0.4, failedHandoffs: 5 },
     }),
+    /caller-supplied|rejected/,
+  );
+
+  const regressing = buildEfficiencyCandidateCohort(harness.control, {
+    candidateId: 'regress-cand',
+    systemVersion: 'regress-local',
+    latencyDeltaMs: -200,
+  });
+  const badTrials = regressing.trials.map((trial) => Object.freeze({
+    ...structuredClone(trial),
+    taskResults: Object.freeze({
+      ...trial.taskResults,
+      mission_contract: false,
+    }),
+  }));
+  const badCohort = Object.freeze({
+    id: 'regress-cand',
+    frozen: false,
+    trials: Object.freeze(badTrials),
+  });
+  await assert.rejects(
+    () => pipeline.compareAgainstControl({
+      candidateId: candidate.id,
+      candidateCohort: badCohort,
+    }),
     /regression|not improved/,
   );
 
   await pipeline.compareAgainstControl({
     candidateId: candidate.id,
-    control: { taskSuccessRate: 0.5, failedHandoffs: 2 },
-    candidate: { taskSuccessRate: 0.8, failedHandoffs: 0 },
+    candidateCohort: harness.candidateCohort,
   });
   await pipeline.approve({ candidateId: candidate.id, actor: 'qra_emerge_audit' });
   const stored = await pipeline.store({ candidateId: candidate.id });
@@ -135,5 +170,6 @@ test('Item 21 contract: pipeline stores only after approve; regressions cannot b
   const measured = await pipeline.measure({ lessonId: stored.id });
   assert.equal(measured.improved, true);
   assert.equal(measured.regression, false);
-  assert.ok(measured.demonstration.includes('improved'));
+  assert.equal(measured.harnessVerdict, 'improvement_proven');
+  assert.ok(measured.demonstration.includes('improvement_proven'));
 });

@@ -10,6 +10,13 @@ import {
   revokeAgentIdentity,
 } from '../../contracts/src/agent-identity.js';
 
+/** Instance registry — not forgeable via method-shape injection. */
+const BRANDED_IDENTITY_REGISTRIES = new WeakSet();
+
+export function isBrandedAgentIdentityRegistry(value) {
+  return value != null && BRANDED_IDENTITY_REGISTRIES.has(value);
+}
+
 export function createAgentIdentityRegistry({ seed } = {}) {
   const entries = new Map();
   const agentIds = seed ?? listDefaultIdentityAgentIds();
@@ -17,7 +24,7 @@ export function createAgentIdentityRegistry({ seed } = {}) {
     entries.set(agentId, createCapabilityBoundary({ agentId }));
   }
 
-  return Object.freeze({
+  const registry = Object.freeze({
     has(agentId) {
       return entries.has(agentId);
     },
@@ -39,4 +46,7 @@ export function createAgentIdentityRegistry({ seed } = {}) {
       return assertIdentityNotRevoked(this.get(agentId));
     },
   });
+
+  BRANDED_IDENTITY_REGISTRIES.add(registry);
+  return registry;
 }

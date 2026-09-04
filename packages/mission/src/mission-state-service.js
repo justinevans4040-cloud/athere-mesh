@@ -37,10 +37,22 @@ import { projectMissionMemory, authorizeMemoryWrite } from '../../memory/src/typ
 import { retrieveStateAwareMemory } from '../../memory/src/state-aware-retrieval.js';
 import { decideNext, assertExecutiveActor } from '../../executive/src/executive-controller.js';
 import { resolveAuthorityFromHistory } from '../../contracts/src/agent-identity.js';
-import { createAgentIdentityRegistry } from '../../identity/src/agent-identity-registry.js';
-import { createGatedLearningPipeline } from '../../learning/src/gated-learning-pipeline.js';
-import { createValidatedSkillLibrary } from '../../skills/src/validated-skill-library.js';
-import { createSelfImprovementSandbox } from '../../improvement/src/self-improvement-sandbox.js';
+import { createAgentIdentityRegistry, isBrandedAgentIdentityRegistry } from '../../identity/src/agent-identity-registry.js';
+import {
+  createGatedLearningPipeline,
+  getGatedLearningIdentities,
+  isBrandedGatedLearningPipeline,
+} from '../../learning/src/gated-learning-pipeline.js';
+import {
+  createValidatedSkillLibrary,
+  getValidatedSkillLearning,
+  isBrandedValidatedSkillLibrary,
+} from '../../skills/src/validated-skill-library.js';
+import {
+  createSelfImprovementSandbox,
+  getSelfImprovementIdentities,
+  isBrandedSelfImprovementSandbox,
+} from '../../improvement/src/self-improvement-sandbox.js';
 import { createDistributedMissionStore, isBrandedDistributedMissionStore } from '../../distributed/src/distributed-mission-store.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -381,29 +393,55 @@ export function createMissionStateService({
   clock = () => new Date().toISOString(),
   store = { loadMission, saveMission },
   identities = createAgentIdentityRegistry(),
-  learning = createGatedLearningPipeline(),
+  learning = null,
   skills = null,
-  improvement = createSelfImprovementSandbox(),
+  improvement = null,
   distributed = null,
+  durableReplicaDir = null,
   operationRetryTimeoutMs = OPERATION_RETRY_TIMEOUT_MS,
   operationRetryDelayMs = OPERATION_RETRY_DELAY_MS,
 } = {}) {
   requiredText(root, 'root'); if (typeof clock !== 'function') throw new TypeError('clock must be a function'); if (typeof store?.loadMission !== 'function' || typeof store?.saveMission !== 'function') throw new TypeError('store must provide loadMission and saveMission');
-  if (!identities || typeof identities.assertActive !== 'function' || typeof identities.get !== 'function') {
-    throw new TypeError('identities registry must provide get and assertActive');
+  identities = identities ?? createAgentIdentityRegistry();
+  if (!isBrandedAgentIdentityRegistry(identities)) {
+    throw new TypeError('identities must be a branded agentIdentityRegistry from createAgentIdentityRegistry');
   }
-  if (!learning || typeof learning.runPipeline !== 'function' || typeof learning.storePermanent !== 'function') {
+  learning = learning ?? createGatedLearningPipeline({ now: clock, identities });
+  if (!isBrandedGatedLearningPipeline(learning)) {
+    throw new TypeError('learning must be a branded gatedLearningPipeline from createGatedLearningPipeline');
+  }
+  if (getGatedLearningIdentities(learning) !== identities) {
+    throw new TypeError('learning identities must be the same registry instance as service identities');
+  }
+  if (typeof learning.runPipeline !== 'function' || typeof learning.storePermanent !== 'function') {
     throw new TypeError('learning pipeline must provide runPipeline and storePermanent');
   }
   const skillLibrary = skills ?? createValidatedSkillLibrary({ learning, now: clock });
-  if (!skillLibrary || typeof skillLibrary.reuse !== 'function' || typeof skillLibrary.publishFromLesson !== 'function') {
+  if (!isBrandedValidatedSkillLibrary(skillLibrary)) {
+    throw new TypeError('skills must be a branded validatedSkillLibrary from createValidatedSkillLibrary');
+  }
+  if (getValidatedSkillLearning(skillLibrary) !== learning) {
+    throw new TypeError('skills learning must be the same pipeline instance as service learning');
+  }
+  if (typeof skillLibrary.reuse !== 'function' || typeof skillLibrary.publishFromLesson !== 'function') {
     throw new TypeError('skills library must provide reuse and publishFromLesson');
   }
-  if (!improvement || typeof improvement.runPipeline !== 'function' || typeof improvement.deployToProduction !== 'function') {
+  improvement = improvement ?? createSelfImprovementSandbox({ now: clock, identities });
+  if (!isBrandedSelfImprovementSandbox(improvement)) {
+    throw new TypeError('improvement must be a branded selfImprovementSandbox from createSelfImprovementSandbox');
+  }
+  if (getSelfImprovementIdentities(improvement) !== identities) {
+    throw new TypeError('improvement identities must be the same registry instance as service identities');
+  }
+  if (typeof improvement.runPipeline !== 'function' || typeof improvement.deployToProduction !== 'function') {
     throw new TypeError('improvement sandbox must provide runPipeline and deployToProduction');
   }
   const distributedLayer = distributed === true
-    ? createDistributedMissionStore({ primary: store, now: clock })
+    ? createDistributedMissionStore({
+      primary: store,
+      now: clock,
+      ...(durableReplicaDir == null ? {} : { durableReplicaDir }),
+    })
     : distributed;
   if (distributedLayer != null) {
     if (!isBrandedDistributedMissionStore(distributedLayer)) {
@@ -418,9 +456,6 @@ export function createMissionStateService({
   }
   store = distributedLayer ?? store;
   function assertRegisteredIdentityActive(actorId) {
-    if (typeof identities.has === 'function' && !identities.has(actorId)) {
-      return;
-    }
     identities.assertActive(actorId);
   }
   const retryTimeoutMs = boundedInteger(operationRetryTimeoutMs, 'operationRetryTimeoutMs', { min: 1, max: 60_000 });

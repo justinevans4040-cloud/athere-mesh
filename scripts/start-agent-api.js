@@ -41,6 +41,8 @@ function workspaceRoot(environment, repositoryRoot) {
 export async function createTitanService({
   environment = process.env,
   repositoryRoot = scriptRoot,
+  /** Test-only injection; production leaves this undefined and resolves from env. */
+  meshDeps = undefined,
 } = {}) {
   if (!environment || typeof environment !== 'object') throw new TypeError('environment is required');
   const resolvedRepositoryRoot = path.resolve(repositoryRoot);
@@ -48,12 +50,22 @@ export async function createTitanService({
   const authToken = nonEmptyEnvironment(environment, 'TITAN_API_BEARER_TOKEN');
   validateOperationalFleet();
   await mkdir(resolvedWorkspaceRoot, { recursive: true });
-  const recovery = await recoverAndHealMissions({ root: resolvedWorkspaceRoot });
   const executor = createNodeTestExecutor({ repositoryRoot: resolvedRepositoryRoot });
   // Offline-first: when ATHERE_MESH_REDIS_* (and optional remote/Postgres flags)
   // are unset, resolveMeshOrchestratorDeps returns empty wiring and the
   // orchestrator keeps memory bus + filesystem store + local executor.
-  const mesh = await resolveMeshOrchestratorDeps(environment);
+  // Mesh deps resolve BEFORE boot recovery so shared Postgres missions are
+  // discovered/healed through the same store the orchestrator will use.
+  const mesh = meshDeps ?? await resolveMeshOrchestratorDeps(environment);
+  if (meshDeps != null) {
+    if (!mesh || typeof mesh.close !== 'function' || !mesh.wired) {
+      throw new TypeError('meshDeps must provide close() and wired');
+    }
+  }
+  const recovery = await recoverAndHealMissions({
+    root: resolvedWorkspaceRoot,
+    ...(mesh.store === undefined ? {} : { missionStore: mesh.store }),
+  });
   const orchestrator = createMissionOrchestrator({
     root: resolvedWorkspaceRoot,
     repositoryRoot: resolvedRepositoryRoot,

@@ -28,16 +28,21 @@ Advisory executive decisions from **authoritative mission state** only. Does not
 
 Athere can dynamically change strategy (quarantine/retry/branch recommendations) while preserving mission integrity: no self-certify, no direct mutation, no path skip, strategy changes only via `qra_recovery_driver`.
 
+The mission orchestrator **consults** `decideNext({ actor: 'orchestrator' })` after a failure block. When the decision is `change_strategy` / `retry` with `retry_from_checkpoint`, it applies heal through the recovery coordinator. When the decision is `escalate_human` (e.g. blocked with no checkpoint), the mission stays blocked. Executive decisions never certify success.
+
 ## Security (local hostile audit)
 
-- No HTTP route; orchestrator does not auto-apply decisions
-- MEA untouched
+- No HTTP route for executive decisions
+- MEA untouched — executive cannot advance `completedWork` or emit `completed`
 - Unauthorized executive actors fail closed
 - `canCertifySuccess` always false; `mutatesMission` always false
 - Off-plan `pendingWork` cannot be allocated; path-skip still rejected
+- Orchestrator applies only integrity-preserving recovery strategies from `decideNext`
 
 ## Evidence
 
 - `packages/executive/src/executive-controller.js`
+- `packages/orchestrator/src/mission-orchestrator.js` (`blockThenHeal`)
 - `tests/contract/executive-controller.test.js`
 - `tests/integration/executive-controller-item16.test.js`
+- `tests/integration/executive-orchestrator-item16.test.js`

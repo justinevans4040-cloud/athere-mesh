@@ -26,12 +26,13 @@ Signed envelopes remain future work; authority answers bind to the hash-chained 
 
 ## Security (local)
 
-- Revoked identities cannot transition, recover, or (when registered) mutate facts/epistemic claims
+- Revoked identities cannot transition, recover, or mutate facts/epistemic claims
 - Authority answers come from ledger actors only (no caller-supplied actor override)
 - Unknown operationId fails closed
+- Unbranded identities registries rejected (WeakSet factory brand)
+- Unregistered actors cannot write facts (must be enrolled + active)
 - No new HTTP surface
 - Default registry covers MEA/recovery operational agents only
-- Unregistered fact actors stay permission-gated until enrolled (residual)
 
 ## Evidence
 

@@ -17,7 +17,8 @@ Public smoke / demo artifacts for Athere Mesh Titan recreate.
 | [smoke-remote-executor-standing-worker-crosshost-20260903-203851.json](./smoke-remote-executor-standing-worker-crosshost-20260903-203851.json) | Standing Ichabod systemd user worker — Lenovo publishes 3 jobs; unit `athere-mesh-remote-executor.service` claims them with **no mid-flight SSH claim**; worker PID = unit MainPID all rounds. |
 | [smoke-remote-work-lease-20260904T035458.json](./smoke-remote-work-lease-20260904T035458.json) | Multi-worker lease reclaim — Worker A abandons; after expiry Worker B claims. Beyond LPOP-only. |
 | [smoke-remote-executor-cohort-crosshost-20260904T035619.json](./smoke-remote-executor-cohort-crosshost-20260904T035619.json) | Standing worker runs a 4-file contract cohort (20 tests), not pin-only; no mid-flight SSH claim. |
-| [smoke-owner-api-mission-crosshost-20260904T035714.json](./smoke-owner-api-mission-crosshost-20260904T035714.json) | Owner `orchestrator.execute()` with Redis bus + remote queue + shared Postgres; remote inspect + full suite on standing Ichabod worker (310/309/0/1); mission verified in `titan_missions`. |
+| [smoke-owner-api-mission-crosshost-20260904T035714.json](./smoke-owner-api-mission-crosshost-20260904T035714.json) | Historical owner `orchestrator.execute()` A→B (pre-checkpoint `state_version` equality). Superseded for current tree by 20260904T214254. |
+| [smoke-owner-api-mission-crosshost-20260904T214254.json](./smoke-owner-api-mission-crosshost-20260904T214254.json) | **Current-tree** owner A→B: Redis + remote queue + Postgres; standing worker; mission `mission-7c820439-…` revision 7 `completed` in `titan_missions`; executor `state_version >=` fix. |
 | [arweave/](./arweave/) | Arweave permanence folder + README |
 | [demos/](./demos/) | Slice 0–3 demo MP4s |
 | [nosana/](./nosana/) | Nosana GPU smoke (started then stopped) |

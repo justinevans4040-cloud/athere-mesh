@@ -8,6 +8,7 @@ import {
   normalizeImprovementProposal,
 } from '../../packages/contracts/src/self-improvement.js';
 import { createSelfImprovementSandbox } from '../../packages/improvement/src/self-improvement-sandbox.js';
+import { createAgentIdentityRegistry } from '../../packages/identity/src/agent-identity-registry.js';
 
 test('Item 23 contract: gated stages and forbidden self-declare path', () => {
   assert.deepEqual([...IMPROVEMENT_STAGES], [
@@ -45,7 +46,7 @@ test('Item 23 contract: gated stages and forbidden self-declare path', () => {
 });
 
 test('Item 23 contract: sandbox pipeline blocks uncontrolled production deploy', async () => {
-  const sandbox = createSelfImprovementSandbox({ now: () => '2026-09-05T06:00:00.000Z' });
+  const sandbox = createSelfImprovementSandbox({ now: () => '2026-09-05T06:00:00.000Z', identities: createAgentIdentityRegistry() });
   const proposal = await sandbox.propose({
     id: 'imp-pipe-1',
     target: 'routing_policies',

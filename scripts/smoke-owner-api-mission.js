@@ -104,6 +104,7 @@ const evidence = {
     'mission-orchestrator.js': await sha256File(path.join(repoRoot, 'packages/orchestrator/src/mission-orchestrator.js')),
     'remote-dispatch-executor.js': await sha256File(path.join(repoRoot, 'packages/execution/src/remote-dispatch-executor.js')),
     'remote-work-queue.js': await sha256File(path.join(repoRoot, 'packages/execution/src/remote-work-queue.js')),
+    'node-test-executor.js': await sha256File(path.join(repoRoot, 'packages/execution/src/node-test-executor.js')),
     'mesh-env-wiring.js': await sha256File(path.join(repoRoot, 'packages/orchestrator/src/mesh-env-wiring.js')),
   },
   result: result === undefined ? null : {
@@ -111,14 +112,17 @@ const evidence = {
     missionId: result.mission?.id,
     completedWork: result.mission?.completedWork,
     tests: result.tests,
+    healed: result.healed === true,
+    executiveNextAction: result.executive?.nextAction ?? null,
     inspection: result.mission?.signals?.find((signal) => signal.agent === 'nyx')?.evidence?.result ?? null,
     runeWorkerHint: result.mission?.signals?.find((signal) => signal.agent === 'rune')?.evidence?.result?.command ?? null,
   },
   error: error ?? null,
   doesNotProve: [
-    'Item 10 / QR18',
+    'HTTP POST /api/commands cross-host (this smoke uses orchestrator.execute directly)',
     'multi-writer orchestrator beyond revision CAS',
     'Postgres Tailscale-native without tunnel (only recorded if ATHERE_MESH_POSTGRES_* was set for this process)',
+    'Ichabod worker checkout byte-identical to Lenovo HEAD (worker may lag; Lenovo orchestrator SHA is authoritative for owner path)',
   ],
   midFlightSshClaim: false,
 };

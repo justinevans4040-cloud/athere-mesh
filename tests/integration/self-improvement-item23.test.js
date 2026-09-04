@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 import { createSelfImprovementSandbox } from '../../packages/improvement/src/self-improvement-sandbox.js';
+import { createAgentIdentityRegistry } from '../../packages/identity/src/agent-identity-registry.js';
 
 function clock() {
   return '2026-09-05T06:30:00.000Z';
@@ -52,8 +53,9 @@ function createInput(overrides = {}) {
 
 test('Item 23: service runs gated improvement without uncontrolled self-modification', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'athere-imp-'));
-  const improvement = createSelfImprovementSandbox({ now: clock });
-  const service = createMissionStateService({ root, clock, improvement });
+  const identities = createAgentIdentityRegistry();
+  const improvement = createSelfImprovementSandbox({ now: clock, identities });
+  const service = createMissionStateService({ root, clock, identities, improvement });
   const created = await service.create(createInput());
 
   await assert.rejects(
@@ -100,7 +102,7 @@ test('Item 23: service runs gated improvement without uncontrolled self-modifica
 });
 
 test('Item 23: regression vs frozen control cannot approve or deploy', async () => {
-  const improvement = createSelfImprovementSandbox({ now: clock });
+  const improvement = createSelfImprovementSandbox({ now: clock, identities: createAgentIdentityRegistry() });
   await improvement.propose({
     id: 'imp-reg-1',
     target: 'code',

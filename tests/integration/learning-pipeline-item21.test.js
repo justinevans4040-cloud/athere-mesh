@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 import { createGatedLearningPipeline } from '../../packages/learning/src/gated-learning-pipeline.js';
+import { createAgentIdentityRegistry } from '../../packages/identity/src/agent-identity-registry.js';
 
 function clock() {
   return '2026-09-04T23:00:00.000Z';
@@ -52,8 +53,9 @@ function createInput(overrides = {}) {
 
 test('Item 21: mission service learning path rejects direct permanent writes and demonstrates gated improvement', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'athere-learn-'));
-  const learning = createGatedLearningPipeline({ now: clock });
-  const service = createMissionStateService({ root, clock, learning });
+  const identities = createAgentIdentityRegistry();
+  const learning = createGatedLearningPipeline({ now: clock, identities });
+  const service = createMissionStateService({ root, clock, identities, learning });
   const created = await service.create(createInput());
 
   await assert.rejects(
@@ -97,20 +99,25 @@ test('Item 21: mission service learning path rejects direct permanent writes and
       layers: { action: true, artifact: true, state: true, subgoal: true, workflow: true, mission: true },
     },
     testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
-    control: { taskSuccessRate: 0.5, failedHandoffs: 3 },
-    candidateMetrics: { taskSuccessRate: 0.85, failedHandoffs: 0 },
     approver: 'qra_emerge_audit',
   });
 
   assert.equal(measured.improved, true);
   assert.equal(measured.regression, false);
+  assert.equal(measured.harnessVerdict, 'improvement_proven');
   assert.ok(measured.demonstration.length > 0);
   assert.equal(service.listPermanentLearning().length, 1);
   assert.equal(created.revision, (await service.get({ missionId: created.mission.id })).revision);
 });
 
 test('Item 21: executor cannot approve learning into permanent knowledge', async () => {
-  const learning = createGatedLearningPipeline({ now: clock });
+  const { ATHERE_REPO_ROOT, loadItem21HarnessCandidate } = await import('../support/learning-harness-control.js');
+  const harness = await loadItem21HarnessCandidate();
+  const learning = createGatedLearningPipeline({
+    now: clock,
+    identities: createAgentIdentityRegistry(),
+    repositoryRoot: ATHERE_REPO_ROOT,
+  });
   await learning.submitExperience({
     id: 'exp-exec-1',
     missionId: 'mission-exec-learn',
@@ -139,8 +146,7 @@ test('Item 21: executor cannot approve learning into permanent knowledge', async
   });
   await learning.compareAgainstControl({
     candidateId: candidate.id,
-    control: { taskSuccessRate: 0.5, failedHandoffs: 2 },
-    candidate: { taskSuccessRate: 0.7, failedHandoffs: 1 },
+    candidateCohort: harness.candidateCohort,
   });
   await assert.rejects(
     () => learning.approve({ candidateId: candidate.id, actor: 'nyx' }),

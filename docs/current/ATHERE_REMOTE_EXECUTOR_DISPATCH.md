@@ -23,6 +23,8 @@ Cross-host handoff for executor work: **`inspect-repository` (nyx)** and **`run-
 
 When `remoteWorkQueue` is injected, envelope input bindings hash the **worker** repository root (`remoteRepositoryRoot`). Auditor / proof paths stay on the owner host. Offline hermetic tests omit the queue and keep the previous in-process executor path.
 
+`node-test-executor` authorizes `miss-vale-prime` envelopes with `state_version >=` the operation's minimum stage (inspect ≥2, test ≥3) so durable checkpoints after inspect do not falsely reject rune.
+
 ## Lease claim (multi-worker)
 
 Claims are no longer LPOP-only. A claim places the job into a processing set with a lease expiry. A second worker cannot take it while the lease is live. Heartbeats extend the lease during long work. `reclaimExpired()` (also run inside `claim`) returns abandoned jobs to the queue for another worker.

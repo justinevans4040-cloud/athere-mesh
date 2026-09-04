@@ -6,6 +6,7 @@ import {
   assertSkillImmutable,
 } from '../../packages/contracts/src/skill-library.js';
 import { createGatedLearningPipeline } from '../../packages/learning/src/gated-learning-pipeline.js';
+import { createAgentIdentityRegistry } from '../../packages/identity/src/agent-identity-registry.js';
 import { createValidatedSkillLibrary } from '../../packages/skills/src/validated-skill-library.js';
 
 test('Item 22 contract: skill requires backlog fields and rejects incomplete records', () => {
@@ -63,7 +64,7 @@ test('Item 22 contract: skill requires backlog fields and rejects incomplete rec
 });
 
 test('Item 22 contract: library versions skills and reuses validated experience', async () => {
-  const learning = createGatedLearningPipeline({ now: () => '2026-09-05T00:00:00.000Z' });
+  const learning = createGatedLearningPipeline({ now: () => '2026-09-05T00:00:00.000Z', identities: createAgentIdentityRegistry() });
   const measured = await learning.runPipeline({
     experience: {
       id: 'exp-skill-1',
@@ -81,9 +82,7 @@ test('Item 22 contract: library versions skills and reuses validated experience'
       verified: true,
       layers: { action: true, artifact: true, state: true, subgoal: true, workflow: true, mission: true },
     },
-    testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
-    control: { taskSuccessRate: 0.5, failedHandoffs: 2 },
-    candidateMetrics: { taskSuccessRate: 0.8, failedHandoffs: 0 },
+    testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
     approver: 'qra_emerge_audit',
   });
   assert.equal(measured.improved, true);
@@ -158,9 +157,7 @@ test('Item 22 contract: library versions skills and reuses validated experience'
       verified: true,
       layers: { action: true, artifact: true, state: true, subgoal: true, workflow: true, mission: true },
     },
-    testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
-    control: { taskSuccessRate: 0.8, failedHandoffs: 1 },
-    candidateMetrics: { taskSuccessRate: 0.9, failedHandoffs: 0 },
+    testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
     approver: 'qra_emerge_audit',
   });
 

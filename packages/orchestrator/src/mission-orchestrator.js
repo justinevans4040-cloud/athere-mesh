@@ -238,13 +238,41 @@ export function createMissionOrchestrator({
 
   async function blockThenHeal(record, detail) {
     const blocked = await block(record, detail);
+    const decision = await missionState.decideNext({
+      missionId: record.mission.id,
+      actor: 'orchestrator',
+    });
+    const strategyAction = decision.strategyChange?.action
+      ?? decision.strategyChange?.then?.action
+      ?? null;
+    const shouldRetry = (decision.nextAction === 'change_strategy' || decision.nextAction === 'retry')
+      && (strategyAction === 'retry_from_checkpoint' || strategyAction === 'rollback_to_checkpoint');
+
+    if (!shouldRetry) {
+      return Object.freeze({
+        revision: blocked.revision,
+        mission: blocked.mission,
+        status: 'blocked',
+        reason: detail,
+        executive: decision,
+      });
+    }
+
     const heal = await healMissionFromCheckpoint({
       root: workspaceRoot,
       missionId: record.mission.id,
       clock,
       ...(store === undefined ? {} : { missionStore: store }),
     });
-    if (heal.status !== 'healed') return blocked;
+    if (heal.status !== 'healed') {
+      return Object.freeze({
+        revision: blocked.revision,
+        mission: blocked.mission,
+        status: 'blocked',
+        reason: detail,
+        executive: decision,
+      });
+    }
     const healed = await missionState.get({ missionId: record.mission.id });
     return Object.freeze({
       revision: healed.revision,
@@ -252,6 +280,7 @@ export function createMissionOrchestrator({
       healed: true,
       status: 'running',
       reason: `auto-healed to last checkpoint after: ${detail}`,
+      executive: decision,
     });
   }
 

@@ -4,6 +4,8 @@
  */
 
 import { createHash } from 'node:crypto';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import {
   assertCannotMergeAuthority,
   assertForbiddenDistributedPath,
@@ -18,7 +20,9 @@ import {
 export const MAX_REPLICAS = 8;
 export const MAX_STATE_EVENTS = 1024;
 export const MAX_SHARDS = 64;
-export const DISTRIBUTED_MISSION_STORE_BRAND = Symbol.for('athere.distributedMissionStore');
+
+/** Instance registry — not forgeable via Symbol.for. */
+const BRANDED_DISTRIBUTED_STORES = new WeakSet();
 
 function hashMission(mission) {
   return createHash('sha256').update(JSON.stringify(mission)).digest('hex');
@@ -32,7 +36,7 @@ function requirePrimaryStore(primary) {
 }
 
 export function isBrandedDistributedMissionStore(value) {
-  return Boolean(value && value[DISTRIBUTED_MISSION_STORE_BRAND] === true);
+  return value != null && BRANDED_DISTRIBUTED_STORES.has(value);
 }
 
 /**
@@ -45,6 +49,8 @@ export function createDistributedMissionStore({
   shardCount = 1,
   now = () => new Date().toISOString(),
   maxEvents = MAX_STATE_EVENTS,
+  /** Optional durable directory so replica reads work across processes/hosts. */
+  durableReplicaDir = null,
 } = {}) {
   const primaryStore = requirePrimaryStore(primary);
   if (typeof now !== 'function') throw new TypeError('now must be a function');
@@ -57,6 +63,12 @@ export function createDistributedMissionStore({
   if (!Number.isSafeInteger(maxEvents) || maxEvents < 1 || maxEvents > MAX_STATE_EVENTS) {
     throw new Error(`maxEvents must be 1..${MAX_STATE_EVENTS}`);
   }
+  if (durableReplicaDir != null) {
+    if (typeof durableReplicaDir !== 'string' || durableReplicaDir.trim().length === 0) {
+      throw new TypeError('durableReplicaDir must be a non-empty string when provided');
+    }
+  }
+  const durableRoot = durableReplicaDir == null ? null : path.resolve(durableReplicaDir.trim());
 
   /** @type {Array<Map<string, object>>} */
   const replicas = Array.from({ length: replicaCount }, () => new Map());
@@ -65,7 +77,11 @@ export function createDistributedMissionStore({
   let primaryLoadCount = 0;
   let replicaLoadCount = 0;
 
-  function syncReplicas(record) {
+  function durablePath(replicaIndex, missionId) {
+    return path.join(durableRoot, `replica-${replicaIndex}`, `${missionId}.json`);
+  }
+
+  async function syncReplicas(record) {
     const missionId = record.mission.id;
     const frozen = Object.freeze({
       revision: record.revision,
@@ -75,6 +91,33 @@ export function createDistributedMissionStore({
     });
     for (const map of replicas) {
       map.set(missionId, frozen);
+    }
+    if (durableRoot) {
+      for (let index = 0; index < replicas.length; index += 1) {
+        const target = durablePath(index, missionId);
+        await mkdir(path.dirname(target), { recursive: true });
+        await writeFile(target, `${JSON.stringify(frozen)}\n`, 'utf8');
+      }
+    }
+  }
+
+  async function loadDurableReplica(replicaIndex, missionId) {
+    if (!durableRoot) return null;
+    try {
+      const raw = await readFile(durablePath(replicaIndex, missionId), 'utf8');
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed.revision !== 'number' || !parsed.mission) {
+        throw new Error('corrupt durable replica snapshot');
+      }
+      return Object.freeze({
+        revision: parsed.revision,
+        mission: structuredClone(parsed.mission),
+        stateHash: parsed.stateHash ?? hashMission(parsed.mission),
+        syncedAt: parsed.syncedAt ?? now(),
+      });
+    } catch (error) {
+      if (error?.code === 'ENOENT') return null;
+      throw error;
     }
   }
 
@@ -95,7 +138,6 @@ export function createDistributedMissionStore({
     role: 'primary',
     replicaCount,
     shardCount,
-    [DISTRIBUTED_MISSION_STORE_BRAND]: true,
 
     async loadMission(args) {
       primaryLoadCount += 1;
@@ -105,7 +147,7 @@ export function createDistributedMissionStore({
     async saveMission(args) {
       assertWriteAuthority('primary');
       const saved = await primaryStore.saveMission(args);
-      syncReplicas(saved);
+      await syncReplicas(saved);
       const history = saved?.mission?.transitionHistory;
       const lastOp = Array.isArray(history) && history.length > 0
         ? history[history.length - 1]?.operationId ?? null
@@ -120,7 +162,11 @@ export function createDistributedMissionStore({
       if (!Number.isSafeInteger(replicaIndex) || replicaIndex < 0 || replicaIndex >= replicas.length) {
         throw new Error(`unknown replica index: ${replicaIndex}`);
       }
-      const entry = replicas[replicaIndex].get(id);
+      let entry = replicas[replicaIndex].get(id);
+      if (!entry) {
+        entry = await loadDurableReplica(replicaIndex, id);
+        if (entry) replicas[replicaIndex].set(id, entry);
+      }
       if (!entry) throw new Error(`replica miss for mission: ${id}`);
       replicaLoadCount += 1;
       const snapshot = Object.freeze({
@@ -132,6 +178,7 @@ export function createDistributedMissionStore({
         replicaIndex,
         authoritative: false,
         shardId: resolveShardId(id, shardCount),
+        durable: durableRoot != null,
       });
       assertReplicaNotAuthoritative(snapshot);
       return snapshot;
@@ -155,6 +202,8 @@ export function createDistributedMissionStore({
         singleWriter: true,
         multiMaster: false,
         crdtAuthorityMerge: false,
+        durableReplicas: durableRoot != null,
+        durableReplicaDir: durableRoot,
       });
     },
 
@@ -189,5 +238,6 @@ export function createDistributedMissionStore({
     },
   });
 
+  BRANDED_DISTRIBUTED_STORES.add(layer);
   return layer;
 }

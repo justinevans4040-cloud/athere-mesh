@@ -58,6 +58,7 @@ cross-host concurrency boundary.
   remote executor dispatch — remains open).
 - Automatic orchestrator wiring from environment variables (injection is explicit).
 - Shared proof / artifact stores (those remain filesystem-rooted).
+- Boot recovery uses the wired shared store when configured (`listMissionIds` on Postgres adapter + `createTitanService` resolves mesh deps before `recoverAndHealMissions`).
 - Postgres listen/auth topology hardening beyond the operator-configured URL.
 - Multi-writer orchestration safety beyond revision CAS rejection.
 

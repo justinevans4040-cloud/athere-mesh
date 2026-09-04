@@ -27,6 +27,8 @@ Athere can reuse validated experience rather than re-deriving every procedure fr
 - `historicalSuccessRate + failureRate` cannot exceed 1
 - Silent in-place mutation rejected
 - Hard caps: `MAX_SKILLS` (64) / `MAX_SKILL_VERSIONS` (32) fail closed
+- Unbranded skill libraries / unbranded learning `listPermanent` forgery rejected (WeakSet brands)
+- Skill library must bind the same learning pipeline instance as the mission service
 - `skillLibrary` / `skills` via generic `transition` rejected
 - No new HTTP surface
 - Skills are process-local library state (not mission-hash authority)

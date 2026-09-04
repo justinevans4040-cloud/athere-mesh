@@ -1,0 +1,2 @@
+# Frozen evaluation controls must stay LF so SHA-256 matches writeFrozenEvaluation.
+evaluations/controls/*.json text eol=lf

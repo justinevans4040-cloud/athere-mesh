@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGatedLearningPipeline } from '../../packages/learning/src/gated-learning-pipeline.js';
+import { createAgentIdentityRegistry } from '../../packages/identity/src/agent-identity-registry.js';
 import { createValidatedSkillLibrary } from '../../packages/skills/src/validated-skill-library.js';
 
 function clock() {
@@ -25,15 +26,13 @@ async function seedLesson(learning, { experienceId, lessonId }) {
       verified: true,
       layers: { action: true, artifact: true, state: true, subgoal: true, workflow: true, mission: true },
     },
-    testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
-    control: { taskSuccessRate: 0.5, failedHandoffs: 2 },
-    candidateMetrics: { taskSuccessRate: 0.8, failedHandoffs: 0 },
+    testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
     approver: 'qra_emerge_audit',
   });
 }
 
 test('Item 22 security: unvalidated version and impossible rates fail closed', async () => {
-  const learning = createGatedLearningPipeline({ now: clock });
+  const learning = createGatedLearningPipeline({ now: clock, identities: createAgentIdentityRegistry() });
   await seedLesson(learning, { experienceId: 'exp-sec-1', lessonId: 'lesson-sec-1' });
   const library = createValidatedSkillLibrary({ learning, now: clock });
 

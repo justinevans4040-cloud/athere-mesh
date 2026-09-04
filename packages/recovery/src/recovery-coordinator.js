@@ -1,16 +1,17 @@
-import { readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createAgentOperationEnvelope } from '../../contracts/src/agent-operation.js';
-import { loadMission, saveMission } from '../../mission/src/mission-store.js';
+import { listMissionIds as listFilesystemMissionIds, loadMission, saveMission } from '../../mission/src/mission-store.js';
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 
-const SNAPSHOT = /^([A-Za-z0-9][A-Za-z0-9_-]{0,127})\.json$/;
 const RECOVERY_DETAIL = 'interrupted execution requires operator retry';
 const RECOVERY_ATTEMPTS = 8;
 const MAX_AUTO_HEALS = 3;
-const DEFAULT_MISSION_STORE = Object.freeze({ loadMission, saveMission });
+const DEFAULT_MISSION_STORE = Object.freeze({
+  loadMission,
+  saveMission,
+  listMissionIds: listFilesystemMissionIds,
+});
 
 function requireMissionStore(missionStore) {
   if (!missionStore || typeof missionStore.loadMission !== 'function' || typeof missionStore.saveMission !== 'function') {
@@ -19,21 +20,22 @@ function requireMissionStore(missionStore) {
   return missionStore;
 }
 
+async function resolveMissionIds({ root, store }) {
+  if (typeof store.listMissionIds === 'function') {
+    const ids = await store.listMissionIds({ root });
+    if (!Array.isArray(ids)) throw new TypeError('listMissionIds must return an array');
+    return ids;
+  }
+  // Legacy stores without listMissionIds keep filesystem discovery.
+  return listFilesystemMissionIds({ root });
+}
+
 export async function inspectRecovery({ root, missionStore = DEFAULT_MISSION_STORE }) {
   const store = requireMissionStore(missionStore);
   const result = { resumable: [], blocked: [], corrupt: [] };
-  let entries;
-  try {
-    entries = await readdir(path.resolve(root, 'missions'), { withFileTypes: true });
-  } catch (error) {
-    if (error.code === 'ENOENT') return result;
-    throw error;
-  }
+  const missionIds = await resolveMissionIds({ root, store });
 
-  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
-    const match = SNAPSHOT.exec(entry.name);
-    if (!match || !entry.isFile()) continue;
-    const missionId = match[1];
+  for (const missionId of missionIds) {
     let record;
     try {
       record = await store.loadMission({ root, missionId });

@@ -57,7 +57,8 @@ function authorizeEnvelope(input, operation) {
   const requester = envelope.provenance.requested_by;
   if (requester === 'miss-vale-prime') {
     if (!envelope.mission_id.startsWith('mission-')
-      || envelope.state_version !== operation.missionStateVersion
+      || !Number.isSafeInteger(envelope.state_version)
+      || envelope.state_version < operation.missionStateVersion
       || envelope.operation_id !== `${envelope.mission_id}-${operation.operationSuffix}`) {
       unauthorized(operation, 'mission context does not match the operational workflow stage');
     }

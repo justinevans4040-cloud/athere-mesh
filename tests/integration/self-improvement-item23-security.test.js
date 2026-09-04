@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSelfImprovementSandbox } from '../../packages/improvement/src/self-improvement-sandbox.js';
+import { createAgentIdentityRegistry } from '../../packages/identity/src/agent-identity-registry.js';
 
 function clock() {
   return '2026-09-05T08:30:00.000Z';
@@ -34,7 +35,7 @@ async function advanceToQr18(sandbox, {
 }
 
 test('Item 23 bad-actor: security passed with findings fails closed', async () => {
-  const sandbox = createSelfImprovementSandbox({ now: clock });
+  const sandbox = createSelfImprovementSandbox({ now: clock, identities: createAgentIdentityRegistry() });
   await sandbox.propose({
     id: 'imp-findings',
     target: 'code',
@@ -61,7 +62,7 @@ test('Item 23 bad-actor: security passed with findings fails closed', async () =
 });
 
 test('Item 23 bad-actor: proposer cannot approve or deploy own proposal', async () => {
-  const sandbox = createSelfImprovementSandbox({ now: clock });
+  const sandbox = createSelfImprovementSandbox({ now: clock, identities: createAgentIdentityRegistry() });
   await advanceToQr18(sandbox, { id: 'imp-self', proposedBy: 'qra_emerge_audit' });
   await assert.rejects(
     () => sandbox.approve({ proposalId: 'imp-self', actor: 'qra_emerge_audit' }),
@@ -77,14 +78,14 @@ test('Item 23 bad-actor: proposer cannot approve or deploy own proposal', async 
 });
 
 test('Item 23 bad-actor: executor cannot approve; benchmark securityFindings block security pass', async () => {
-  const s2 = createSelfImprovementSandbox({ now: clock });
+  const s2 = createSelfImprovementSandbox({ now: clock, identities: createAgentIdentityRegistry() });
   await advanceToQr18(s2, { id: 'imp-exec2', proposedBy: 'nyx' });
   await assert.rejects(
     () => s2.approve({ proposalId: 'imp-exec2', actor: 'nyx' }),
     /unauthorized improvement approver/,
   );
 
-  const s3 = createSelfImprovementSandbox({ now: clock });
+  const s3 = createSelfImprovementSandbox({ now: clock, identities: createAgentIdentityRegistry() });
   await s3.propose({
     id: 'imp-bench-sec',
     target: 'code',

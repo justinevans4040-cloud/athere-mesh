@@ -35,6 +35,8 @@ Approvers/deployers: `qra_emerge_audit`, `miss-vale-prime` only.
 - Monitor requires approver or deployer actor (unauthorized monitor REJECT)
 - Hard cap: `MAX_IMPROVEMENT_PROPOSALS` (64) fail closed
 - Executor cannot approve/deploy
+- Revoked identities cannot propose / approve / deploy / monitor
+- Unbranded injectable improvement sandboxes rejected (WeakSet factory brand)
 - `selfImprovement` via generic `transition` rejected
 - No new HTTP surface; no GitHub review
 

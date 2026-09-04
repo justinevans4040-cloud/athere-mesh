@@ -66,6 +66,12 @@ export function adaptPostgresMissionStore(postgresStore) {
     async loadMission({ missionId }) {
       return postgresStore.load({ missionId });
     },
+    async listMissionIds() {
+      if (typeof postgresStore.list !== 'function') {
+        throw new TypeError('postgres store must provide list');
+      }
+      return postgresStore.list();
+    },
     async saveMission({ mission, expectedRevision }) {
       return postgresStore.save({
         mission,

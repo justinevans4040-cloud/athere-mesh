@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 import { createGatedLearningPipeline } from '../../packages/learning/src/gated-learning-pipeline.js';
+import { createAgentIdentityRegistry } from '../../packages/identity/src/agent-identity-registry.js';
 import { createValidatedSkillLibrary } from '../../packages/skills/src/validated-skill-library.js';
 
 function clock() {
@@ -53,9 +54,10 @@ function createInput(overrides = {}) {
 
 test('Item 22: service reuses validated skill instead of re-deriving from scratch', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'athere-skill-'));
-  const learning = createGatedLearningPipeline({ now: clock });
+  const identities = createAgentIdentityRegistry();
+  const learning = createGatedLearningPipeline({ now: clock, identities });
   const skills = createValidatedSkillLibrary({ learning, now: clock });
-  const service = createMissionStateService({ root, clock, learning, skills });
+  const service = createMissionStateService({ root, clock, identities, learning, skills });
   const created = await service.create(createInput());
 
   await service.runLearningPipeline({
@@ -75,9 +77,7 @@ test('Item 22: service reuses validated skill instead of re-deriving from scratc
       verified: true,
       layers: { action: true, artifact: true, state: true, subgoal: true, workflow: true, mission: true },
     },
-    testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
-    control: { taskSuccessRate: 0.4, failedHandoffs: 3 },
-    candidateMetrics: { taskSuccessRate: 0.9, failedHandoffs: 0 },
+    testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
     approver: 'qra_emerge_audit',
   });
 
@@ -116,7 +116,7 @@ test('Item 22: service reuses validated skill instead of re-deriving from scratc
 });
 
 test('Item 22: unpublished or unvalidated lessons cannot enter the skill library', async () => {
-  const learning = createGatedLearningPipeline({ now: clock });
+  const learning = createGatedLearningPipeline({ now: clock, identities: createAgentIdentityRegistry() });
   const skills = createValidatedSkillLibrary({ learning, now: clock });
   await assert.rejects(
     () => skills.publishFromLesson({

@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "smoke": "owner-api-mission-crosshost",
+  "claim": "Lenovo owner orchestrator.execute() with env-wired Redis bus + remote work queue completes inspect+run-node-tests on the standing Ichabod worker (zero mid-flight SSH claim). Optional shared Postgres is recorded when wired.",
+  "at": "2026-09-04T21:43:07.209Z",
+  "startedAt": "2026-09-04T21:42:54.669Z",
+  "runtime": "athere-mesh",
+  "dispatcher": {
+    "hostname": "JustinLenovo",
+    "pid": 14748,
+    "node": "v24.14.1",
+    "tailnet": [
+      {
+        "interface": "Tailscale",
+        "address": "100.125.245.10"
+      }
+    ]
+  },
+  "wiring": {
+    "redisBus": true,
+    "remoteWorkQueue": true,
+    "sharedMissionStore": true
+  },
+  "remoteRepositoryRoot": "/home/the_founder/athere-mesh",
+  "workNamespace": "athere:mesh:work",
+  "seedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+  "sources": {
+    "mission-orchestrator.js": "a85835e370496bf3094eca03e454a6096f271b49db2dffe9222f244ec25a335e",
+    "remote-dispatch-executor.js": "4e1d901b6ed4acbc07357efa81cae2f748681c57cf212c358a39139b715936dc",
+    "remote-work-queue.js": "a6c44d6a107379fc82ed962d125725b0c929d800d6e67c44811e95319b753e09",
+    "mesh-env-wiring.js": "cdb7349e8a827a8ea34524c615a5cf90facd0bdcf245147f30e80e1ba413e037"
+  },
+  "result": {
+    "status": "completed",
+    "missionId": "mission-7c820439-59e8-45b5-bc3f-d851911ae666",
+    "completedWork": [
+      "inspect-repository",
+      "run-node-tests",
+      "verify-proof"
+    ],
+    "tests": {
+      "tests": 310,
+      "passed": 309,
+      "failed": 0,
+      "skipped": 1
+    },
+    "inspection": {
+      "package": {
+        "name": "athere-titan",
+        "version": "0.1.0"
+      },
+      "testFilesOnDisk": 49,
+      "sourceFilesOnDisk": 34
+    },
+    "runeWorkerHint": "node --test"
+  },
+  "error": null,
+  "doesNotProve": [
+    "HTTP POST /api/commands cross-host (this smoke uses orchestrator.execute directly)",
+    "multi-writer orchestrator beyond revision CAS",
+    "Postgres Tailscale-native without tunnel",
+    "Ichabod worker checkout byte-identical to Lenovo HEAD (worker may lag; Lenovo orchestrator SHA is authoritative for owner path)"
+  ],
+  "midFlightSshClaim": false,
+  "standingWorker": {
+    "unit": "athere-mesh-remote-executor.service",
+    "postflightMainPid": 2576714,
+    "midFlightSshClaim": false
+  },
+  "wiringNote": "redisBus+remoteWorkQueue+sharedMissionStore all true via SSH local forward 15432->ichabod:5432",
+  "postgresCrossHost": {
+    "table": "titan_missions",
+    "missionId": "mission-7c820439-59e8-45b5-bc3f-d851911ae666",
+    "revision": 7,
+    "status": "completed",
+    "verifiedFrom": "ichabodcrane loopback psql after Lenovo write via 15432 tunnel"
+  },
+  "regressionClosed": "node-test-executor miss-vale-prime state_version check uses >= missionStateVersion so post-inspect checkpoints no longer block rune"
+}

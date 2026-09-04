@@ -9,6 +9,8 @@ import {
   MAX_IMPROVEMENT_PROPOSALS,
   createSelfImprovementSandbox,
 } from '../../packages/improvement/src/self-improvement-sandbox.js';
+import { createAgentIdentityRegistry } from '../../packages/identity/src/agent-identity-registry.js';
+import { createGatedLearningPipeline } from '../../packages/learning/src/gated-learning-pipeline.js';
 
 function skillBody(id) {
   return {
@@ -26,16 +28,45 @@ function skillBody(id) {
   };
 }
 
+async function seedPermanentLesson(learning, suffix) {
+  await learning.runPipeline({
+    experience: {
+      id: `exp-${suffix}`,
+      missionId: 'mission-cap',
+      actor: 'nyx',
+      summary: 'cap seed',
+      outcome: 'success',
+    },
+    lesson: {
+      id: `lesson-${suffix}`,
+      statement: 'seed',
+      expectedBenefit: 'cap',
+    },
+    verification: {
+      verified: true,
+      layers: { action: true, artifact: true, state: true, subgoal: true, workflow: true, mission: true },
+    },
+    testResult: { passed: true, metrics: { taskSuccess: true, failedHandoffs: 0 } },
+
+
+    approver: 'qra_emerge_audit',
+  });
+}
+
 test('H22: skill library fails closed at hard skill cap', async () => {
   assert.equal(typeof MAX_SKILLS, 'number');
-  const permanent = Array.from({ length: MAX_SKILLS + 1 }, (_, i) => Object.freeze({
-    id: `lesson-cap-${i}`,
-    stage: 'measure',
-    experienceId: `exp-cap-${i}`,
-    approvedBy: 'qra_emerge_audit',
-  }));
-  const learning = { listPermanent: () => permanent };
-  const library = createValidatedSkillLibrary({ learning, now: () => '2026-09-05T09:00:00.000Z' });
+  const identities = createAgentIdentityRegistry();
+  const learning = createGatedLearningPipeline({
+    now: () => '2026-09-05T09:00:00.000Z',
+    identities,
+  });
+  for (let i = 0; i < MAX_SKILLS + 1; i += 1) {
+    await seedPermanentLesson(learning, `cap-${i}`);
+  }
+  const library = createValidatedSkillLibrary({
+    learning,
+    now: () => '2026-09-05T09:00:00.000Z',
+  });
   for (let i = 0; i < MAX_SKILLS; i += 1) {
     await library.publishFromLesson({
       lessonId: `lesson-cap-${i}`,
@@ -52,14 +83,18 @@ test('H22: skill library fails closed at hard skill cap', async () => {
 });
 
 test('H22: skill versions fail closed at hard version cap', async () => {
-  const permanent = Array.from({ length: MAX_SKILL_VERSIONS + 1 }, (_, i) => Object.freeze({
-    id: `lesson-ver-${i}`,
-    stage: 'measure',
-    experienceId: `exp-ver-${i}`,
-    approvedBy: 'qra_emerge_audit',
-  }));
-  const learning = { listPermanent: () => permanent };
-  const library = createValidatedSkillLibrary({ learning, now: () => '2026-09-05T09:00:00.000Z' });
+  const identities = createAgentIdentityRegistry();
+  const learning = createGatedLearningPipeline({
+    now: () => '2026-09-05T09:00:00.000Z',
+    identities,
+  });
+  for (let i = 0; i < MAX_SKILL_VERSIONS + 1; i += 1) {
+    await seedPermanentLesson(learning, `ver-${i}`);
+  }
+  const library = createValidatedSkillLibrary({
+    learning,
+    now: () => '2026-09-05T09:00:00.000Z',
+  });
   await library.publishFromLesson({
     lessonId: 'lesson-ver-0',
     skill: skillBody('skill-ver-cap'),
@@ -83,7 +118,7 @@ test('H22: skill versions fail closed at hard version cap', async () => {
 
 test('H23: monitor requires authorized actor; approve-and-deploy same actor fails closed', async () => {
   assert.equal(typeof MAX_IMPROVEMENT_PROPOSALS, 'number');
-  const sandbox = createSelfImprovementSandbox({ now: () => '2026-09-05T09:00:00.000Z' });
+  const sandbox = createSelfImprovementSandbox({ now: () => '2026-09-05T09:00:00.000Z', identities: createAgentIdentityRegistry() });
   await sandbox.propose({
     id: 'imp-harden-1',
     target: 'code',
@@ -143,7 +178,7 @@ test('H23: monitor requires authorized actor; approve-and-deploy same actor fail
 });
 
 test('H23: improvement proposal cap fails closed', async () => {
-  const sandbox = createSelfImprovementSandbox({ now: () => '2026-09-05T09:00:00.000Z' });
+  const sandbox = createSelfImprovementSandbox({ now: () => '2026-09-05T09:00:00.000Z', identities: createAgentIdentityRegistry() });
   for (let i = 0; i < MAX_IMPROVEMENT_PROPOSALS; i += 1) {
     await sandbox.propose({
       id: `imp-cap-${i}`,

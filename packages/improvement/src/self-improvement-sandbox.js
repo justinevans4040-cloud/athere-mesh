@@ -13,9 +13,15 @@ import {
   normalizeImprovementMetrics,
   normalizeImprovementProposal,
 } from '../../contracts/src/self-improvement.js';
+import { isBrandedAgentIdentityRegistry } from '../../identity/src/agent-identity-registry.js';
 
 /** Hard cap against improvement-proposal DoS. */
 export const MAX_IMPROVEMENT_PROPOSALS = 64;
+
+/** Instance registry — not forgeable via method-shape injection. */
+const BRANDED_IMPROVEMENT_SANDBOXES = new WeakSet();
+/** Binds each branded sandbox to the exact identities registry instance used at create. */
+const IMPROVEMENT_BOUND_IDENTITIES = new WeakMap();
 
 function requiredText(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -32,8 +38,22 @@ function assertMonitorActor(actor) {
   }
 }
 
-export function createSelfImprovementSandbox({ now = () => new Date().toISOString() } = {}) {
+export function isBrandedSelfImprovementSandbox(value) {
+  return value != null && BRANDED_IMPROVEMENT_SANDBOXES.has(value);
+}
+
+export function getSelfImprovementIdentities(sandbox) {
+  return IMPROVEMENT_BOUND_IDENTITIES.get(sandbox) ?? null;
+}
+
+export function createSelfImprovementSandbox({
+  now = () => new Date().toISOString(),
+  identities,
+} = {}) {
   if (typeof now !== 'function') throw new TypeError('now must be a function');
+  if (!isBrandedAgentIdentityRegistry(identities)) {
+    throw new TypeError('identities must be a branded agentIdentityRegistry from createAgentIdentityRegistry');
+  }
   const proposals = new Map();
 
   function get(proposalId) {
@@ -59,9 +79,10 @@ export function createSelfImprovementSandbox({ now = () => new Date().toISOStrin
     return updated;
   }
 
-  return Object.freeze({
+  const sandbox = Object.freeze({
     async propose(input) {
       const proposal = normalizeImprovementProposal(input);
+      identities.assertActive(proposal.proposedBy);
       if (proposals.has(proposal.id)) throw new Error(`duplicate proposal id: ${proposal.id}`);
       if (proposals.size >= MAX_IMPROVEMENT_PROPOSALS) {
         throw new Error(`improvement proposals exceed cap (${MAX_IMPROVEMENT_PROPOSALS})`);
@@ -134,6 +155,7 @@ export function createSelfImprovementSandbox({ now = () => new Date().toISOStrin
     async approve({ proposalId, actor }) {
       const entry = get(proposalId);
       const approver = assertImprovementApprover(actor);
+      identities.assertActive(approver);
       if (approver === entry.proposedBy) {
         throw new Error('improvement self-approval forbidden: proposer cannot approve');
       }
@@ -143,6 +165,7 @@ export function createSelfImprovementSandbox({ now = () => new Date().toISOStrin
     async deploy({ proposalId, actor }) {
       const entry = get(proposalId);
       const deployer = assertImprovementDeployer(actor);
+      identities.assertActive(deployer);
       if (entry.approvedBy == null) throw new Error('improvement deploy requires approval');
       if (deployer === entry.proposedBy) {
         throw new Error('improvement self-deploy forbidden: proposer cannot deploy');
@@ -166,7 +189,8 @@ export function createSelfImprovementSandbox({ now = () => new Date().toISOStrin
     },
 
     async monitor({ proposalId, actor, observation }) {
-      assertMonitorActor(actor);
+      const monitoredBy = assertMonitorActor(actor);
+      identities.assertActive(monitoredBy);
       const entry = get(proposalId);
       if (entry.stage !== 'deploy' && entry.stage !== 'monitor') {
         throw new Error('monitor requires deployed proposal');
@@ -176,7 +200,7 @@ export function createSelfImprovementSandbox({ now = () => new Date().toISOStrin
         ...entry,
         stage: 'monitor',
         observation: Object.freeze({ ...observation }),
-        monitoredBy: requiredText(actor, 'actor'),
+        monitoredBy,
         updatedAt: now(),
       });
       proposals.set(entry.id, updated);
@@ -185,6 +209,7 @@ export function createSelfImprovementSandbox({ now = () => new Date().toISOStrin
 
     async rollbackIfRequired({ proposalId, actor }) {
       const deployer = assertImprovementDeployer(actor);
+      identities.assertActive(deployer);
       const entry = get(proposalId);
       if (entry.stage !== 'monitor') throw new Error('rollback requires monitor stage');
       assertImprovementStageOrder('monitor', 'rollback_if_required');
@@ -239,4 +264,8 @@ export function createSelfImprovementSandbox({ now = () => new Date().toISOStrin
       return Object.freeze([...proposals.values()]);
     },
   });
+
+  BRANDED_IMPROVEMENT_SANDBOXES.add(sandbox);
+  IMPROVEMENT_BOUND_IDENTITIES.set(sandbox, identities);
+  return sandbox;
 }

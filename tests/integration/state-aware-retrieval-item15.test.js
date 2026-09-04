@@ -24,9 +24,8 @@ function createInput(overrides = {}) {
     constraints: ['completion requires independently verified proof'],
     permissions: [
       { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
-      { actor: 'nyx', actions: ['observe_repository'] },
+      { actor: 'nyx', actions: ['observe_repository', 'record_fact', 'supersede_fact'] },
       { actor: 'qra_emerge_audit', actions: ['verify_proof'] },
-      { actor: 'fact-keeper', actions: ['record_fact', 'supersede_fact'] },
       {
         actor: 'qra_recovery_driver',
         actions: [
@@ -57,7 +56,7 @@ test('Item 15: service retrieveMemory prefers current fact over superseded simil
     operationId: 'op-ret-supersede',
     missionId: created.mission.id,
     expectedRevision: created.revision,
-    actor: 'fact-keeper',
+    actor: 'nyx',
     factId: 'fact-ip-1',
     successor: { id: 'fact-ip-2', value: '10.0.0.9' },
     reason: 'rotated',

@@ -28,6 +28,13 @@ export async function createPostgresMissionStore({ db }) {
       return { revision: row.revision, mission: typeof row.mission === 'string' ? JSON.parse(row.mission) : row.mission };
     },
 
+    async list() {
+      const result = await db.query(
+        'SELECT mission_id FROM titan_missions ORDER BY mission_id ASC',
+      );
+      return Object.freeze(result.rows.map((row) => row.mission_id));
+    },
+
     async save({ mission, expectedRevision }) {
       if (!mission || typeof mission !== 'object') throw new TypeError('mission is required');
       const id = requireMissionId(mission.id);

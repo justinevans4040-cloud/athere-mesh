@@ -1,12 +1,13 @@
-import { link, mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { link, mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hostname as systemHostname, platform as systemPlatform } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+const SNAPSHOT = /^([A-Za-z0-9][A-Za-z0-9_-]{0,127})\.json$/;
 const TRANSIENT_SHARING_CODES = new Set(['EACCES', 'EBUSY', 'EPERM']);
-const DEFAULT_FILESYSTEM = Object.freeze({ link, mkdir, open, readFile, rename, rm, stat, writeFile });
+const DEFAULT_FILESYSTEM = Object.freeze({ link, mkdir, open, readFile, readdir, rename, rm, stat, writeFile });
 const LEGACY_LOCK_VERSION = 1;
 const LOCK_VERSION = 2;
 const DEFAULT_LEASE_MS = 30_000;
@@ -34,7 +35,19 @@ function requireFilesystem(filesystem) {
   for (const method of ['link', 'mkdir', 'open', 'readFile', 'rename', 'rm', 'stat', 'writeFile']) {
     if (typeof filesystem?.[method] !== 'function') throw new TypeError(`filesystem must provide ${method}`);
   }
-  return filesystem;
+  if (filesystem.readdir !== undefined && typeof filesystem.readdir !== 'function') {
+    throw new TypeError('filesystem must provide readdir');
+  }
+  if (typeof filesystem.readdir === 'function') return filesystem;
+  // Legacy test mocks omit readdir; listMissionIds then sees an empty missions dir.
+  return Object.freeze({
+    ...filesystem,
+    async readdir() {
+      const error = new Error('ENOENT');
+      error.code = 'ENOENT';
+      throw error;
+    },
+  });
 }
 
 function requireAttempts(value) {
@@ -361,6 +374,25 @@ export function createMissionStore({
     return readSnapshot(snapshot, { readFileImpl: operations.readFile });
   }
 
+  async function listIds({ root }) {
+    if (typeof root !== 'string' || root.length === 0) throw new TypeError('root must be a path');
+    let entries;
+    try {
+      entries = await operations.readdir(path.resolve(root, 'missions'), { withFileTypes: true });
+    } catch (error) {
+      if (error?.code === 'ENOENT') return Object.freeze([]);
+      throw error;
+    }
+    const ids = [];
+    for (const entry of [...entries].sort((left, right) => left.name.localeCompare(right.name))) {
+      const match = SNAPSHOT.exec(entry.name);
+      if (!match) continue;
+      if (typeof entry.isFile === 'function' && !entry.isFile()) continue;
+      ids.push(match[1]);
+    }
+    return Object.freeze(ids);
+  }
+
   async function save({ root, mission, expectedRevision }) {
     if (!mission || typeof mission !== 'object') throw new TypeError('mission is required');
     const { directory, snapshot, lock } = locations(root, mission.id);
@@ -460,7 +492,11 @@ export function createMissionStore({
     return result;
   }
 
-  return Object.freeze({ loadMission: load, saveMission: save });
+  return Object.freeze({ loadMission: load, saveMission: save, listMissionIds: listIds });
 }
 
 const defaultMissionStore = createMissionStore();
+
+export async function listMissionIds({ root }) {
+  return defaultMissionStore.listMissionIds({ root });
+}

@@ -27,3 +27,6 @@ workspace/
 .env
 .env.*
 *.pass
+
+# Demo screen recordings (keep locally; do not re-track)
+evidence/demos/*.mp4

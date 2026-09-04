@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
+/** Self-covering frozen control for Item 2 / Item 21 harness compares. */
+export const TITAN_CORE_V2_CONTROL_ID = 'titan-core-v2-42b3a4fc8a85';
+/** Canonical SHA-256 of writeFrozenEvaluation bytes (LF + sorted keys + trailing newline). */
+export const TITAN_CORE_V2_CONTROL_SHA256 = '08f56024a5b4be47c3e8edcd1c48aa7dc2388785392233178d1bb0631b254498';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const COUNT_METRICS = Object.freeze([
@@ -200,4 +205,74 @@ export async function writeFrozenEvaluation({ root, cohort }) {
     throw error;
   }
   return Object.freeze({ path: `evaluations/controls/${cohort.id}.json`, sha256: createHash('sha256').update(content).digest('hex') });
+}
+
+export function frozenControlPath({ root, controlId = TITAN_CORE_V2_CONTROL_ID } = {}) {
+  const id = requiredText(controlId, 'controlId');
+  if (!SAFE_ID.test(id)) throw new Error(`unsafe control id: ${id}`);
+  return path.resolve(requiredText(root, 'root'), 'evaluations', 'controls', `${id}.json`);
+}
+
+export async function loadFrozenEvaluationControl({
+  root,
+  controlId = TITAN_CORE_V2_CONTROL_ID,
+  expectedSha256 = null,
+} = {}) {
+  const target = frozenControlPath({ root, controlId });
+  const content = await readFile(target, 'utf8');
+  if (content.includes('\r')) {
+    throw new Error(`frozen control has CRLF bytes (must be LF): ${controlId}`);
+  }
+  const sha256 = createHash('sha256').update(content, 'utf8').digest('hex');
+  if (controlId === TITAN_CORE_V2_CONTROL_ID && sha256 !== TITAN_CORE_V2_CONTROL_SHA256) {
+    throw new Error(`frozen control SHA-256 mismatch for ${controlId}: ${sha256}`);
+  }
+  if (expectedSha256 != null && sha256 !== expectedSha256) {
+    throw new Error(`frozen control SHA-256 mismatch for ${controlId}: ${sha256}`);
+  }
+  const cohort = JSON.parse(content);
+  validateEvaluationCohort(cohort);
+  if (cohort.frozen !== true) throw new Error(`control cohort is not frozen: ${controlId}`);
+  if (cohort.id !== controlId) throw new Error(`control id mismatch: ${cohort.id}`);
+  return Object.freeze({
+    cohort: Object.freeze(structuredClone(cohort)),
+    path: `evaluations/controls/${controlId}.json`,
+    sha256,
+  });
+}
+
+export function learningMetricsFromCohort(cohort) {
+  const summary = summarizeEvaluationCohort(cohort);
+  return Object.freeze({
+    taskSuccessRate: summary.taskSuccessRate,
+    failedHandoffs: summary.totals.failedHandoffs,
+  });
+}
+
+/**
+ * Build a hermetic candidate cohort from a frozen control by improving efficiency
+ * beyond the control noise floor (lower latency). Quality and solved tasks stay intact.
+ */
+export function buildEfficiencyCandidateCohort(control, {
+  candidateId = `${control.id}-candidate`,
+  systemVersion = 'candidate-local',
+  latencyDeltaMs = -200,
+} = {}) {
+  validateEvaluationCohort(control);
+  const id = requiredText(candidateId, 'candidateId');
+  if (!SAFE_ID.test(id)) throw new Error(`unsafe candidate id: ${id}`);
+  const version = requiredText(systemVersion, 'systemVersion');
+  if (!Number.isFinite(latencyDeltaMs) || latencyDeltaMs >= 0) {
+    throw new TypeError('latencyDeltaMs must be a negative finite number');
+  }
+  const trials = control.trials.map((trial, index) => Object.freeze({
+    ...structuredClone(trial),
+    id: `${id}-trial-${index + 1}`,
+    systemVersion: version,
+    metrics: Object.freeze({
+      ...trial.metrics,
+      latencyMs: Math.max(0, trial.metrics.latencyMs + latencyDeltaMs),
+    }),
+  }));
+  return Object.freeze({ id, frozen: false, trials: Object.freeze(trials) });
 }
