@@ -16,7 +16,18 @@ const AGENT_ROLES = Object.freeze({
 const EXECUTOR_ACTIONS = Object.freeze(new Set(['observe_repository', 'execute_node_tests']));
 const AUDITOR_ACTIONS = Object.freeze(new Set(['verify_proof']));
 const MANAGER_ACTIONS = Object.freeze(new Set(['supervise_mission']));
-const RECOVERY_ACTIONS = Object.freeze(new Set(['block_interrupted_mission']));
+const RECOVERY_ACTIONS = Object.freeze(new Set([
+  'block_interrupted_mission',
+  'create_checkpoint',
+  'create_branch',
+  'quarantine_branch',
+  'rollback_to_checkpoint',
+  'retry_from_checkpoint',
+]));
+const RECOVERY_RESUME_ACTIONS = Object.freeze(new Set([
+  'rollback_to_checkpoint',
+  'retry_from_checkpoint',
+]));
 
 function requiredAgentId(agentId) {
   if (typeof agentId !== 'string' || agentId.trim().length === 0) {
@@ -41,7 +52,11 @@ export function agentsForRole(role) {
   return Object.freeze(Object.entries(AGENT_ROLES).filter(([, mapped]) => mapped === role).map(([agentId]) => agentId));
 }
 
-export function assertRoleMayEmitSignal(role, signalType) {
+export function isRecoveryAction(action) {
+  return typeof action === 'string' && RECOVERY_ACTIONS.has(action);
+}
+
+export function assertRoleMayEmitSignal(role, signalType, { action } = {}) {
   if (signalType === undefined) return;
   if (signalType === 'completed' && role !== ROLES.auditor) {
     throw new Error(`${role} cannot emit completed; only auditor may certify mission success`);
@@ -50,7 +65,10 @@ export function assertRoleMayEmitSignal(role, signalType) {
     throw new Error(`${role} cannot emit blocked; only recovery may block interrupted missions`);
   }
   if (signalType === 'running' && role === ROLES.recovery) {
-    throw new Error(`${role} cannot emit running; recovery may only block interrupted missions`);
+    if (!RECOVERY_RESUME_ACTIONS.has(action)) {
+      throw new Error(`${role} cannot emit running; recovery may only block interrupted missions`);
+    }
+    return;
   }
   // Auditor may emit running when approving intermediate subgoal transitions; mission
   // completion remains completed-only and proof-gated in the mission state service.

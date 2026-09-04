@@ -9,6 +9,7 @@ import { createMissionStateService } from '../../mission/src/mission-state-servi
 const SNAPSHOT = /^([A-Za-z0-9][A-Za-z0-9_-]{0,127})\.json$/;
 const RECOVERY_DETAIL = 'interrupted execution requires operator retry';
 const RECOVERY_ATTEMPTS = 8;
+const MAX_AUTO_HEALS = 3;
 const DEFAULT_MISSION_STORE = Object.freeze({ loadMission, saveMission });
 
 function requireMissionStore(missionStore) {
@@ -68,6 +69,21 @@ function recoveryOperationId(missionId) {
   return `recovery-block-${createHash('sha256').update(missionId).digest('hex')}`;
 }
 
+function healOperationId(missionId, kind, token) {
+  const digest = createHash('sha256').update(`${missionId}:${kind}:${token}`).digest('hex').slice(0, 24);
+  return `heal-${kind}-${digest}`;
+}
+
+function verifiedCheckpoints(mission) {
+  return (mission.checkpoints ?? []).filter((entry) => entry?.verified === true && entry.stateHash && entry.snapshot);
+}
+
+function autoHealCount(mission) {
+  return (mission.transitionHistory ?? []).filter((entry) => (
+    entry.action === 'retry_from_checkpoint' || entry.action === 'rollback_to_checkpoint'
+  )).length;
+}
+
 async function convergeInterruptedMission({ root, missionId, clock, missionStore }) {
   for (let attempt = 0; attempt < RECOVERY_ATTEMPTS; attempt += 1) {
     const record = await missionStore.loadMission({ root, missionId });
@@ -104,6 +120,72 @@ async function convergeInterruptedMission({ root, missionId, clock, missionStore
   return false;
 }
 
+async function healOneBlockedMission({ root, missionId, clock, missionStore }) {
+  const state = createMissionStateService({ root, clock, store: missionStore });
+  let record = await missionStore.loadMission({ root, missionId });
+  if (record.mission.status !== 'blocked') {
+    return Object.freeze({ status: 'skipped', reason: `status is ${record.mission.status}` });
+  }
+  const checkpoints = verifiedCheckpoints(record.mission);
+  if (checkpoints.length === 0) {
+    return Object.freeze({ status: 'skipped', reason: 'no verified checkpoint' });
+  }
+  const healCount = autoHealCount(record.mission);
+  if (healCount >= MAX_AUTO_HEALS) {
+    return Object.freeze({ status: 'unhealed', reason: `auto-heal cap reached (${MAX_AUTO_HEALS})` });
+  }
+
+  try {
+    const activeBranchId = record.mission.activeBranchId;
+    if (typeof activeBranchId === 'string' && activeBranchId !== 'main') {
+      const quarantineId = healOperationId(missionId, 'quarantine', `${activeBranchId}:${healCount}`);
+      record = await state.quarantineBranch({
+        operationId: quarantineId,
+        missionId,
+        expectedRevision: record.revision,
+        branchId: activeBranchId,
+        reason: 'auto-heal quarantined failed strategy branch',
+        envelope: createAgentOperationEnvelope({
+          record,
+          operationId: quarantineId,
+          agentId: 'qra_recovery_driver',
+          action: 'quarantine_branch',
+          objective: 'quarantine failed branch before checkpoint retry',
+          createdAt: record.mission.updatedAt,
+          taskId: 'auto-heal-quarantine',
+        }),
+      });
+    }
+
+    const checkpoint = checkpoints.at(-1);
+    const retryId = healOperationId(missionId, 'retry', `${checkpoint.id}:${healCount}`);
+    record = await state.retryFromCheckpoint({
+      operationId: retryId,
+      missionId,
+      expectedRevision: record.revision,
+      checkpointId: checkpoint.id,
+      envelope: createAgentOperationEnvelope({
+        record,
+        operationId: retryId,
+        agentId: 'qra_recovery_driver',
+        action: 'retry_from_checkpoint',
+        objective: 'auto-heal retry from last verified checkpoint',
+        createdAt: record.mission.updatedAt,
+        taskId: 'auto-heal-retry',
+      }),
+    });
+    if (record.mission.status !== 'running') {
+      return Object.freeze({ status: 'unhealed', reason: `heal left status ${record.mission.status}` });
+    }
+    return Object.freeze({ status: 'healed', revision: record.revision, checkpointId: checkpoint.id });
+  } catch (error) {
+    return Object.freeze({
+      status: 'unhealed',
+      reason: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 export async function recoverInterruptedMissions({ root, clock = () => new Date().toISOString(), missionStore = DEFAULT_MISSION_STORE } = {}) {
   const store = requireMissionStore(missionStore);
   const inspection = await inspectRecovery({ root, missionStore: store });
@@ -115,5 +197,68 @@ export async function recoverInterruptedMissions({ root, clock = () => new Date(
     recovered: Object.freeze(recovered),
     blocked: inspection.blocked,
     corrupt: inspection.corrupt,
+  });
+}
+
+export async function healMissionFromCheckpoint({
+  root,
+  missionId,
+  clock = () => new Date().toISOString(),
+  missionStore = DEFAULT_MISSION_STORE,
+} = {}) {
+  if (typeof missionId !== 'string' || missionId.trim().length === 0) {
+    throw new TypeError('missionId is required');
+  }
+  const result = await healOneBlockedMission({
+    root,
+    missionId: missionId.trim(),
+    clock,
+    missionStore: requireMissionStore(missionStore),
+  });
+  return result;
+}
+
+export async function healBlockedMissionsFromCheckpoints({
+  root,
+  clock = () => new Date().toISOString(),
+  missionStore = DEFAULT_MISSION_STORE,
+} = {}) {
+  const store = requireMissionStore(missionStore);
+  const inspection = await inspectRecovery({ root, missionStore: store });
+  const healed = [];
+  const unhealed = [];
+  const skipped = [];
+  for (const item of inspection.blocked) {
+    const result = await healOneBlockedMission({
+      root,
+      missionId: item.missionId,
+      clock,
+      missionStore: store,
+    });
+    if (result.status === 'healed') healed.push(item.missionId);
+    else if (result.status === 'unhealed') unhealed.push(Object.freeze({ missionId: item.missionId, reason: result.reason }));
+    else skipped.push(Object.freeze({ missionId: item.missionId, reason: result.reason }));
+  }
+  return Object.freeze({
+    healed: Object.freeze(healed),
+    unhealed: Object.freeze(unhealed),
+    skipped: Object.freeze(skipped),
+  });
+}
+
+export async function recoverAndHealMissions(options = {}) {
+  const recovery = await recoverInterruptedMissions(options);
+  const heal = await healBlockedMissionsFromCheckpoints(options);
+  const inspection = await inspectRecovery({
+    root: options.root,
+    missionStore: options.missionStore ?? DEFAULT_MISSION_STORE,
+  });
+  return Object.freeze({
+    recovered: recovery.recovered,
+    healed: heal.healed,
+    unhealed: heal.unhealed,
+    skipped: heal.skipped,
+    blocked: Object.freeze(inspection.blocked),
+    corrupt: recovery.corrupt,
   });
 }

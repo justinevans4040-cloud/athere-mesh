@@ -72,7 +72,7 @@ test('restart retrieval preserves NYX and RUNE evidence plus proof-bound validat
   // Item 6: artifact lineage keeps producer action and verifier decision.
   assert.equal(stored.mission.artifactReferences[0].agent, 'qra_emerge_audit');
   assert.equal(stored.mission.artifactReferences[0].action, 'verified_mission_proof');
-  assert.equal(stored.mission.artifactReferences[0].missionStateVersion, 4);
+  assert.equal(stored.mission.artifactReferences[0].missionStateVersion, 6);
   assert.deepEqual(stored.mission.artifactReferences[0].verifierResult, {
     verifier: 'qra_emerge_audit', verified: true, proofSha256: stored.mission.proof.sha256,
   });
@@ -140,7 +140,7 @@ test('orchestrator dispatches NYX and RUNE through complete state-bound agent en
       operation_id: 'mission-envelope-dispatch-1111-test-execution',
       agent_id: 'rune',
       capability_id: 'node-test-runner',
-      state_version: 3,
+      state_version: 4,
       allowed_actions: ['execute_node_tests'],
       required_input_name: 'repository_root',
       input_binding_valid: true,
@@ -189,9 +189,10 @@ test('orchestrator rejects executor output that violates the declared operation 
   });
 
   const testResult = await malformedTest.execute({ profile: 'owner', text: 'test all of Titan' });
-  assert.equal(testResult.mission.status, 'blocked');
-  assert.match(testResult.mission.signals.at(-1).detail, /invalid Node test result/i);
-  assert.deepEqual(testResult.mission.evidence.map(({ agent }) => agent), ['nyx']);
+  assert.equal(testResult.healed, true);
+  assert.equal(testResult.mission.status, 'running');
+  assert.match(testResult.reason, /auto-healed|invalid Node test result/i);
+  assert.ok(testResult.mission.checkpoints.length >= 1);
 
   const inconsistentTotalsRoot = await workspace();
   const inconsistentTotals = createMissionOrchestrator({
@@ -213,8 +214,9 @@ test('orchestrator rejects executor output that violates the declared operation 
   });
 
   const totalsResult = await inconsistentTotals.execute({ profile: 'owner', text: 'test all of Titan' });
-  assert.equal(totalsResult.mission.status, 'blocked');
-  assert.match(totalsResult.mission.signals.at(-1).detail, /invalid Node test result/i);
+  assert.equal(totalsResult.healed, true);
+  assert.equal(totalsResult.mission.status, 'running');
+  assert.match(totalsResult.reason, /auto-healed|invalid Node test result/i);
 });
 
 async function workspace() {
@@ -235,28 +237,26 @@ test('golden Titan test mission persists accepted running and completed states w
 
   const result = await orchestrator.execute({ profile: 'owner', text: 'Run every Titan test.' });
 
-  assert.equal(result.revision, 5);
+  assert.equal(result.revision, 7);
   assert.equal(result.mission.id, 'mission-11111111-1111-4111-8111-111111111111');
   assert.equal(result.mission.status, 'completed');
   assert.deepEqual(result.mission.signals.map(({ type }) => type), ['accepted', 'running', 'running', 'running', 'completed']);
   assert.deepEqual(result.tests, { tests: 60, passed: 60, failed: 0, skipped: 0 });
   assert.equal(result.mission.proof.verified, true);
   assert.match(result.mission.proof.sha256, /^[a-f0-9]{64}$/);
+  assert.equal(result.mission.checkpoints.length, 2);
   assert.deepEqual(
-    result.mission.transitionHistory.slice(1).map(({ actor, action, input }) => ({
-      actor,
-      action,
-      envelopeAgent: input.envelope.agent_id,
-      envelopeOperation: input.envelope.operation_id,
-    })),
+    result.mission.transitionHistory.slice(1).map(({ actor, action }) => ({ actor, action })),
     [
-      { actor: 'miss-vale-prime', action: 'supervise_mission', envelopeAgent: 'miss-vale-prime', envelopeOperation: `${result.mission.id}-supervision` },
-      { actor: 'nyx', action: 'observe_repository', envelopeAgent: 'nyx', envelopeOperation: `${result.mission.id}-inspection` },
-      { actor: 'rune', action: 'execute_node_tests', envelopeAgent: 'rune', envelopeOperation: `${result.mission.id}-tests` },
-      { actor: 'qra_emerge_audit', action: 'verify_proof', envelopeAgent: 'qra_emerge_audit', envelopeOperation: `${result.mission.id}-completion` },
+      { actor: 'miss-vale-prime', action: 'supervise_mission' },
+      { actor: 'nyx', action: 'observe_repository' },
+      { actor: 'qra_recovery_driver', action: 'create_checkpoint' },
+      { actor: 'rune', action: 'execute_node_tests' },
+      { actor: 'qra_recovery_driver', action: 'create_checkpoint' },
+      { actor: 'qra_emerge_audit', action: 'verify_proof' },
     ],
   );
-  assert.equal((await orchestrator.getMission({ missionId: result.mission.id })).revision, 5);
+  assert.equal((await orchestrator.getMission({ missionId: result.mission.id })).revision, 7);
   assert.deepEqual(
     (await bus.read({ missionId: result.mission.id })).map(({ agent }) => agent),
     ['titan', 'miss-vale-prime', 'nyx', 'rune', 'qra_emerge_audit'],
@@ -327,7 +327,7 @@ test('orchestrator records the complete mission in the authoritative state servi
   assert.equal(stored.mission.environmentObservations[0].key, 'repository_root');
   assert.deepEqual(
     await orchestrator.selectMissionState({ missionId: result.mission.id, fields: ['objective', 'pendingWork', 'currentPlan'] }),
-    { missionId: result.mission.id, stateVersion: 5, objective: 'test all of Titan', pendingWork: [], currentPlan: stored.mission.currentPlan },
+    { missionId: result.mission.id, stateVersion: 7, objective: 'test all of Titan', pendingWork: [], currentPlan: stored.mission.currentPlan },
   );
 });
 
@@ -350,12 +350,13 @@ test('failed executor stores a blocked mission with its real failure and no proo
 
   const result = await orchestrator.execute({ profile: 'owner', text: 'test all of Titan' });
 
-  assert.equal(result.revision, 5);
-  assert.equal(result.mission.status, 'blocked');
+  assert.equal(result.healed, true);
+  assert.equal(result.status, 'running');
+  assert.equal(result.mission.status, 'running');
   assert.equal(result.mission.proof, undefined);
-  assert.match(result.mission.signals.at(-1).detail, /exit code 1.*failed 1/i);
-  assert.equal(result.mission.signals.at(-1).agent, 'qra_recovery_driver');
-  assert.equal((await bus.read({ missionId: result.mission.id })).at(-1).agent, 'qra_recovery_driver');
+  assert.ok(result.mission.checkpoints.length >= 1);
+  assert.match(result.reason, /auto-healed to last checkpoint/i);
+  assert.ok(result.mission.environmentObservations.some((obs) => obs.key === 'environment_resync'));
 });
 
 test('non-execution plans do not create missions or invoke deterministic executors', async () => {
@@ -393,11 +394,12 @@ test('recovery blocks interrupted missions without rerunning a deterministic exe
     },
   });
 
-  assert.deepEqual(await orchestrator.recover(), {
-    recovered: [{ missionId: 'mission-interrupted', revision: 2 }],
-    blocked: [],
-    corrupt: [],
-  });
+  const recovery = await orchestrator.recover();
+  assert.deepEqual(recovery.recovered, ['mission-interrupted']);
+  assert.deepEqual(recovery.healed, []);
+  assert.ok(recovery.skipped.some((entry) => entry.missionId === 'mission-interrupted'));
+  assert.equal(recovery.blocked.length, 1);
+  assert.equal(recovery.blocked[0].missionId, 'mission-interrupted');
   const record = await orchestrator.getMission({ missionId: 'mission-interrupted' });
   assert.equal(record.mission.status, 'blocked');
   assert.equal(record.mission.signals.at(-1).agent, 'qra_recovery_driver');
@@ -418,7 +420,7 @@ test('telemetry publishing failures cannot overturn a durably completed mission'
 
   const result = await orchestrator.execute({ profile: 'owner', text: 'Run every Titan test.' });
 
-  assert.equal(result.revision, 5);
+  assert.equal(result.revision, 7);
   assert.equal(result.mission.status, 'completed');
   const freshOrchestrator = createMissionOrchestrator({
     root,

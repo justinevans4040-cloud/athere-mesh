@@ -28,7 +28,7 @@ test('functional smoke proves health, team, normal-language command, and stored 
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url, options });
     const pathname = new URL(url).pathname;
-    if (pathname === '/health') return response(200, { ready: true, enabledAgents: 6, recovery: { recovered: 0, blocked: 0, corrupt: 0 } });
+    if (pathname === '/health') return response(200, { ready: true, enabledAgents: 6, recovery: { recovered: 0, blocked: 0, corrupt: 0, healed: 0 } });
     if (pathname === '/api/team') return response(200, {
       enabledAgents: 6,
       agents: [
@@ -63,6 +63,12 @@ test('functional smoke proves health, team, normal-language command, and stored 
   ]);
   assert.ok(calls.every(({ options }) => options.signal instanceof AbortSignal));
   assert.equal(calls[2].options.method, 'POST');
+  assert.deepEqual(calls[0].options.headers, {
+    authorization: `Bearer ${OWNER_TOKEN}`,
+  });
+  assert.deepEqual(calls[1].options.headers, {
+    authorization: `Bearer ${OWNER_TOKEN}`,
+  });
   assert.deepEqual(calls[2].options.headers, {
     authorization: `Bearer ${OWNER_TOKEN}`,
     'content-type': 'text/plain; charset=utf-8',

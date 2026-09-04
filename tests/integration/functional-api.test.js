@@ -127,7 +127,7 @@ test('owner routes require bearer authentication and reject cross-site browser r
 
     assert.deepEqual(
       [health.status, team.status, command.status, mission.status, chat.status, crossSite.status],
-      [200, 200, 401, 401, 401, 403],
+      [401, 401, 401, 401, 401, 403],
     );
     assert.match(command.headers.get('www-authenticate') ?? '', /^Bearer\b/);
     assert.deepEqual({ executionCalls, retrievalCalls, completionCalls }, { executionCalls: 0, retrievalCalls: 0, completionCalls: 0 });
@@ -218,7 +218,7 @@ test('functional API exposes health, operational team, durable command result, a
     assert.deepEqual(health.body, {
       ready: true,
       enabledAgents: 6,
-      recovery: { recovered: 1, blocked: 0, corrupt: 0 },
+      recovery: { recovered: 1, blocked: 0, corrupt: 0, healed: 0 },
     });
 
     const team = await request(api, '/api/team');
@@ -263,14 +263,44 @@ test('public health exposes recovery categories and counts without mission ident
     },
   });
   try {
+    const unauthenticated = await fetch(`${api.url}/health`);
+    assert.equal(unauthenticated.status, 401);
     const health = await request(api, '/health');
-    assert.deepEqual(health.body.recovery, { recovered: 1, blocked: 1, corrupt: 1 });
+    assert.equal(health.status, 200);
+    assert.deepEqual(health.body.recovery, { recovered: 1, blocked: 1, corrupt: 1, healed: 0 });
     assert.doesNotMatch(JSON.stringify(health.body), /mission-public-secret|mission-blocked-secret|mission-corrupt-secret|private host detail|private filesystem detail/);
   } finally {
     await api.close();
   }
 });
 
+test('every profile must bind loopback; public commands and missions fail closed without a bearer', async () => {
+  const runtime = createAgentRuntime({ complete: async () => ({ content: 'nope' }) });
+  const publicApi = createTitanApi({
+    runtime,
+    profile: 'public',
+    orchestrator: createOrchestrator(),
+    team: fleetRegistry,
+    recovery: { recovered: [], blocked: [], corrupt: [] },
+  });
+  await assert.rejects(
+    () => publicApi.listen({ host: '0.0.0.0', port: 0 }),
+    /must bind to loopback/,
+  );
+  await publicApi.listen({ host: '127.0.0.1', port: 0 });
+  try {
+    const command = await fetch(`${publicApi.url}/api/commands`, {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+      body: 'test all of Titan',
+    });
+    const mission = await fetch(`${publicApi.url}/api/missions/mission-x`);
+    const health = await fetch(`${publicApi.url}/health`);
+    assert.deepEqual([command.status, mission.status, health.status], [401, 401, 401]);
+  } finally {
+    await publicApi.close();
+  }
+});
 test('functional API rejects invalid mission routes, unknown routes, and oversized command bodies', async () => {
   const api = await startFunctionalApi({ maxRequestBytes: 16 });
   try {

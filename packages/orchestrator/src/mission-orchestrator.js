@@ -10,7 +10,7 @@ import { createRemoteDispatchExecutor } from '../../execution/src/remote-dispatc
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 import { writeArtifactProof, writeProof, verifyArtifactProof, verifyProof } from '../../proof/src/proof-store.js';
 import { evaluateQr18Layers, assertQr18LayersVerified } from '../../proof/src/qr18-layered-verification.js';
-import { inspectRecovery } from '../../recovery/src/recovery-coordinator.js';
+import { healMissionFromCheckpoint, recoverAndHealMissions } from '../../recovery/src/recovery-coordinator.js';
 import { createMemoryResonanceBus } from '../../resonance/src/resonance-bus.js';
 
 function requirePath(value, label) {
@@ -191,7 +191,14 @@ export function createMissionOrchestrator({
         { actor: 'nyx', actions: ['observe_repository'] },
         { actor: 'rune', actions: ['execute_node_tests'] },
         { actor: 'qra_emerge_audit', actions: ['verify_proof'] },
-        { actor: 'qra_recovery_driver', actions: ['block_interrupted_mission'] },
+        { actor: 'qra_recovery_driver', actions: [
+          'block_interrupted_mission',
+          'create_checkpoint',
+          'create_branch',
+          'quarantine_branch',
+          'rollback_to_checkpoint',
+          'retry_from_checkpoint',
+        ] },
       ],
       currentPlan: { id: 'titan-test-plan', version: 1, steps: ['inspect-repository', 'run-node-tests', 'verify-proof'] },
       environmentObservations: [{ source: 'titan', key: 'repository_root', value: repositoryRoot, observedAt: clock() }],
@@ -207,6 +214,44 @@ export function createMissionOrchestrator({
       pendingWork: [],
     });
     return { revision: blocked.revision, mission: blocked.mission };
+  }
+
+  async function durableCheckpoint(record, label) {
+    const operationId = `${record.mission.id}-ckpt-${label}`;
+    return missionState.createCheckpoint({
+      operationId,
+      missionId: record.mission.id,
+      expectedRevision: record.revision,
+      label,
+      envelope: createAgentOperationEnvelope({
+        record,
+        operationId,
+        agentId: 'qra_recovery_driver',
+        action: 'create_checkpoint',
+        objective: `durable checkpoint: ${label}`,
+        createdAt: record.mission.updatedAt,
+        taskId: `checkpoint-${label}`,
+      }),
+    });
+  }
+
+  async function blockThenHeal(record, detail) {
+    const blocked = await block(record, detail);
+    const heal = await healMissionFromCheckpoint({
+      root: workspaceRoot,
+      missionId: record.mission.id,
+      clock,
+      ...(store === undefined ? {} : { missionStore: store }),
+    });
+    if (heal.status !== 'healed') return blocked;
+    const healed = await missionState.get({ missionId: record.mission.id });
+    return Object.freeze({
+      revision: healed.revision,
+      mission: healed.mission,
+      healed: true,
+      status: 'running',
+      reason: `auto-healed to last checkpoint after: ${detail}`,
+    });
   }
 
   return Object.freeze({
@@ -249,6 +294,7 @@ export function createMissionOrchestrator({
           evidence: [{ agent: 'nyx', ...nyxEvidence }],
           activeAgents: ['nyx'],
         });
+        record = await durableCheckpoint(record, 'after-inspect');
         const result = parseNodeTestExecutionResult(await testExecutor.runTests({
           repositoryRoot: workerRepositoryRoot,
           envelope: executionEnvelope({
@@ -278,6 +324,7 @@ export function createMissionOrchestrator({
           activeAgents: ['rune'],
         });
         if (result.exitCode !== 0 || result.failed !== 0) throw new Error(failureMessage(result));
+        record = await durableCheckpoint(record, 'after-tests');
 
         const agentEvidence = Object.freeze([
           Object.freeze({ agent: 'nyx', ...nyxEvidence }),
@@ -374,7 +421,7 @@ export function createMissionOrchestrator({
         }, completionUpdate);
         return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });
       } catch (error) {
-        return block(record, error instanceof Error ? error.message : String(error));
+        return blockThenHeal(record, error instanceof Error ? error.message : String(error));
       }
     },
 
@@ -387,14 +434,11 @@ export function createMissionOrchestrator({
     },
 
     async recover() {
-      const inspection = await inspectRecovery({ root: workspaceRoot });
-      const recovered = [];
-      for (const item of inspection.resumable) {
-        const record = await missionState.get({ missionId: item.missionId });
-        const result = await block(record, 'interrupted execution requires operator retry');
-        recovered.push({ missionId: result.mission.id, revision: result.revision });
-      }
-      return Object.freeze({ recovered: Object.freeze(recovered), blocked: inspection.blocked, corrupt: inspection.corrupt });
+      return recoverAndHealMissions({
+        root: workspaceRoot,
+        clock,
+        ...(store === undefined ? {} : { missionStore: store }),
+      });
     },
 
   });

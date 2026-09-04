@@ -1,5 +1,10 @@
 import { parseAgentEnvelope } from './agent-envelope.js';
-import { assertRoleMayEmitSignal, assertRoleMayPerformAction, roleForAgent } from './execution-roles.js';
+import {
+  assertRoleMayEmitSignal,
+  assertRoleMayPerformAction,
+  isRecoveryAction,
+  roleForAgent,
+} from './execution-roles.js';
 
 const OPERATIONS = Object.freeze({
   'miss-vale-prime': Object.freeze({ capabilityId: 'mission-supervisor', action: 'supervise_mission', signalType: 'running' }),
@@ -15,6 +20,19 @@ function operationFor(agentId) {
   return operation;
 }
 
+function resolveAction(agentId, action) {
+  const operation = operationFor(agentId);
+  if (action === undefined) return operation.action;
+  if (agentId === 'qra_recovery_driver') {
+    if (!isRecoveryAction(action)) throw new Error(`unknown recovery action: ${action}`);
+    return action;
+  }
+  if (action !== operation.action) {
+    throw new Error(`agent ${agentId} cannot override action ${operation.action}`);
+  }
+  return operation.action;
+}
+
 export function createAgentOperationEnvelope({
   record,
   operationId,
@@ -22,6 +40,7 @@ export function createAgentOperationEnvelope({
   objective,
   createdAt,
   taskId,
+  action,
   requiredInputs = ['authoritative_mission_state'],
   evidenceRequirements = ['operation result', 'mission state version'],
   expectedOutputSchema = { type: 'object', required: ['mission', 'revision'] },
@@ -31,15 +50,16 @@ export function createAgentOperationEnvelope({
   requestedBy = 'titan',
 } = {}) {
   const operation = operationFor(agentId);
+  const resolvedAction = resolveAction(agentId, action);
   return parseAgentEnvelope({
     mission_id: record.mission.id,
-    task_id: taskId ?? operation.action,
+    task_id: taskId ?? resolvedAction,
     operation_id: operationId,
     agent_id: agentId,
     capability_id: operation.capabilityId,
     state_version: record.revision,
     objective,
-    allowed_actions: [operation.action],
+    allowed_actions: [resolvedAction],
     required_inputs: requiredInputs,
     evidence_requirements: evidenceRequirements,
     timeout,
@@ -59,28 +79,34 @@ export function authorizeAgentOperation({ envelope, mission, expectedRevision, o
   if (parsed.operation_id !== operationId) throw new Error('agent envelope operation binding mismatch');
   if (parsed.state_version !== expectedRevision) throw new Error('agent envelope state version mismatch');
   if (parsed.capability_id !== operation.capabilityId) throw new Error(`agent ${parsed.agent_id} is not bound to capability ${parsed.capability_id}`);
-  if (parsed.allowed_actions.length !== 1 || parsed.allowed_actions[0] !== operation.action) {
+  if (parsed.allowed_actions.length !== 1) {
+    throw new Error('agent envelope must exclusively permit exactly one action');
+  }
+  const requestedAction = parsed.allowed_actions[0];
+  if (parsed.agent_id === 'qra_recovery_driver') {
+    if (!isRecoveryAction(requestedAction)) throw new Error(`unknown recovery action: ${requestedAction}`);
+  } else if (requestedAction !== operation.action) {
     throw new Error(`agent envelope does not exclusively permit ${operation.action}`);
   }
-  assertRoleMayPerformAction(role, operation.action);
+  assertRoleMayPerformAction(role, requestedAction);
   if (signalType !== undefined) {
     try {
-      assertRoleMayEmitSignal(role, signalType);
+      assertRoleMayEmitSignal(role, signalType, { action: requestedAction });
     } catch {
-      throw new Error(`agent ${parsed.agent_id} cannot perform ${signalType} transition with ${operation.action}`);
+      throw new Error(`agent ${parsed.agent_id} cannot perform ${signalType} transition with ${requestedAction}`);
     }
   }
   const permission = (mission.permissions ?? []).find(({ actor }) => actor === parsed.agent_id);
   const legacyRecovery = (mission.permissions ?? []).length === 0
     && parsed.agent_id === 'qra_recovery_driver'
-    && operation.action === 'block_interrupted_mission';
-  if (!permission?.actions?.includes(operation.action) && !legacyRecovery) {
-    throw new Error(`actor ${parsed.agent_id} lacks required permission: ${operation.action}`);
+    && requestedAction === 'block_interrupted_mission';
+  if (!permission?.actions?.includes(requestedAction) && !legacyRecovery) {
+    throw new Error(`actor ${parsed.agent_id} lacks required permission: ${requestedAction}`);
   }
   return Object.freeze({
     envelope: parsed,
-    action: operation.action,
+    action: requestedAction,
     role,
-    permission: Object.freeze(structuredClone(permission ?? { actor: parsed.agent_id, actions: [operation.action] })),
+    permission: Object.freeze(structuredClone(permission ?? { actor: parsed.agent_id, actions: [requestedAction] })),
   });
 }

@@ -2,14 +2,14 @@
 
 
 
-**Status:** Active — Items 2–11 landed. **Item 11 workflow/plan graphs** persist `workflowGraph` at create and fail closed on out-of-path work partitions (`docs/current/ATHERE_WORKFLOW_PLAN_GRAPHS.md`). Item 12 not started.
+**Status:** Active — Items 2–12 landed. **Item 12 checkpoints/branching/rollback/quarantine** on mission-state recovery ops (`docs/current/ATHERE_CHECKPOINTS_BRANCHING.md`). Item 13 not started.
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **Item 11 complete** — missions persist an explicit workflow graph; path validity is enforced on work-partition updates (role-legal but out-of-order completedWork REJECT). Item 12 (checkpoints/branching/rollback/quarantine) not started.
+- Current focus: **Items 2–12 hardened for durable self-heal** — auto-checkpoints, recoverAndHeal on startup, runtime block→heal from last verified checkpoint (cap 3). Item 13 not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -255,3 +255,42 @@ This file is the live operator view for the current Athere implementation run.
 - **H4 supersedes:** confirmed still REJECT for skipping depends_on (no hole).
 - **Kept RED→GREEN:** `tests/integration/mea-hostile-item10-item11-reaudit.test.js`. Forged QR18 bag still REJECT.
 - Item 12 not started.
+
+64. **Item 12 — Checkpoints / branching / rollback / quarantine.** Acceptance: failure ~90% through does not force full mission restart.
+
+- **Added:** `packages/mission/src/mission-checkpoints.js`, `tests/integration/mission-checkpoints-item12.test.js`, `tests/integration/mea-hostile-item12.test.js`, `docs/current/ATHERE_CHECKPOINTS_BRANCHING.md`.
+- **Wired:** mission create initializes `checkpoints`/`branches`/`activeBranchId`; recovery-only ops `createCheckpoint`, `createBranch`, `quarantineBranch`, `rollbackToCheckpoint`, `retryFromCheckpoint`; recovery may emit `running` only for rollback/retry; orchestrator grants full recovery action set; rollback/retry on `completed` fails closed.
+- **Hostile:** transition forge of checkpoints REJECT; store-tampered stateHash → integrity fail closed; executor cannot override to `create_branch`; completed-mission rollback REJECT.
+- **Suite:** 331 pass / 0 fail / 17 skip (mesh Redis offline skips).
+- **Security audit:** no secrets in Item 12 diff; no new HTTP surface; owner API remains bearer-gated on `127.0.0.1` by default. Residual hygiene: checkpoint snapshots retain evidence/observations (same trust boundary as mission state).
+- Item 13 not started.
+
+65. **Items 1–11 secrets / exploit audit (gap fill).** Item 12 already had a diff review; this pass covers the shipped stack Items 1–11 plus API/mesh wiring.
+
+- **Method:** local secret-file + credential-pattern scan; owner API / bearer / bind / Redis / Postgres / remote-queue / Ollama path review; prior Item 8 security note + Item 9–11 hostile suites as authorization evidence; security-review subagent on current uncommitted surface (Item 12 residual noted).
+- **Secrets in git:** PASS — no `.pass`/`.pem`/live bearer/password files tracked; Redis/Postgres passwords are env or mode-600 file only; evidence JSON uses password-file placeholders, not live secrets. Test fixtures use obvious fake passwords (`test-not-used-offline`).
+- **Findings (not fixed this turn — audit only):**
+  1. **Medium — unauthenticated `/health` + `/api/team`.** By design (functional-api asserts 200 without bearer). Exposes fleet topology (ids/roles/ranks/executorIds) and recovery counts. Mitigated by owner loopback bind; still local recon / tunnel risk.
+  2. **Medium — `profile: 'public'` skips bearer and skips loopback bind enforcement.** Production `start-agent-api.js` always uses `owner` + `127.0.0.1`. Mis-composition of `createTitanApi({ profile: 'public' })` on a non-loopback host would serve unauthenticated chat/commands/missions (planner still denies some public actions).
+  3. **Medium — Item 12 residual:** rollback/retry on non-`blocked` can apply snapshot `status` without `transitionMission` (status/signal desync). Completed rollback already REJECT.
+  4. **Low — `workspace/titan-owner-smoke/**` untracked** with proof stdout / local paths (IP/ops hygiene; not credentials). Not gitignored — commit risk if added carelessly.
+  5. **Low — Redis RESP plaintext + seed id in env.example** — documented Tailscale/local trust; seed is identity fingerprint, not a password.
+- **Validated controls:** owner bearer (timing-safe) on commands/missions/chat; owner must bind loopback; cross-site Origin/Sec-Fetch-Site rejected; workspace root traversal blocked; Ollama non-loopback refused; MEA/QR18/path hostile suites for Items 9–11; Redis seed guard + password-file pattern; Postgres password-file pattern.
+- **Verdict:** No live secret exposure found in repo. Exploit surface for a remote internet attacker against default owner API is tightly bounded (loopback + bearer). Remaining mediums are composition/recon residuals — fix when Justin orders hardening, not silently.
+- Item 13 still not started.
+
+66. **Medium security findings closed (audit follow-up).**
+
+- **M1:** `/health` and `/api/team` now require bearer (owner smoke/client updated).
+- **M2:** every profile must bind loopback; public composition without a token gets 401 on health/team/commands/missions (advisory `/api/chat` may remain tokenless on loopback only).
+- **M3:** rollback/retry require `blocked`; snapshot restore no longer writes `status` (resume via `transitionMission`); idempotent replay checked before the blocked gate.
+- Focused API + Item 12 hostile suites GREEN. Item 13 not started.
+
+67. **Items 1–12 durable self-heal hardening.**
+
+- **Recovery:** `healMissionFromCheckpoint`, `healBlockedMissionsFromCheckpoints`, `recoverAndHealMissions` — quarantine failed branch, retry last verified checkpoint, auto-heal cap 3.
+- **Orchestrator:** durable checkpoints after inspect and after successful tests; failure path `blockThenHeal`.
+- **Startup:** `start-agent-api` uses `recoverAndHealMissions`; `/health` recovery summary includes `healed`.
+- **Hygiene:** `.gitignore` now excludes `workspace/`, `.env*`, `*.pass`.
+- Evidence: `tests/integration/mission-self-heal.test.js` + updated orchestrator/API suites.
+- Item 13 not started.

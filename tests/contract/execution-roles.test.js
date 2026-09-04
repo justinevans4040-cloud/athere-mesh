@@ -31,6 +31,8 @@ test('only auditor may emit completed; manager and executor cannot', () => {
   assert.doesNotThrow(() => assertRoleMayEmitSignal(roles.auditor, 'completed'));
   assert.doesNotThrow(() => assertRoleMayEmitSignal(roles.auditor, 'running'));
   assert.throws(() => assertRoleMayEmitSignal(roles.recovery, 'running'), /cannot emit running/);
+  assert.doesNotThrow(() => assertRoleMayEmitSignal(roles.recovery, 'running', { action: 'rollback_to_checkpoint' }));
+  assert.doesNotThrow(() => assertRoleMayEmitSignal(roles.recovery, 'running', { action: 'retry_from_checkpoint' }));
   assert.throws(() => assertRoleMayEmitSignal(roles.manager, 'blocked'), /only recovery may block/);
 });
 

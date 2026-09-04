@@ -119,12 +119,18 @@ export async function runFunctionalTeamSmoke({
   const quickTimeout = requireTimeoutMs(quickTimeoutMs, 'quickTimeoutMs');
   const commandTimeout = requireTimeoutMs(commandTimeoutMs, 'commandTimeoutMs');
 
-  const health = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/health'), 'health', { timeoutMs: quickTimeout });
+  const health = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/health'), 'health', {
+    timeoutMs: quickTimeout,
+    headers: { authorization },
+  });
   if (health.ready !== true || health.enabledAgents !== OPERATIONAL_AGENT_IDS.length) {
     throw new Error('health did not report a ready functional team');
   }
 
-  const team = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/api/team'), 'team', { timeoutMs: quickTimeout });
+  const team = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/api/team'), 'team', {
+    timeoutMs: quickTimeout,
+    headers: { authorization },
+  });
   validateTeam(team);
 
   const command = await fetchJson(fetchImpl, endpoint(normalizedBaseUrl, '/api/commands'), 'command', {

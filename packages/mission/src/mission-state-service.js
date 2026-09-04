@@ -13,6 +13,14 @@ import {
   assertQr18LayersVerified,
   evaluateQr18Layers,
 } from '../../proof/src/qr18-layered-verification.js';
+import {
+  applyCheckpointSnapshot,
+  assertCheckpointIntegrity,
+  buildBranchRecord,
+  buildCheckpointRecord,
+  findBranch,
+  findCheckpoint,
+} from './mission-checkpoints.js';
 import { loadMission, saveMission } from './mission-store.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -23,7 +31,7 @@ const MUTABLE_FIELDS = new Set([
   'authoritativeFacts',
 ]);
 const SELECTABLE_FIELDS = new Set([
-  'objective', 'permissions', 'currentFacts',
+  'objective', 'permissions', 'currentFacts', 'checkpoints', 'branches', 'activeBranchId', 'workflowGraph',
   ...[...MUTABLE_FIELDS].filter((field) => field !== 'authoritativeFacts'),
 ]);
 const OPERATION_RETRY_TIMEOUT_MS = 5_000;
@@ -257,6 +265,9 @@ function authoritativeState(input) {
     currentPlan,
     environmentObservations: validateObservations(input.environmentObservations),
     authoritativeFacts: validateFacts(input.authoritativeFacts ?? []),
+    checkpoints: Object.freeze([]),
+    branches: Object.freeze([]),
+    activeBranchId: 'main',
   });
 }
 
@@ -275,6 +286,9 @@ function validateUpdate(update, mission) {
   if (Object.hasOwn(update, 'authoritativeFacts')) throw new Error('authoritativeFacts must be changed through atomic fact operations');
   for (const field of Object.keys(update)) {
     if (field === 'workflowGraph') throw new Error('workflowGraph is immutable after create');
+    if (field === 'checkpoints' || field === 'branches' || field === 'activeBranchId') {
+      throw new Error(`${field} must be changed through recovery checkpoint operations`);
+    }
     if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`);
   }
   const validated = {};
@@ -395,6 +409,112 @@ export function createMissionStateService({
     });
     const mission = Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) });
     return saveOperation({ mission, expectedRevision, operationId: operation, operationHash: hashValue(operationHashInput) });
+  }
+
+  async function commitRecoveryOperation({
+    operationId,
+    missionId,
+    expectedRevision,
+    envelope,
+    action,
+    input,
+    mutate,
+    resumeFromBlocked = false,
+  }) {
+    const id = requiredId(missionId, 'mission id');
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+      throw new TypeError('revision conflict: expectedRevision must be a positive integer');
+    }
+    const operation = requiredId(operationId, 'operation id');
+    const current = await store.loadMission({ root, missionId: id });
+    const existingHistory = current.mission.transitionHistory ?? [];
+    const history = existingHistory.length > 0
+      ? existingHistory
+      : [legacyImportRecord(current.mission, current.revision, clock())];
+    const signalType = resumeFromBlocked && current.mission.status === 'blocked' ? 'running' : undefined;
+    const authorization = authorizeAgentOperation({
+      envelope,
+      mission: current.mission,
+      expectedRevision,
+      operationId: operation,
+      signalType,
+    });
+    if (authorization.action !== action) {
+      throw new Error(`recovery action mismatch: expected ${action}`);
+    }
+    const authorizedAgentId = authorization.envelope.agent_id;
+    const operationHashInput = { envelope: authorization.envelope, action, input };
+    const prior = history.find((entry) => entry.operationId === operation);
+    if (prior) {
+      if (prior.operationHash !== hashValue(operationHashInput)) {
+        throw new Error(`idempotency conflict: operation id already has different content: ${operation}`);
+      }
+      return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
+    }
+    if (
+      (action === 'rollback_to_checkpoint' || action === 'retry_from_checkpoint')
+      && current.mission.status === 'completed'
+    ) {
+      throw new Error('cannot rollback or retry a completed mission');
+    }
+    if (
+      (action === 'rollback_to_checkpoint' || action === 'retry_from_checkpoint')
+      && current.mission.status !== 'blocked'
+    ) {
+      throw new Error('can only rollback or retry from a blocked mission');
+    }
+    const timestamp = clock();
+    let nextState = mutate(current.mission, authorization, timestamp);
+    assertValidMissionPath({
+      workflowGraph: workflowGraphFor(nextState),
+      completedWork: nextState.completedWork ?? [],
+      pendingWork: nextState.pendingWork ?? [],
+      failedWork: nextState.failedWork ?? [],
+    });
+    if (signalType === 'running') {
+      const resumed = transitionMission(current.mission, {
+        type: 'running',
+        agent: authorizedAgentId,
+        detail: typeof input?.detail === 'string' ? input.detail : 'resumed from verified checkpoint',
+      }, { clock: () => timestamp });
+      nextState = Object.freeze({
+        ...resumed,
+        completedWork: nextState.completedWork,
+        pendingWork: nextState.pendingWork,
+        failedWork: nextState.failedWork,
+        evidence: nextState.evidence,
+        artifactReferences: nextState.artifactReferences,
+        activeAgents: nextState.activeAgents,
+        environmentObservations: nextState.environmentObservations,
+        checkpoints: nextState.checkpoints,
+        branches: nextState.branches,
+        activeBranchId: nextState.activeBranchId,
+        updatedAt: timestamp,
+      });
+    } else {
+      nextState = Object.freeze({ ...nextState, updatedAt: timestamp });
+    }
+    const lineage = transitionRecord({
+      stateVersion: expectedRevision + 1,
+      previousVersion: expectedRevision,
+      previousTransitionHash: history.at(-1).transitionHash,
+      operationId: operation,
+      operationHashInput,
+      actor: authorizedAgentId,
+      action,
+      timestamp,
+      input: operationHashInput,
+      before: current.mission,
+      after: nextState,
+      authorization: { actor: authorizedAgentId, actions: authorization.permission.actions, granted: true },
+    });
+    const mission = Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) });
+    return saveOperation({
+      mission,
+      expectedRevision,
+      operationId: operation,
+      operationHash: hashValue(operationHashInput),
+    });
   }
 
   return Object.freeze({
@@ -527,6 +647,139 @@ export function createMissionStateService({
           return (mission.authoritativeFacts ?? []).map((entry) => entry.id === predecessor.id
             ? { ...entry, status: 'revoked', revokedAt: timestamp, reason: why }
             : entry);
+        },
+      });
+    },
+    async createCheckpoint({ operationId, missionId, expectedRevision, label, envelope }) {
+      const checkpointLabel = requiredText(label, 'checkpoint label');
+      return commitRecoveryOperation({
+        operationId,
+        missionId,
+        expectedRevision,
+        envelope,
+        action: 'create_checkpoint',
+        input: { label: checkpointLabel },
+        mutate(mission, authorization, timestamp) {
+          const checkpointId = `cp-${hashValue({ operationId, missionId: mission.id, label: checkpointLabel }).slice(0, 24)}`;
+          if ((mission.checkpoints ?? []).some((entry) => entry.id === checkpointId)) {
+            throw new Error(`duplicate checkpoint id: ${checkpointId}`);
+          }
+          const checkpoint = buildCheckpointRecord({
+            id: checkpointId,
+            label: checkpointLabel,
+            revision: expectedRevision,
+            actor: authorization.envelope.agent_id,
+            createdAt: timestamp,
+            mission,
+          });
+          return Object.freeze({
+            ...mission,
+            checkpoints: Object.freeze([...(mission.checkpoints ?? []), checkpoint]),
+          });
+        },
+      });
+    },
+    async createBranch({ operationId, missionId, expectedRevision, checkpointId, strategy, envelope }) {
+      const fromCheckpointId = requiredId(checkpointId, 'checkpoint id');
+      const branchStrategy = requiredText(strategy, 'branch strategy');
+      return commitRecoveryOperation({
+        operationId,
+        missionId,
+        expectedRevision,
+        envelope,
+        action: 'create_branch',
+        input: { checkpointId: fromCheckpointId, strategy: branchStrategy },
+        mutate(mission, authorization, timestamp) {
+          const checkpoint = findCheckpoint(mission, fromCheckpointId);
+          assertCheckpointIntegrity(checkpoint);
+          const branchId = `br-${hashValue({ operationId, missionId: mission.id, fromCheckpointId }).slice(0, 24)}`;
+          if ((mission.branches ?? []).some((entry) => entry.id === branchId)) {
+            throw new Error(`duplicate branch id: ${branchId}`);
+          }
+          const branch = buildBranchRecord({
+            id: branchId,
+            checkpointId: fromCheckpointId,
+            strategy: branchStrategy,
+            actor: authorization.envelope.agent_id,
+            createdAt: timestamp,
+          });
+          return Object.freeze({
+            ...mission,
+            branches: Object.freeze([...(mission.branches ?? []), branch]),
+            activeBranchId: branchId,
+          });
+        },
+      });
+    },
+    async quarantineBranch({ operationId, missionId, expectedRevision, branchId, reason, envelope }) {
+      const id = requiredId(branchId, 'branch id');
+      const why = requiredText(reason, 'quarantine reason');
+      return commitRecoveryOperation({
+        operationId,
+        missionId,
+        expectedRevision,
+        envelope,
+        action: 'quarantine_branch',
+        input: { branchId: id, reason: why },
+        mutate(mission) {
+          findBranch(mission, id);
+          const branches = (mission.branches ?? []).map((entry) => (
+            entry.id === id
+              ? Object.freeze({ ...entry, status: 'quarantined', reason: why })
+              : entry
+          ));
+          const activeBranchId = mission.activeBranchId === id ? 'main' : mission.activeBranchId;
+          return Object.freeze({
+            ...mission,
+            branches: Object.freeze(branches),
+            activeBranchId,
+          });
+        },
+      });
+    },
+    async rollbackToCheckpoint({ operationId, missionId, expectedRevision, checkpointId, envelope }) {
+      const id = requiredId(checkpointId, 'checkpoint id');
+      return commitRecoveryOperation({
+        operationId,
+        missionId,
+        expectedRevision,
+        envelope,
+        action: 'rollback_to_checkpoint',
+        input: { checkpointId: id, detail: 'rollback to verified checkpoint' },
+        resumeFromBlocked: true,
+        mutate(mission, authorization, timestamp) {
+          const checkpoint = findCheckpoint(mission, id);
+          return applyCheckpointSnapshot(mission, checkpoint, {
+            resyncObservation: {
+              source: authorization.envelope.agent_id,
+              key: 'environment_resync',
+              value: Object.freeze({ checkpointId: id, mode: 'rollback' }),
+              observedAt: timestamp,
+            },
+          });
+        },
+      });
+    },
+    async retryFromCheckpoint({ operationId, missionId, expectedRevision, checkpointId, envelope }) {
+      const id = requiredId(checkpointId, 'checkpoint id');
+      return commitRecoveryOperation({
+        operationId,
+        missionId,
+        expectedRevision,
+        envelope,
+        action: 'retry_from_checkpoint',
+        input: { checkpointId: id, detail: 'retry from last known-good checkpoint' },
+        resumeFromBlocked: true,
+        mutate(mission, authorization, timestamp) {
+          const checkpoint = findCheckpoint(mission, id);
+          return applyCheckpointSnapshot(mission, checkpoint, {
+            resyncObservation: {
+              source: authorization.envelope.agent_id,
+              key: 'environment_resync',
+              value: Object.freeze({ checkpointId: id, mode: 'retry' }),
+              observedAt: timestamp,
+            },
+          });
         },
       });
     },

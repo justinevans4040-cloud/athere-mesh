@@ -27,8 +27,8 @@ The owner API binds to loopback and requires a reusable 32–512 byte visible-pr
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /health` | Public non-sensitive readiness, enabled-team count, and recovery category counts only |
-| `GET /api/team` | Public registered team with executor/operational status |
+| `GET /health` | Bearer-protected readiness, enabled-team count, and recovery category counts only |
+| `GET /api/team` | Bearer-protected registered team with executor/operational status |
 | `POST /api/commands` | Authenticated plain UTF-8 text command execution |
 | `GET /api/missions/:id` | Authenticated durable stored mission result |
 | `POST /api/chat` | Authenticated advisory model chat only |

@@ -8,7 +8,7 @@ import { createNodeTestExecutor } from '../packages/execution/src/node-test-exec
 import { fleetRegistry, validateOperationalFleet } from '../packages/fleet/src/registry.js';
 import { resolveMeshOrchestratorDeps } from '../packages/orchestrator/src/mesh-env-wiring.js';
 import { createMissionOrchestrator } from '../packages/orchestrator/src/mission-orchestrator.js';
-import { recoverInterruptedMissions } from '../packages/recovery/src/recovery-coordinator.js';
+import { recoverAndHealMissions } from '../packages/recovery/src/recovery-coordinator.js';
 
 const scriptRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -48,7 +48,7 @@ export async function createTitanService({
   const authToken = nonEmptyEnvironment(environment, 'TITAN_API_BEARER_TOKEN');
   validateOperationalFleet();
   await mkdir(resolvedWorkspaceRoot, { recursive: true });
-  const recovery = await recoverInterruptedMissions({ root: resolvedWorkspaceRoot });
+  const recovery = await recoverAndHealMissions({ root: resolvedWorkspaceRoot });
   const executor = createNodeTestExecutor({ repositoryRoot: resolvedRepositoryRoot });
   // Offline-first: when ATHERE_MESH_REDIS_* (and optional remote/Postgres flags)
   // are unset, resolveMeshOrchestratorDeps returns empty wiring and the

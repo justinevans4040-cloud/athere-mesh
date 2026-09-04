@@ -122,6 +122,7 @@ function operationalDependencies(orchestrator, team, recovery) {
 function publicRecoverySummary(recovery) {
   return Object.freeze({
     recovered: recovery.recovered.length,
+    healed: Array.isArray(recovery.healed) ? recovery.healed.length : 0,
     blocked: recovery.blocked.length,
     corrupt: recovery.corrupt.length,
   });
@@ -149,33 +150,49 @@ function publicErrorResponse(error) {
 
 export function createTitanApi({ runtime, profile = 'owner', authToken, maxRequestBytes = 16_384, orchestrator, team, recovery, logger = console } = {}) {
   if (!runtime || typeof runtime.respond !== 'function') throw new TypeError('agent runtime is required');
-  const ownerAuthToken = profile === 'owner' ? requireBearerCredential(authToken, 'owner authToken') : undefined;
+  let apiAuthToken;
+  if (profile === 'owner') {
+    apiAuthToken = requireBearerCredential(authToken, 'owner authToken');
+  } else if (authToken !== undefined) {
+    apiAuthToken = requireBearerCredential(authToken, 'authToken');
+  } else {
+    apiAuthToken = undefined;
+  }
   if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes < 1) throw new TypeError('maxRequestBytes must be positive');
   if (!logger || typeof logger.error !== 'function') throw new TypeError('logger must provide error');
   let server;
   let baseUrl;
   let commandInFlight = false;
 
+  function requireAuth(request) {
+    if (!apiAuthToken) {
+      throw publicError(401, 'authentication required', { 'www-authenticate': 'Bearer realm="titan"' });
+    }
+    requireTrustedOwnerRequest(request, apiAuthToken);
+  }
+
   return Object.freeze({
     get url() { return baseUrl; },
     async listen({ host = '127.0.0.1', port = 3000 } = {}) {
       if (server) throw new Error('Titan API is already listening');
-      if (profile === 'owner' && !LOOPBACK.has(host)) throw new Error('owner API must bind to loopback');
+      if (!LOOPBACK.has(host)) throw new Error('Titan API must bind to loopback');
       server = http.createServer(async (request, response) => {
         try {
           const url = new URL(request.url, 'http://titan.local');
           if (request.method === 'GET' && url.pathname === '/health') {
+            requireAuth(request);
             operationalDependencies(orchestrator, team, recovery);
             json(response, 200, { ready: true, enabledAgents: teamView(team).enabledAgents, recovery: publicRecoverySummary(recovery) });
             return;
           }
           if (request.method === 'GET' && url.pathname === '/api/team') {
+            requireAuth(request);
             operationalDependencies(orchestrator, team, recovery);
             json(response, 200, teamView(team));
             return;
           }
           if (request.method === 'POST' && url.pathname === '/api/commands') {
-            if (profile === 'owner') requireTrustedOwnerRequest(request, ownerAuthToken);
+            requireAuth(request);
             operationalDependencies(orchestrator, team, recovery);
             const text = await readText(request, maxRequestBytes);
             if (commandInFlight) throw publicError(429, 'command already in progress', { 'retry-after': '1' });
@@ -188,14 +205,15 @@ export function createTitanApi({ runtime, profile = 'owner', authToken, maxReque
             return;
           }
           if (request.method === 'GET' && url.pathname.startsWith('/api/missions/')) {
-            if (profile === 'owner') requireTrustedOwnerRequest(request, ownerAuthToken);
+            requireAuth(request);
             operationalDependencies(orchestrator, team, recovery);
             const missionId = missionIdFromPath(url.pathname);
             json(response, 200, await orchestrator.getMission({ missionId }));
             return;
           }
           if (request.method === 'POST' && url.pathname === '/api/chat') {
-            if (profile === 'owner') requireTrustedOwnerRequest(request, ownerAuthToken);
+            // Owner always has a token. Public advisory chat may omit one, but only on loopback.
+            if (apiAuthToken) requireTrustedOwnerRequest(request, apiAuthToken);
             const agentId = url.searchParams.get('agent') || 'agent-vale';
             const text = await readText(request, maxRequestBytes);
             const plan = planCommand({ profile, text });
