@@ -111,7 +111,7 @@ The runtime has deterministic JavaScript contract validation for missions, polic
 
 #### Manager / Executor / Auditor separation
 
-The runtime enforces Manager / Executor / Auditor roles for operational agents on the authoritative mission transition path. Executors may record evidence but cannot advance `completedWork` or emit `completed`; only the auditor may certify subgoal success and mission completion (still proof-gated). See `docs/current/ATHERE_MANAGER_EXECUTOR_AUDITOR.md`. Layered QR18 Level 1–6 verification remains backlog Item 10.
+The runtime enforces Manager / Executor / Auditor roles for operational agents on the authoritative mission transition path. Executors may record evidence but cannot advance `completedWork` or emit `completed`; only the auditor may certify subgoal success and mission completion (still proof-gated and QR18 Level 1–6 gated). See `docs/current/ATHERE_MANAGER_EXECUTOR_AUDITOR.md` and `docs/current/ATHERE_LAYERED_QR18.md`.
 
 #### Durable storage options
 
@@ -252,7 +252,7 @@ These are frozen historical verification facts from the 2026-08-23/24 functional
 3. **No universal idempotency key.** Mission revision control prevents some duplicate/conflicting writes, but there is no universal operation-ID ledger for every state-changing action.
 4. **No full state lineage.** Current revision/signal history does not yet supply arbitrary supersession, revocation, predecessor hashing, or rollback semantics.
 5. **No permanent evaluation harness.** Existing unit/integration/performance tests and smoke evidence are strong regression assets but do not yet measure the full research backlog metrics or statistical noise floor.
-6. **No universal layered QR18.** Current proof verification is real but narrower than the proposed six-level verification hierarchy.
+6. **Layered QR18 Level 1–6.** Completion claims require structured per-level evidence via `evaluateQr18Layers`; see `docs/current/ATHERE_LAYERED_QR18.md`. Item 10 landed.
 7. **Redis/S24 not in current acceptance path.** Redis/Tailscale reintegration remains pending and must not be inferred from older smoke evidence.
 8. **Ollama loopback state unresolved.** Do not claim current Ollama network confinement without fresh host evidence.
 9. **Postgres optional.** It must not be described as the sole authoritative state backend today.

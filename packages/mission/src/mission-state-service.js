@@ -4,6 +4,10 @@ import { authorizeAgentOperation } from '../../contracts/src/agent-operation.js'
 import { authorizeCompletedWorkClaim } from '../../contracts/src/execution-roles.js';
 import { createMission, transitionMission } from '../../contracts/src/mission.js';
 import { verifyProof } from '../../proof/src/proof-store.js';
+import {
+  assertQr18LayersVerified,
+  evaluateQr18Layers,
+} from '../../proof/src/qr18-layered-verification.js';
 import { loadMission, saveMission } from './mission-store.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -333,6 +337,27 @@ export function createMissionStateService({
       if (signal?.type === 'completed') {
         const verification = await verifyProof({ root, ref: signal.proof });
         if (verification.verified !== true) throw new Error(`completion proof verification failed: ${verification.reason ?? 'unknown'}`);
+        // Item 10: layered QR18 is evaluated from the authoritative mission snapshot
+        // (current state + validated update) and the service-verified proof. Caller
+        // qr18 bags are ignored — evaluateQr18Layers is the authority.
+        const proposedMission = Object.freeze({ ...current.mission, ...stateUpdate });
+        const qr18 = evaluateQr18Layers({
+          mission: proposedMission,
+          proofVerification: verification,
+          certifierAgentId: authorizedAgentId,
+          transitionHistory: history,
+        });
+        assertQr18LayersVerified(qr18);
+        signal = Object.freeze({
+          ...signal,
+          result: Object.freeze({
+            ...(signal.result && typeof signal.result === 'object' && !Array.isArray(signal.result)
+              ? signal.result
+              : {}),
+            auditorVerification: verification,
+            qr18,
+          }),
+        });
       }
       const transitioned = transitionMission(current.mission, signal, { clock });
       const nextState = Object.freeze({ ...transitioned, ...stateUpdate });

@@ -2,14 +2,14 @@
 
 
 
-**Status:** Active — Items 2–9 landed; Redis bus (blocker 1) `5a9f7d8`; shared mission state (blocker 2) `eb77bdd`; remote executor dispatch (blocker 3) `ccb9461`; standing worker + env auto-wire `0366feb`; **doctrine baseline residuals closed**: remote inspect + lease reclaim + owner-API live mission (Redis+remote+Postgres) + contract cohort beyond pin. Evidence: `evidence/smoke-owner-api-mission-crosshost-20260904T035714.json`, `evidence/smoke-remote-executor-cohort-crosshost-20260904T035619.json`, `evidence/smoke-remote-work-lease-20260904T035458.json`. **Founder authority + QRA Sentinel Governor locked**. Item 10 not started.
+**Status:** Active — Items 2–10 landed. Doctrine baseline residuals closed (`c0e6ae8`). **Item 10 layered QR18** evaluates Levels 1–6 on every completion claim (`docs/current/ATHERE_LAYERED_QR18.md`). Item 11 not started.
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: doctrine baseline **Agent A → Agent B on the local mesh with zero mid-flight human/SSH claim** holds for the owner orchestrator path: Lenovo `orchestrator.execute()` with env-wired Redis bus + remote work queue (+ shared Postgres via SSH local forward) completes inspect + full `node --test` on standing Ichabod worker; auditor/proof stay on owner. Lease reclaim proven. Contract cohort (4 files / 20 tests) proven beyond pin. Item 10 not started.
+- Current focus: **Item 10 complete** — `evaluateQr18Layers` returns structured L1–L6 evidence; mission-state-service fails closed on completion without verified layers (caller `qr18` bags ignored); orchestrator attaches `result.qr18` on honest completion. Item 11 (workflow/plan graphs) not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -232,3 +232,10 @@ This file is the live operator view for the current Athere implementation run.
 - **Contract cohort beyond pin.** Standing worker ran 4 contract files / 20 tests from Lenovo with `midFlightSshClaim: false`. Evidence: `evidence/smoke-remote-executor-cohort-crosshost-20260904T035619.json`.
 - **Owner-API live mission over wired stack.** `scripts/smoke-owner-api-mission.js` → `orchestrator.execute({ profile: 'owner', text: 'test all of Titan' })` with Redis bus + remote queue + shared Postgres (SSH local forward `15432→ichabod:5432`). Standing unit MainPID `2263291` unchanged pre/post. Remote inspect + full suite on Ichabod: **310 tests, 309 pass, 1 skip, 0 fail**. Mission `mission-abad4f65-1b39-41a6-98e9-a688ced36b8e` revision 5 `completed` verified in Ichabod `titan_missions` via loopback psql. Evidence: `evidence/smoke-owner-api-mission-crosshost-20260904T035714.json`.
 - **Still not started:** Item 10 / QR18. Documented residual: Postgres is not Tailscale-native (tunnel required); multi-writer beyond revision CAS unchanged.
+
+61. **Item 10 — Layered QR18 verification.** Acceptance: every important completion claim traces to its evidence and verifier.
+
+- **Added:** `packages/proof/src/qr18-layered-verification.js` (Levels 1–6 structured evidence), `tests/contract/qr18-layered-verification.test.js`, `tests/integration/qr18-layered-completion-gate.test.js`, `docs/current/ATHERE_LAYERED_QR18.md`.
+- **Wired:** mission-state-service re-evaluates QR18 on `completed` after `verifyProof` and ignores caller `qr18` bags; orchestrator attaches service-shaped `result.qr18` before completion.
+- **Unchanged:** proof-store write/verify primitives; MEA structural independence; Item 11 not started.
+- **Hostile probes:** forged qr18 bag + missing artifact lineage → REJECT at Level 2; certifier-as-performer → REJECT at Level 3; honest six-level ACCEPT.

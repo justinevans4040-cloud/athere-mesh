@@ -300,6 +300,20 @@ test('orchestrator records the complete mission in the authoritative state servi
   // MEA: the auditor is not a recorded performer, so authoritative evidence stays nyx/rune.
   assert.deepEqual(stored.mission.evidence.map(({ agent }) => agent), ['nyx', 'rune']);
   assert.equal(stored.mission.result.auditorVerification.verified, true);
+  assert.equal(stored.mission.result.qr18.verifier, 'qr18');
+  assert.equal(stored.mission.result.qr18.verified, true);
+  assert.equal(stored.mission.result.qr18.levels.length, 6);
+  assert.deepEqual(
+    stored.mission.result.qr18.levels.map(({ level, id, verified }) => ({ level, id, verified })),
+    [
+      { level: 1, id: 'action', verified: true },
+      { level: 2, id: 'artifact', verified: true },
+      { level: 3, id: 'state-transition', verified: true },
+      { level: 4, id: 'subgoal', verified: true },
+      { level: 5, id: 'workflow', verified: true },
+      { level: 6, id: 'mission', verified: true },
+    ],
+  );
   assert.equal(stored.mission.artifactReferences[0].id, 'mission-proof');
   assert.equal(stored.mission.artifactReferences[0].artifactHash, stored.mission.proof.sha256);
   // Item 6: producer action and verifier decision are part of artifact lineage.

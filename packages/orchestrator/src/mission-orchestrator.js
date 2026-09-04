@@ -9,6 +9,7 @@ import { nodeExecutionInputBinding } from '../../execution/src/node-test-executo
 import { createRemoteDispatchExecutor } from '../../execution/src/remote-dispatch-executor.js';
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 import { writeArtifactProof, writeProof, verifyArtifactProof, verifyProof } from '../../proof/src/proof-store.js';
+import { evaluateQr18Layers, assertQr18LayersVerified } from '../../proof/src/qr18-layered-verification.js';
 import { inspectRecovery } from '../../recovery/src/recovery-coordinator.js';
 import { createMemoryResonanceBus } from '../../resonance/src/resonance-bus.js';
 
@@ -342,6 +343,23 @@ export function createMissionOrchestrator({
         if (artifactVerification.verified !== true) {
           throw new Error(`artifact provenance verification failed: ${artifactVerification.reason ?? 'unknown'}`);
         }
+        // Item 10: layered QR18 structured evidence — every completion claim traces
+        // to per-level evidence and verifier. Evaluated here for the completion
+        // payload; mission-state-service re-evaluates independently and fails closed.
+        const completionUpdate = {
+          completedWork: ['inspect-repository', 'run-node-tests', 'verify-proof'],
+          pendingWork: [],
+          failedWork: [],
+          activeAgents: [],
+          artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
+        };
+        const qr18 = evaluateQr18Layers({
+          mission: Object.freeze({ ...record.mission, ...completionUpdate }),
+          proofVerification: verification,
+          certifierAgentId: 'qra_emerge_audit',
+          transitionHistory: record.mission.transitionHistory,
+        });
+        assertQr18LayersVerified(qr18);
         record = await persistTransition(record, `${record.mission.id}-completion`, {
           type: 'completed',
           agent: 'qra_emerge_audit',
@@ -351,17 +369,9 @@ export function createMissionOrchestrator({
             agentEvidence,
             proofSha256: ref.sha256,
             auditorVerification: verification,
+            qr18,
           },
-        }, {
-          completedWork: ['inspect-repository', 'run-node-tests', 'verify-proof'],
-          pendingWork: [],
-          failedWork: [],
-          // The auditor does not write mission evidence: recording work evidence is what
-          // makes an agent a recorded performer, and performers cannot certify.
-          activeAgents: [],
-          // Item 6: artifact lineage keeps producer agent/action and the verifier decision.
-          artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
-        });
+        }, completionUpdate);
         return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });
       } catch (error) {
         return block(record, error instanceof Error ? error.message : String(error));
