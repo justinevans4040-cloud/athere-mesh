@@ -1,0 +1,23 @@
+[Unit]
+Description=Athere Mesh remote executor worker (claims run-node-tests from mesh Redis)
+Documentation=file:///home/the_founder/athere-mesh/docs/current/ATHERE_REMOTE_EXECUTOR_DISPATCH.md
+After=network.target redis-athere-mesh.service
+Wants=redis-athere-mesh.service
+# Tailscale / Redis may lag user-session start; never give up retrying.
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Type=simple
+WorkingDirectory=/home/the_founder/athere-mesh
+EnvironmentFile=-/home/the_founder/.config/athere-mesh-worker/worker.env
+ExecStart=/usr/bin/node scripts/remote-executor-worker.js --loop
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+# Keep secrets out of the unit file and out of shared argv listings where possible.
+UMask=0077
+
+[Install]
+WantedBy=default.target

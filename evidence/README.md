@@ -13,7 +13,8 @@ Public smoke / demo artifacts for Athere Mesh Titan recreate.
 | [smoke-arweave-20260730-s24-redis.json](./smoke-arweave-20260730-s24-redis.json) | Arweave permanence — S24 Redis smoke pinned (`winc=0`) |
 | [smoke-redis-resonance-crosshost-20260903-182344.json](./smoke-redis-resonance-crosshost-20260903-182344.json) | Redis resonance bus — signal published on `JustinLenovo` read back by a process on `ichabodcrane`, 3 rounds. **Transport only**; the file's `doesNotProve` list is the authoritative scope. |
 | [smoke-shared-mission-state-crosshost-20260903-201846.json](./smoke-shared-mission-state-crosshost-20260903-201846.json) | Shared mission state — Lenovo write into Ichabod Postgres `athere_mesh`, Ichabod read same revision/objective, 3 rounds. **State only.** |
-| [smoke-remote-executor-crosshost-20260903-202947.json](./smoke-remote-executor-crosshost-20260903-202947.json) | Remote executor dispatch — Lenovo enqueues `run-node-tests`; Ichabod worker runs `createNodeTestExecutor` on staged checkout; result visible back on Lenovo via mesh Redis work queue, 3 rounds. See `doesNotProve`. |
+| [smoke-remote-executor-crosshost-20260903-202947.json](./smoke-remote-executor-crosshost-20260903-202947.json) | Remote executor dispatch — Lenovo enqueues `run-node-tests`; Ichabod worker claimed **per-round via SSH** (blocker 3 land). See `doesNotProve`. |
+| [smoke-remote-executor-standing-worker-crosshost-20260903-203851.json](./smoke-remote-executor-standing-worker-crosshost-20260903-203851.json) | Standing Ichabod systemd user worker — Lenovo publishes 3 jobs; unit `athere-mesh-remote-executor.service` claims them with **no mid-flight SSH claim**; worker PID = unit MainPID all rounds. |
 | [arweave/](./arweave/) | Arweave permanence folder + README |
 | [demos/](./demos/) | Slice 0–3 demo MP4s |
 | [nosana/](./nosana/) | Nosana GPU smoke (started then stopped) |
@@ -76,6 +77,22 @@ node scripts/smoke-remote-executor-dispatch.js worker-once
 
 # then await on the dispatcher host:
 corepack pnpm run smoke:remote-executor -- await --job job-demo --await-ms 60000
+```
+
+Standing worker (preferred). Unit already enabled on Ichabod; dispatcher only:
+
+```text
+# on Ichabod once: systemctl --user enable --now athere-mesh-remote-executor.service
+ATHERE_MESH_REDIS_HOST=100.77.131.28 \
+ATHERE_MESH_REDIS_PORT=6380 \
+ATHERE_MESH_REDIS_PASSWORD_FILE=/path/to/mesh-redis.pass \
+ATHERE_MESH_REDIS_SEED_ID=<seed-uuid>@ichabodcrane \
+ATHERE_MESH_WORK_NAMESPACE=athere:mesh:work \
+corepack pnpm run smoke:remote-executor -- dispatch \
+  --job job-standing-demo --mission mission-standing-demo \
+  --repository-root /home/the_founder/athere-mesh \
+  --test-file tests/contract/remote-executor-smoke-pin.test.js \
+  --await-ms 60000
 ```
 
 **Stale command removed:** earlier revisions of this file documented

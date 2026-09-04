@@ -2,15 +2,15 @@
 
 
 
-**Status:** Active — Items 2–9 landed; Redis bus (blocker 1) landed as `5a9f7d8`; shared mission state (blocker 2) landed as `eb77bdd`; **remote executor dispatch (blocker 3) implemented with cross-host evidence** (`evidence/smoke-remote-executor-crosshost-20260903-202947.json`). **Founder authority + QRA Sentinel Governor locked**. Item 10 not started.
+**Status:** Active — Items 2–9 landed; Redis bus (blocker 1) landed as `5a9f7d8`; shared mission state (blocker 2) landed as `eb77bdd`; remote executor dispatch (blocker 3) landed as `ccb9461`; **standing Ichabod worker + owner env auto-wire** close the doctrine A→B babysitting gap (`evidence/smoke-remote-executor-standing-worker-crosshost-20260903-203851.json`). **Founder authority + QRA Sentinel Governor locked**. Item 10 not started.
 
 This file is the live operator view for the current Athere implementation run.
 
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: doctrine baseline **blockers 1–3 have cross-host evidence**. Remaining honesty: full orchestrator env auto-wire (Redis bus + remote queue + shared Postgres together) is not a production start-script yet; inspect stays local; smoke used one pin test file. Item 10 not started.
-- Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; transport/auth/seed failure surfaces.
+- Current focus: doctrine baseline **Agent A → Agent B on the local mesh with zero mid-flight human/SSH claim** holds for the narrow `run-node-tests` path: Lenovo publishes work; standing `athere-mesh-remote-executor.service` on Ichabod claims and completes it (3 rounds, PID matched unit MainPID). Owner `start-agent-api` auto-wires Redis bus (+ optional remote queue / shared Postgres) from env. Inspect stays local. Smoke still uses one pin test file. Item 10 not started.
+- Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
 
@@ -214,3 +214,13 @@ This file is the live operator view for the current Athere implementation run.
 - **Cross-host evidence.** 3 rounds. Process A on `JustinLenovo` enqueued `run-node-tests` to mesh Redis `100.77.131.28:6380`. Process B on `ichabodcrane` claimed the job, ran `createNodeTestExecutor` against `~/athere-mesh-crosshost` on pin test `tests/contract/remote-executor-smoke-pin.test.js` (`passed: 1`, `exitCode: 0`). Result visible back on A via `await`. Worker hostname on every round: `ichabodcrane`.
 
 - **What this does NOT prove (doesNotProve in evidence):** orchestrator auto-wire from env of Redis bus + remote queue + Postgres together; remote inspect; multi-worker leasing beyond LPOP; full suite remotely; Item 10 / QR18.
+
+59. **Standing Ichabod worker + owner env auto-wire.** Closes blocker-3 honesty gaps that still required mid-flight SSH claim and left start scripts unwired.
+
+- **Env auto-wire.** `packages/orchestrator/src/mesh-env-wiring.js` + `scripts/start-agent-api.js`: when `ATHERE_MESH_REDIS_*` is set, inject Redis bus (`failClosedOnPublish: true`); when also `ATHERE_MESH_REMOTE_WORK_QUEUE` is truthy, inject Redis remote work queue (+ optional `ATHERE_MESH_REMOTE_REPOSITORY_ROOT`); when `ATHERE_MESH_POSTGRES_*` / `DATABASE_URL` is set, inject shared Postgres mission store. Offline default unchanged when unset. Hermetic tests: `tests/integration/mesh-env-wiring.test.js`.
+
+- **Standing worker.** `deploy/systemd/athere-mesh-remote-executor.service` (systemd --user, `Restart=always`, linger=yes) runs `node scripts/remote-executor-worker.js --loop` against `~/athere-mesh` with env from `~/.config/athere-mesh-worker/worker.env`. Proven: `systemctl --user restart` returns to active with a new MainPID; unit stays up.
+
+- **Cross-host evidence (standing, zero mid-flight SSH claim).** 3 rounds. Lenovo dispatched+awaited on namespace `athere:mesh:work`; Ichabod standing unit MainPID `2257447` completed every round (worker pid matched MainPID; postflight PID unchanged). SSH used only for preflight/postflight status — not to start a worker per round. Evidence: `evidence/smoke-remote-executor-standing-worker-crosshost-20260903-203851.json`.
+
+- **Doctrine baseline verdict for this narrow path:** Agent A (Lenovo publish) → Agent B (standing Ichabod worker) completes with zero human babysitting after the unit is installed. Still not claimed: full owner-API live mission over the wired stack; remote inspect; multi-worker lease; full remote suite; Item 10.

@@ -1,0 +1,174 @@
+{
+  "ok": true,
+  "smoke": "remote-executor-standing-worker-crosshost",
+  "claim": "Process A on JustinLenovo publishes run-node-tests to mesh Redis; the standing systemd --user worker on ichabodcrane (athere-mesh-remote-executor.service, linger=yes) claims and completes each job without any mid-flight SSH worker start — three rounds; worker PID equals unit MainPID throughout.",
+  "at": "2026-09-04T03:38:54.604Z",
+  "runtime": "athere-mesh",
+  "workNamespace": "athere:mesh:work",
+  "testFile": "tests/contract/remote-executor-smoke-pin.test.js",
+  "workerRepositoryRoot": "/home/the_founder/athere-mesh",
+  "standingWorker": {
+    "unit": "athere-mesh-remote-executor.service",
+    "linger": "yes",
+    "preflightMainPid": 2257447,
+    "postflightMainPid": 2257447,
+    "restartSurvivedBeforeEvidence": true,
+    "midFlightSshClaim": false
+  },
+  "seed": {
+    "tailscaleIp": "100.77.131.28",
+    "host": "ichabodcrane",
+    "port": 6380,
+    "seedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane"
+  },
+  "hosts": {
+    "dispatcher": {
+      "tailscaleIp": "100.125.245.10",
+      "hostname": "JustinLenovo"
+    },
+    "worker": {
+      "tailscaleIp": "100.77.131.28",
+      "hostname": "ichabodcrane",
+      "node": "v24.19.0"
+    }
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "jobId": "job-standing-20260903-203851-r1",
+      "missionId": "mission-standing-20260903-203851-r1",
+      "processA": {
+        "role": "dispatcher",
+        "hostname": "JustinLenovo",
+        "pid": 22608,
+        "enqueued": {
+          "accepted": true,
+          "duplicate": false
+        }
+      },
+      "standingWorker": {
+        "role": "standing-systemd-user-unit",
+        "unit": "athere-mesh-remote-executor.service",
+        "hostname": "ichabodcrane",
+        "pid": 2257447,
+        "matchedUnitMainPid": true
+      },
+      "resultOnA": {
+        "jobId": "job-standing-20260903-203851-r1",
+        "ok": true,
+        "worker": {
+          "hostname": "ichabodcrane",
+          "platform": "linux 7.0.0-30-generic",
+          "nodeVersion": "v24.19.0",
+          "pid": 2257447
+        },
+        "result": {
+          "command": "node --test tests/contract/remote-executor-smoke-pin.test.js",
+          "exitCode": 0,
+          "tests": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "stdout": "✔ remote executor smoke pin (0.840879ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 72.153833\n",
+          "stderr": ""
+        },
+        "startedAt": "2026-09-04T03:38:52.795Z",
+        "completedAt": "2026-09-04T03:38:52.918Z"
+      }
+    },
+    {
+      "round": 2,
+      "jobId": "job-standing-20260903-203851-r2",
+      "missionId": "mission-standing-20260903-203851-r2",
+      "processA": {
+        "role": "dispatcher",
+        "hostname": "JustinLenovo",
+        "pid": 24484,
+        "enqueued": {
+          "accepted": true,
+          "duplicate": false
+        }
+      },
+      "standingWorker": {
+        "role": "standing-systemd-user-unit",
+        "unit": "athere-mesh-remote-executor.service",
+        "hostname": "ichabodcrane",
+        "pid": 2257447,
+        "matchedUnitMainPid": true
+      },
+      "resultOnA": {
+        "jobId": "job-standing-20260903-203851-r2",
+        "ok": true,
+        "worker": {
+          "hostname": "ichabodcrane",
+          "platform": "linux 7.0.0-30-generic",
+          "nodeVersion": "v24.19.0",
+          "pid": 2257447
+        },
+        "result": {
+          "command": "node --test tests/contract/remote-executor-smoke-pin.test.js",
+          "exitCode": 0,
+          "tests": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "stdout": "✔ remote executor smoke pin (0.84842ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 66.778548\n",
+          "stderr": ""
+        },
+        "startedAt": "2026-09-04T03:38:53.121Z",
+        "completedAt": "2026-09-04T03:38:53.232Z"
+      }
+    },
+    {
+      "round": 3,
+      "jobId": "job-standing-20260903-203851-r3",
+      "missionId": "mission-standing-20260903-203851-r3",
+      "processA": {
+        "role": "dispatcher",
+        "hostname": "JustinLenovo",
+        "pid": 2316,
+        "enqueued": {
+          "accepted": true,
+          "duplicate": false
+        }
+      },
+      "standingWorker": {
+        "role": "standing-systemd-user-unit",
+        "unit": "athere-mesh-remote-executor.service",
+        "hostname": "ichabodcrane",
+        "pid": 2257447,
+        "matchedUnitMainPid": true
+      },
+      "resultOnA": {
+        "jobId": "job-standing-20260903-203851-r3",
+        "ok": true,
+        "worker": {
+          "hostname": "ichabodcrane",
+          "platform": "linux 7.0.0-30-generic",
+          "nodeVersion": "v24.19.0",
+          "pid": 2257447
+        },
+        "result": {
+          "command": "node --test tests/contract/remote-executor-smoke-pin.test.js",
+          "exitCode": 0,
+          "tests": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "stdout": "✔ remote executor smoke pin (0.829814ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 73.313979\n",
+          "stderr": ""
+        },
+        "startedAt": "2026-09-04T03:38:53.434Z",
+        "completedAt": "2026-09-04T03:38:53.551Z"
+      }
+    }
+  ],
+  "doesNotProve": [
+    "Full end-to-end mission orchestrator runMission over Redis+remote queue in a live owner API session (env auto-wire is unit-tested; this evidence is standing-worker dispatch)",
+    "Shared Postgres mission-state mutation during the remote executor handoff (wired when ATHERE_MESH_POSTGRES_* set; not exercised in these rounds)",
+    "Inspect (nyx) dispatched remotely — only run-node-tests is remote in this path",
+    "Multi-worker lease/fairness beyond LPOP claim",
+    "Entire Node suite remotely — smoke uses one pin test file",
+    "Item 10 / QR18"
+  ]
+}
