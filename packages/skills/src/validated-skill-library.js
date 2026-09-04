@@ -8,6 +8,10 @@ import {
   normalizeSkill,
 } from '../../contracts/src/skill-library.js';
 
+/** Hard caps against skill-library DoS. */
+export const MAX_SKILLS = 64;
+export const MAX_SKILL_VERSIONS = 32;
+
 function requiredText(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
@@ -55,6 +59,9 @@ export function createValidatedSkillLibrary({
       if (skills.has(id)) {
         throw new Error(`skill already exists: ${id}; use publishVersion`);
       }
+      if (skills.size >= MAX_SKILLS) {
+        throw new Error(`skills exceed cap (${MAX_SKILLS})`);
+      }
       const normalized = normalizeSkill({
         ...skill,
         id,
@@ -76,6 +83,9 @@ export function createValidatedSkillLibrary({
     async publishVersion({ skillId, lessonId, skill }) {
       const id = requiredText(skillId, 'skillId');
       const map = versionsFor(id);
+      if (map.size >= MAX_SKILL_VERSIONS) {
+        throw new Error(`skill versions exceed cap (${MAX_SKILL_VERSIONS})`);
+      }
       const priorVersion = currentVersion(id);
       const prior = map.get(priorVersion);
       const lesson = findPermanentLesson(lessonId);

@@ -40,6 +40,7 @@ import { resolveAuthorityFromHistory } from '../../contracts/src/agent-identity.
 import { createAgentIdentityRegistry } from '../../identity/src/agent-identity-registry.js';
 import { createGatedLearningPipeline } from '../../learning/src/gated-learning-pipeline.js';
 import { createValidatedSkillLibrary } from '../../skills/src/validated-skill-library.js';
+import { createSelfImprovementSandbox } from '../../improvement/src/self-improvement-sandbox.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const FACT_STATUSES = new Set(['current', 'superseded', 'revoked', 'corrected', 'historical', 'tentative']);
@@ -326,6 +327,9 @@ function validateUpdate(update, mission) {
     if (field === 'skillLibrary' || field === 'skills') {
       throw new Error('skillLibrary must be changed through the validated skill library');
     }
+    if (field === 'selfImprovement' || field === 'improvementSandbox') {
+      throw new Error('selfImprovement must be changed through the self-improvement sandbox');
+    }
     if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`);
   }
   const validated = {};
@@ -375,6 +379,7 @@ export function createMissionStateService({
   identities = createAgentIdentityRegistry(),
   learning = createGatedLearningPipeline(),
   skills = null,
+  improvement = createSelfImprovementSandbox(),
   operationRetryTimeoutMs = OPERATION_RETRY_TIMEOUT_MS,
   operationRetryDelayMs = OPERATION_RETRY_DELAY_MS,
 } = {}) {
@@ -388,6 +393,9 @@ export function createMissionStateService({
   const skillLibrary = skills ?? createValidatedSkillLibrary({ learning, now: clock });
   if (!skillLibrary || typeof skillLibrary.reuse !== 'function' || typeof skillLibrary.publishFromLesson !== 'function') {
     throw new TypeError('skills library must provide reuse and publishFromLesson');
+  }
+  if (!improvement || typeof improvement.runPipeline !== 'function' || typeof improvement.deployToProduction !== 'function') {
+    throw new TypeError('improvement sandbox must provide runPipeline and deployToProduction');
   }
   function assertRegisteredIdentityActive(actorId) {
     if (typeof identities.has === 'function' && !identities.has(actorId)) {
@@ -850,6 +858,15 @@ export function createMissionStateService({
     },
     listSkills() {
       return skillLibrary.list();
+    },
+    async runImprovementPipeline(input) {
+      return improvement.runPipeline(input);
+    },
+    async deployImprovementToProduction(payload) {
+      return improvement.deployToProduction(payload);
+    },
+    listImprovementProposals() {
+      return improvement.list();
     },
     async recordFact({ operationId, missionId, expectedRevision, actor, fact, evidence }) {
       const normalized = recordableFact(fact);

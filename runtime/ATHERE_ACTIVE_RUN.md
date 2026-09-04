@@ -2,7 +2,7 @@
 
 
 
-**Status:** Active — Items 2–22 landed. **Item 22 validated skill library** (`docs/current/ATHERE_VALIDATED_SKILL_LIBRARY.md`). Item 23 not started.
+**Status:** Active — Items 2–23 landed; **HARDEN 22–23 closed**. Item 24 not started.
 
 **New-thread tie-in (paste block):** `docs/current/ATHERE_THREAD_TIE_IN.md` — continue only; zero skill load = deletion; no rebuild.
 
@@ -11,7 +11,7 @@ This file is the live operator view for the current Athere implementation run.
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **Item 22 landed** — versioned validated skill library; reuse without re-deriving; no silent mutation. Item 23 not started.
+- Current focus: **HARDEN 22–23 closed** — skill/improvement DoS caps + improvement monitor/approve-deploy separation. Item 24 not started.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -420,3 +420,37 @@ This file is the live operator view for the current Athere implementation run.
 - **Intent when resumed:** mission-scoped bind (e.g. `mission.validatedSkills` id/version/contentHash/provenance) mutated only via gated skill ops, so `stateHash` covers it. Prefer mission-bound snapshots or root hashes — **not** stuffing the global process library into every mission.
 - **Why deferred:** residual only; Item 22 acceptance already holds without it.
 - Item 23 not started unless ordered.
+
+82. **Item 23 — Self-improvement sandbox.** Acceptance: experimentally improve without uncontrolled self-modification.
+
+- **Added:** `packages/contracts/src/self-improvement.js`, `packages/improvement/src/self-improvement-sandbox.js`, `tests/contract/self-improvement.test.js`, `tests/integration/self-improvement-item23.test.js`, `docs/current/ATHERE_SELF_IMPROVEMENT_SANDBOX.md`.
+- **Wired:** propose→sandbox→benchmark→frozen-control compare→security→QR18→approve→deploy→monitor→rollback; `service.runImprovementPipeline` / `deployImprovementToProduction` (self-declare always REJECT); transition forge of `selfImprovement` REJECT.
+- **Hostile security (local, no GitHub):** stage skip REJECT; regression REJECT; executor cannot approve/deploy; self-declare-better→production REJECT; no new HTTP.
+- **Suite:** 409 pass / 0 fail / 17 skip (re-verify if remote-queue lease flake).
+- Item 24 not started.
+
+83. **Item 23 safety / bad-actor gate audit (local).**
+
+- **Holes found OPEN and closed:**
+  1. `securityCheck` accepted `passed: true` with non-empty findings → REJECT findings present.
+  2. Benchmark `securityFindings > 0` still allowed empty-findings security pass → REJECT.
+  3. Proposer could self-approve / self-deploy (`proposedBy === actor`) → REJECT separation of duties.
+- **Already closed:** executor approve/deploy; stage skip; frozen-control regression; self-declare→production; transition forge.
+- **Tests:** `tests/integration/self-improvement-item23-security.test.js`.
+- **Suite after close:** 412 pass / 0 fail / 17 skip.
+- Residual: improvement sandbox is process-local; metrics remain caller-supplied.
+- Item 24 not started.
+
+84. **HARDEN 22–23 (local).** Residual hostile probe after Items 22–23 security closes.
+
+- **Holes found OPEN and closed:**
+  1. Skill library uncapped skill count / version growth (DoS) → `MAX_SKILLS=64`, `MAX_SKILL_VERSIONS=32` fail closed.
+  2. `monitor()` had no actor gate (anyone could force `healthy:false` → rollback) → require approver or deployer.
+  3. Same actor could approve and deploy → REJECT `deployer === approvedBy`.
+  4. Improvement proposal map uncapped → `MAX_IMPROVEMENT_PROPOSALS=64` fail closed.
+- **Tests:** `tests/integration/mea-hostile-items-22-23-harden.test.js`.
+- **Docs:** security sections in `ATHERE_VALIDATED_SKILL_LIBRARY.md` / `ATHERE_SELF_IMPROVEMENT_SANDBOX.md`.
+- **Already closed (prior):** unpublished lesson; mutateInPlace; rate sum; security findings; proposer self-approve/deploy; stage skip; self-declare→production; transition forge.
+- **Suite after close:** 416 pass / 0 fail / 17 skip.
+- **Residual:** process-local skill library + improvement proposals (mission-hash skills still deferred ckpt 81); caller-supplied improvement metrics.
+- Item 24 not started unless ordered.

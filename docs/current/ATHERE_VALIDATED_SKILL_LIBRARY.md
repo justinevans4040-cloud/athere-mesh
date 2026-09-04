@@ -26,6 +26,7 @@ Athere can reuse validated experience rather than re-deriving every procedure fr
 - Skill versions require a **new** gated permanent lesson (no unvalidated `publishVersion`)
 - `historicalSuccessRate + failureRate` cannot exceed 1
 - Silent in-place mutation rejected
+- Hard caps: `MAX_SKILLS` (64) / `MAX_SKILL_VERSIONS` (32) fail closed
 - `skillLibrary` / `skills` via generic `transition` rejected
 - No new HTTP surface
 - Skills are process-local library state (not mission-hash authority)
@@ -38,3 +39,5 @@ Athere can reuse validated experience rather than re-deriving every procedure fr
 
 - `tests/contract/skill-library.test.js`
 - `tests/integration/skill-library-item22.test.js`
+- `tests/integration/skill-library-item22-security.test.js`
+- `tests/integration/mea-hostile-items-22-23-harden.test.js`
