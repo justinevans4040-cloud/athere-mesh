@@ -2,7 +2,7 @@
 
 
 
-**Status:** Active — Items 2–23 landed; **HARDEN 22–23 closed**. Item 24 not started.
+**Status:** Active — Items 2–24 landed; **Item 24 security audit closed** (ckpt 86).
 
 **New-thread tie-in (paste block):** `docs/current/ATHERE_THREAD_TIE_IN.md` — continue only; zero skill load = deletion; no rebuild.
 
@@ -11,7 +11,7 @@ This file is the live operator view for the current Athere implementation run.
 ## Current run
 
 - State: Authority chain locked per founder Justin Evans: founder → Miss Vale Prime → The Britt 4.0 for dangerous keys; `qra_sentinel` is last-line output Governor with blast radius; `cluster_core_qc_sentinel` remains daily QC only. See `docs/current/ATHERE_AUTHORITY_AND_SENTINEL.md` and `packages/contracts/src/authority-chain.js`.
-- Current focus: **HARDEN 22–23 closed** — skill/improvement DoS caps + improvement monitor/approve-deploy separation. Item 24 not started.
+- Current focus: **Item 24 security closed** — branded layer, SAFE_ID, shard cap, CAS-through-wrapper, no replica verification.
 - Orchestrator publish-error swallow residual **closed** for network buses: Redis bus sets `failClosedOnPublish: true`; env auto-wire injects that bus when `ATHERE_MESH_REDIS_*` is set.
 
 - **Why the scrape was replaced.** Seven consecutive hostile audits each found a new encoding channel (synonym keys, object bags, combining marks, homoglyphs, base64/URI, char arrays, substring embeds, nest depth). The root flaw was structural, not incremental: independence was decided by searching **caller-supplied** data for a name, so the attacker controlled the haystack and the boundary could never be proven closed. Worse, it forced the honest orchestrator to strip the certifier `agent` and `verifier` from `artifactReferences`, which **regressed backlog Item 6** (artifact lineage requires producer action and verifier decision — `writeArtifactProof` takes `agent` and `verifierResult` by design).
@@ -454,3 +454,26 @@ This file is the live operator view for the current Athere implementation run.
 - **Suite after close:** 416 pass / 0 fail / 17 skip.
 - **Residual:** process-local skill library + improvement proposals (mission-hash skills still deferred ckpt 81); caller-supplied improvement metrics.
 - Item 24 not started unless ordered.
+
+85. **Item 24 — Distributed blackboard / state layer.** Acceptance: distribution increases capacity without weakening state authority or verification.
+
+- **Added:** `packages/contracts/src/distributed-state.js`, `packages/distributed/src/distributed-mission-store.js`, `docs/current/ATHERE_DISTRIBUTED_STATE.md`, contract + integration + security tests.
+- **Wired:** opt-in `createMissionStateService({ distributed: true | layer })`; primary-only writes; replica capacity reads; append-only state events; shard metadata; transition forge of `distributedState` REJECT.
+- **Hostile security (local, no GitHub):** replica write REJECT; promote/multi-master/CRDT/quorum-bypass/geo-dual-primary REJECT; replica mutation does not corrupt primary; unknown replica index REJECT.
+- **Suite:** 421 pass / 0 fail / 17 skip.
+- Residual: in-process replica sync (compose with Postgres primary for cross-host authority); no multi-master failover.
+
+86. **Item 24 security audit (local).** Hostile re-probe + residual closes after Item 24 READY claim.
+
+- **Review:** local Security Review subagent — no medium/high/critical in diff.
+- **Holes / residuals closed:**
+  1. Unbranded injectable distributed layer (method-shape only) → require `DISTRIBUTED_MISSION_STORE_BRAND`.
+  2. Replica/`listStateEvents` missionId used `requiredText` not SAFE_ID → `requireDistributedMissionId`.
+  3. Uncapped `shardCount` → `MAX_SHARDS=64`.
+  4. Replica-as-verification path undocumented in code → `assertCannotVerifyFromReplica`.
+  5. Missing explicit CAS-through-wrapper proof → security test.
+- **Tests:** expanded `distributed-state-item24-security.test.js` + contract verify-from-replica.
+- **Suite after close:** 423 pass / 0 fail / 17 skip.
+- Residual: custom `store` injection remains trusted composition (same as pre-Item 24); in-process replicas.
+
+

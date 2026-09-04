@@ -41,6 +41,7 @@ import { createAgentIdentityRegistry } from '../../identity/src/agent-identity-r
 import { createGatedLearningPipeline } from '../../learning/src/gated-learning-pipeline.js';
 import { createValidatedSkillLibrary } from '../../skills/src/validated-skill-library.js';
 import { createSelfImprovementSandbox } from '../../improvement/src/self-improvement-sandbox.js';
+import { createDistributedMissionStore, isBrandedDistributedMissionStore } from '../../distributed/src/distributed-mission-store.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const FACT_STATUSES = new Set(['current', 'superseded', 'revoked', 'corrected', 'historical', 'tentative']);
@@ -330,6 +331,9 @@ function validateUpdate(update, mission) {
     if (field === 'selfImprovement' || field === 'improvementSandbox') {
       throw new Error('selfImprovement must be changed through the self-improvement sandbox');
     }
+    if (field === 'distributedState' || field === 'replicas' || field === 'stateEventLog') {
+      throw new Error('distributedState must be changed through the distributed state layer');
+    }
     if (!MUTABLE_FIELDS.has(field)) throw new Error(`unsupported authoritative state field: ${field}`);
   }
   const validated = {};
@@ -380,6 +384,7 @@ export function createMissionStateService({
   learning = createGatedLearningPipeline(),
   skills = null,
   improvement = createSelfImprovementSandbox(),
+  distributed = null,
   operationRetryTimeoutMs = OPERATION_RETRY_TIMEOUT_MS,
   operationRetryDelayMs = OPERATION_RETRY_DELAY_MS,
 } = {}) {
@@ -397,6 +402,21 @@ export function createMissionStateService({
   if (!improvement || typeof improvement.runPipeline !== 'function' || typeof improvement.deployToProduction !== 'function') {
     throw new TypeError('improvement sandbox must provide runPipeline and deployToProduction');
   }
+  const distributedLayer = distributed === true
+    ? createDistributedMissionStore({ primary: store, now: clock })
+    : distributed;
+  if (distributedLayer != null) {
+    if (!isBrandedDistributedMissionStore(distributedLayer)) {
+      throw new TypeError('distributed must be true or a branded distributedMissionStore from createDistributedMissionStore');
+    }
+    if (typeof distributedLayer.loadMission !== 'function' || typeof distributedLayer.saveMission !== 'function') {
+      throw new TypeError('distributed layer must provide loadMission and saveMission');
+    }
+    if (typeof distributedLayer.loadMissionReplica !== 'function' || typeof distributedLayer.topology !== 'function') {
+      throw new TypeError('distributed layer must provide loadMissionReplica and topology');
+    }
+  }
+  store = distributedLayer ?? store;
   function assertRegisteredIdentityActive(actorId) {
     if (typeof identities.has === 'function' && !identities.has(actorId)) {
       return;
@@ -867,6 +887,22 @@ export function createMissionStateService({
     },
     listImprovementProposals() {
       return improvement.list();
+    },
+    distributedTopology() {
+      if (distributedLayer == null) throw new Error('distributed state layer not configured');
+      return distributedLayer.topology();
+    },
+    async loadMissionReplica(input) {
+      if (distributedLayer == null) throw new Error('distributed state layer not configured');
+      return distributedLayer.loadMissionReplica({ ...input, root });
+    },
+    listMissionStateEvents(input = {}) {
+      if (distributedLayer == null) throw new Error('distributed state layer not configured');
+      return distributedLayer.listStateEvents(input);
+    },
+    resolveMissionShard(missionId) {
+      if (distributedLayer == null) throw new Error('distributed state layer not configured');
+      return distributedLayer.resolveShard(missionId);
     },
     async recordFact({ operationId, missionId, expectedRevision, actor, fact, evidence }) {
       const normalized = recordableFact(fact);
