@@ -83,14 +83,14 @@ test('memory remote work queue rejects conflicting job id reuse', async () => {
   await queue.close();
 });
 
-test('remote dispatch executor keeps inspect local and dispatches runTests', async () => {
+test('remote dispatch executor dispatches inspect and runTests (local never called)', async () => {
   const queue = createMemoryRemoteWorkQueue();
   let inspectCalls = 0;
   let runCalls = 0;
   const local = {
-    async inspect(input) {
+    async inspect() {
       inspectCalls += 1;
-      return { package: { name: 'athere-mesh', version: '0.1.0' }, sourceFilesOnDisk: 1, testFilesOnDisk: 1, input };
+      throw new Error('local inspect must not be called when dispatching remotely');
     },
     async runTests() {
       runCalls += 1;
@@ -98,18 +98,19 @@ test('remote dispatch executor keeps inspect local and dispatches runTests', asy
     },
   };
 
+  const jobIds = ['job-dispatch-inspect', 'job-dispatch-tests'];
+  let idIndex = 0;
   const worker = (async () => {
-    for (;;) {
+    let completed = 0;
+    while (completed < 2) {
       const job = await queue.claim({ workerId: 'test-worker', timeoutMs: 50 });
       if (job === null) {
         await new Promise((resolve) => setTimeout(resolve, 20));
         continue;
       }
-      await queue.complete({
-        jobId: job.id,
-        ok: true,
-        worker: { hostname: 'ichabodcrane', pid: 42 },
-        result: {
+      const result = job.kind === 'inspect-repository'
+        ? { package: { name: 'athere-mesh', version: '0.1.0' }, sourceFilesOnDisk: 1, testFilesOnDisk: 1 }
+        : {
           command: 'node --test',
           exitCode: 0,
           tests: 2,
@@ -118,10 +119,15 @@ test('remote dispatch executor keeps inspect local and dispatches runTests', asy
           skipped: 0,
           stdout: 'ok',
           stderr: '',
-        },
+        };
+      await queue.complete({
+        jobId: job.id,
+        ok: true,
+        worker: { hostname: 'ichabodcrane', pid: 42 },
+        result,
         completedAt: new Date().toISOString(),
       });
-      break;
+      completed += 1;
     }
   })();
 
@@ -131,11 +137,11 @@ test('remote dispatch executor keeps inspect local and dispatches runTests', asy
     workerRepositoryRoot: '/remote/athere-mesh',
     awaitTimeoutMs: 5_000,
     dispatcherHost: 'JustinLenovo',
-    idFactory: () => 'job-dispatch-meta',
+    idFactory: () => jobIds[idIndex++],
   });
 
-  const inspection = await remote.inspect({ envelope: { demo: true } });
-  assert.equal(inspectCalls, 1);
+  const inspection = await remote.inspect({ envelope: sampleJob({ kind: 'inspect-repository' }).envelope });
+  assert.equal(inspectCalls, 0);
   assert.equal(inspection.package.name, 'athere-mesh');
 
   const tests = await remote.runTests({
@@ -148,8 +154,95 @@ test('remote dispatch executor keeps inspect local and dispatches runTests', asy
   assert.equal(Object.hasOwn(tests, 'remoteWorker'), false);
   await worker;
 
-  const meta = await queue.awaitResult('job-dispatch-meta', { timeoutMs: 1000, pollMs: 10 });
+  const meta = await queue.awaitResult('job-dispatch-tests', { timeoutMs: 1000, pollMs: 10 });
   assert.equal(meta.worker.hostname, 'ichabodcrane');
+  await queue.close();
+});
+
+test('memory remote work queue reclaims an expired lease for a second worker', async () => {
+  const queue = createMemoryRemoteWorkQueue({ defaultLeaseMs: 40 });
+  const job = sampleJob({ id: 'job-lease-1' });
+  await queue.enqueue(job);
+
+  const first = await queue.claim({ workerId: 'worker-a', leaseMs: 40 });
+  assert.equal(first.id, 'job-lease-1');
+  assert.equal(first.claimedBy, 'worker-a');
+
+  const blocked = await queue.claim({ workerId: 'worker-b', timeoutMs: 10 });
+  assert.equal(blocked, null);
+
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  const reclaimed = await queue.reclaimExpired();
+  assert.equal(reclaimed.reclaimed, 1);
+
+  const second = await queue.claim({ workerId: 'worker-b', leaseMs: 5_000 });
+  assert.equal(second.id, 'job-lease-1');
+  assert.equal(second.claimedBy, 'worker-b');
+
+  await queue.complete({
+    jobId: job.id,
+    ok: true,
+    worker: { hostname: 'ichabodcrane', pid: 2 },
+    result: { command: 'node --test', exitCode: 0, tests: 1, passed: 1, failed: 0, skipped: 0, stdout: '', stderr: '' },
+    completedAt: new Date().toISOString(),
+  });
+  await queue.close();
+});
+
+test('memory remote work queue heartbeat prevents reclaim by a second worker', async () => {
+  const queue = createMemoryRemoteWorkQueue({ defaultLeaseMs: 80 });
+  const job = sampleJob({ id: 'job-lease-hb' });
+  await queue.enqueue(job);
+  await queue.claim({ workerId: 'worker-a', leaseMs: 80 });
+
+  for (let i = 0; i < 4; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    await queue.heartbeat({ jobId: job.id, workerId: 'worker-a', leaseMs: 80 });
+  }
+
+  const reclaimed = await queue.reclaimExpired();
+  assert.equal(reclaimed.reclaimed, 0);
+  const blocked = await queue.claim({ workerId: 'worker-b', timeoutMs: 10 });
+  assert.equal(blocked, null);
+
+  await queue.complete({
+    jobId: job.id,
+    ok: true,
+    worker: { hostname: 'ichabodcrane', pid: 3 },
+    result: { command: 'node --test', exitCode: 0, tests: 1, passed: 1, failed: 0, skipped: 0, stdout: '', stderr: '' },
+    completedAt: new Date().toISOString(),
+  });
+  await queue.close();
+});
+
+test('remote executor worker handles inspect-repository jobs', async () => {
+  const queue = createMemoryRemoteWorkQueue();
+  const job = sampleJob({
+    id: 'job-inspect-once',
+    kind: 'inspect-repository',
+    repositoryRoot: '/does-not-matter',
+  });
+  await queue.enqueue(job);
+
+  const report = await runRemoteExecutorWorkerOnce({
+    workQueue: queue,
+    workerId: 'worker-inspect',
+    executor: {
+      async inspect() {
+        return { package: { name: 'athere-mesh', version: '0.1.0' }, sourceFilesOnDisk: 4, testFilesOnDisk: 7 };
+      },
+      async runTests() {
+        throw new Error('runTests must not run for inspect jobs');
+      },
+    },
+    identity: { hostname: 'ichabodcrane', pid: 88 },
+    claimTimeoutMs: 100,
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(report.kind, 'inspect-repository');
+  const result = await queue.awaitResult('job-inspect-once', { timeoutMs: 1000, pollMs: 10 });
+  assert.equal(result.result.sourceFilesOnDisk, 4);
   await queue.close();
 });
 
@@ -250,6 +343,38 @@ test('redis remote work queue round-trips a job through the mesh seed', { skip }
     const result = await queue.awaitResult(job.id, { timeoutMs: 2000, pollMs: 50 });
     assert.equal(result.ok, true);
     assert.equal(result.jobId, job.id);
+  } finally {
+    await queue.close();
+  }
+});
+
+test('redis remote work queue reclaims an expired lease across workers', { skip }, async () => {
+  const namespace = `${runNamespace}:lease`;
+  const queue = createRedisRemoteWorkQueue({
+    ...configured,
+    namespace,
+    connectTimeoutMs: 5000,
+    commandTimeoutMs: 5000,
+    defaultLeaseMs: 200,
+  });
+  const job = sampleJob({ id: `job-lease-live-${randomUUID().replace(/-/g, '').slice(0, 8)}` });
+  try {
+    await queue.enqueue(job);
+    const first = await queue.claim({ workerId: 'live-worker-a', timeoutMs: 2000, leaseMs: 200 });
+    assert.equal(first.id, job.id);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const reclaimed = await queue.reclaimExpired();
+    assert.ok(reclaimed.reclaimed >= 1);
+    const second = await queue.claim({ workerId: 'live-worker-b', timeoutMs: 2000, leaseMs: 5_000 });
+    assert.equal(second.id, job.id);
+    assert.equal(second.claimedBy, 'live-worker-b');
+    await queue.complete({
+      jobId: job.id,
+      ok: true,
+      worker: { hostname: 'test-host', pid: process.pid },
+      result: { command: 'node --test', exitCode: 0, tests: 1, passed: 1, failed: 0, skipped: 0, stdout: '', stderr: '' },
+      completedAt: new Date().toISOString(),
+    });
   } finally {
     await queue.close();
   }

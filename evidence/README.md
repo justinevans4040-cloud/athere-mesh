@@ -15,6 +15,9 @@ Public smoke / demo artifacts for Athere Mesh Titan recreate.
 | [smoke-shared-mission-state-crosshost-20260903-201846.json](./smoke-shared-mission-state-crosshost-20260903-201846.json) | Shared mission state — Lenovo write into Ichabod Postgres `athere_mesh`, Ichabod read same revision/objective, 3 rounds. **State only.** |
 | [smoke-remote-executor-crosshost-20260903-202947.json](./smoke-remote-executor-crosshost-20260903-202947.json) | Remote executor dispatch — Lenovo enqueues `run-node-tests`; Ichabod worker claimed **per-round via SSH** (blocker 3 land). See `doesNotProve`. |
 | [smoke-remote-executor-standing-worker-crosshost-20260903-203851.json](./smoke-remote-executor-standing-worker-crosshost-20260903-203851.json) | Standing Ichabod systemd user worker — Lenovo publishes 3 jobs; unit `athere-mesh-remote-executor.service` claims them with **no mid-flight SSH claim**; worker PID = unit MainPID all rounds. |
+| [smoke-remote-work-lease-20260904T035458.json](./smoke-remote-work-lease-20260904T035458.json) | Multi-worker lease reclaim — Worker A abandons; after expiry Worker B claims. Beyond LPOP-only. |
+| [smoke-remote-executor-cohort-crosshost-20260904T035619.json](./smoke-remote-executor-cohort-crosshost-20260904T035619.json) | Standing worker runs a 4-file contract cohort (20 tests), not pin-only; no mid-flight SSH claim. |
+| [smoke-owner-api-mission-crosshost-20260904T035714.json](./smoke-owner-api-mission-crosshost-20260904T035714.json) | Owner `orchestrator.execute()` with Redis bus + remote queue + shared Postgres; remote inspect + full suite on standing Ichabod worker (310/309/0/1); mission verified in `titan_missions`. |
 | [arweave/](./arweave/) | Arweave permanence folder + README |
 | [demos/](./demos/) | Slice 0–3 demo MP4s |
 | [nosana/](./nosana/) | Nosana GPU smoke (started then stopped) |

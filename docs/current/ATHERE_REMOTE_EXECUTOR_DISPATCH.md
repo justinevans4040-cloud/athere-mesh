@@ -1,24 +1,31 @@
 # Athere Remote Executor Dispatch — CURRENT (2026-09-03)
 
-**Status:** implemented, opt-in. Doctrine-baseline **blocker 3** + standing worker + owner env auto-wire.
+**Status:** implemented, opt-in. Doctrine-baseline **blocker 3** + standing worker + owner env auto-wire + lease reclaim + remote inspect.
 
 This is not a numbered backlog item. It does not start Item 10 / QR18.
 
 ## What it is
 
-Cross-host handoff for one subgoal: **`run-node-tests` (rune)**.
+Cross-host handoff for executor work: **`inspect-repository` (nyx)** and **`run-node-tests` (rune)**.
 
 | Piece | Role |
 |---|---|
-| `packages/execution/src/remote-work-queue.js` | Redis (or in-memory) job queue with the same mesh seed guard as the resonance bus |
-| `packages/execution/src/remote-dispatch-executor.js` | Executor facade: `inspect` stays local; `runTests` enqueues and awaits |
-| `packages/execution/src/remote-executor-worker.js` | Worker claim → existing `createNodeTestExecutor` → complete |
+| `packages/execution/src/remote-work-queue.js` | Redis (or in-memory) job queue with mesh seed guard, **lease claim**, heartbeat, and reclaim |
+| `packages/execution/src/remote-dispatch-executor.js` | Executor facade: both `inspect` and `runTests` enqueue and await |
+| `packages/execution/src/remote-executor-worker.js` | Worker claim → existing `createNodeTestExecutor` → complete (heartbeats while working) |
 | `scripts/smoke-remote-executor-dispatch.js` | `dispatch` / `worker-once` / `await` smoke CLI |
+| `scripts/smoke-remote-executor-cohort.js` | Multi-file contract cohort against the standing worker |
+| `scripts/smoke-remote-work-lease.js` | Multi-worker lease reclaim smoke (isolated namespace) |
+| `scripts/smoke-owner-api-mission.js` | Owner `orchestrator.execute()` over env-wired Redis + remote queue (+ optional Postgres) |
 | `scripts/remote-executor-worker.js` | Long-running worker entry (poll loop) |
 | `packages/orchestrator/src/mesh-env-wiring.js` | Env → Redis bus + optional remote queue + optional shared Postgres for `start-agent-api` |
 | `deploy/systemd/athere-mesh-remote-executor.service` | Standing systemd **user** unit on Ichabod (`Restart=always`, linger) |
 
-The mission orchestrator accepts an optional `remoteWorkQueue` (+ `remoteRepositoryRoot`). When injected, `run-node-tests` is dispatched remotely; inspect and auditor paths stay local. Offline hermetic tests omit the queue and keep the previous in-process executor path.
+When `remoteWorkQueue` is injected, envelope input bindings hash the **worker** repository root (`remoteRepositoryRoot`). Auditor / proof paths stay on the owner host. Offline hermetic tests omit the queue and keep the previous in-process executor path.
+
+## Lease claim (multi-worker)
+
+Claims are no longer LPOP-only. A claim places the job into a processing set with a lease expiry. A second worker cannot take it while the lease is live. Heartbeats extend the lease during long work. `reclaimExpired()` (also run inside `claim`) returns abandoned jobs to the queue for another worker.
 
 ## Fail-closed publish (named residual closed)
 
@@ -30,7 +37,7 @@ The mission orchestrator accepts an optional `remoteWorkQueue` (+ `remoteReposit
 |---|---|
 | `ATHERE_MESH_REDIS_*` | When set (with seed id), inject Redis resonance bus |
 | `ATHERE_MESH_REMOTE_WORK_QUEUE` | `1` / `true` / `yes` / `on` — inject Redis remote work queue (requires Redis env) |
-| `ATHERE_MESH_REMOTE_REPOSITORY_ROOT` | Path **on the worker host** for dispatched `run-node-tests` |
+| `ATHERE_MESH_REMOTE_REPOSITORY_ROOT` | Path **on the worker host** for dispatched inspect + run-node-tests |
 | `ATHERE_MESH_WORK_NAMESPACE` | Work-queue key prefix. Defaults to `athere:mesh:work` |
 | `ATHERE_MESH_POSTGRES_*` / `DATABASE_URL` | When set, inject shared Postgres mission store |
 
@@ -59,8 +66,8 @@ ATHERE_MESH_WORK_NAMESPACE=athere:mesh:work:smoke:<id> \
 node scripts/remote-executor-worker.js --once
 ```
 
-`--repository-root` on **dispatch** must be the path **on the worker host**.
+`--repository-root` / `ATHERE_MESH_REMOTE_REPOSITORY_ROOT` must be the path **on the worker host**.
 
 ## What this proves / does not prove
 
-See the cross-host evidence JSON under `evidence/` (standing-worker artifact and earlier blocker-3 artifact) and each file's `doesNotProve` list. Passing unit tests alone are not acceptance.
+See the cross-host evidence JSON under `evidence/` (owner-api mission, cohort, lease, standing-worker, earlier blocker artifacts) and each file's `doesNotProve` list. Passing unit tests alone are not acceptance. Item 10 / QR18 is not started.

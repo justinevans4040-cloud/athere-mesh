@@ -1,0 +1,38 @@
+{
+  "ok": false,
+  "smoke": "remote-executor-cohort-crosshost",
+  "claim": "Standing Ichabod worker runs a multi-file contract cohort (not pin-only) dispatched from Lenovo over mesh Redis with zero mid-flight SSH claim.",
+  "at": "2026-09-04T03:55:19.121Z",
+  "workNamespace": "athere:mesh:work",
+  "cohort": [
+    "tests/contract/remote-executor-smoke-pin.test.js",
+    "tests/contract/authority-chain.test.js",
+    "tests/contract/execution-roles.test.js",
+    "tests/contract/agent-envelope.test.js"
+  ],
+  "remoteRepositoryRoot": "/home/the_founder/athere-mesh",
+  "midFlightSshClaim": false,
+  "dispatcher": {
+    "hostname": "JustinLenovo",
+    "pid": 8424,
+    "node": "v24.14.1"
+  },
+  "enqueued": {
+    "accepted": true,
+    "duplicate": false
+  },
+  "result": {
+    "jobId": "job-cohort-20260904T035519",
+    "ok": false,
+    "worker": {
+      "hostname": "ichabodcrane",
+      "platform": "linux 7.0.0-30-generic",
+      "nodeVersion": "v24.19.0",
+      "pid": 2262773
+    },
+    "error": "test summary must be terminal",
+    "startedAt": "2026-09-04T03:55:18.682Z",
+    "completedAt": "2026-09-04T03:55:18.818Z"
+  },
+  "error": "cohort result did not meet pass criteria"
+}

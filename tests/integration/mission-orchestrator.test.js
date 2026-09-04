@@ -439,20 +439,25 @@ test('network-bus publish failure fails closed and does not complete the mission
   );
 });
 
-test('orchestrator dispatches run-node-tests through an injected remote work queue', async () => {
+test('orchestrator dispatches inspect and run-node-tests through an injected remote work queue', async () => {
   const root = await workspace();
   const { createMemoryRemoteWorkQueue } = await import('../../packages/execution/src/remote-work-queue.js');
   const { runRemoteExecutorWorkerOnce } = await import('../../packages/execution/src/remote-executor-worker.js');
   const queue = createMemoryRemoteWorkQueue();
 
+  const kinds = [];
   const worker = (async () => {
-    for (;;) {
+    let last = null;
+    while (kinds.length < 2) {
       const report = await runRemoteExecutorWorkerOnce({
         workQueue: queue,
         workerId: 'orchestrator-remote-worker',
         identity: { hostname: 'ichabodcrane', pid: 77 },
         claimTimeoutMs: 50,
         executor: {
+          async inspect() {
+            return { package: { name: 'athere-mesh', version: '0.1.0' }, sourceFilesOnDisk: 3, testFilesOnDisk: 9 };
+          },
           async runTests() {
             return {
               command: 'node --test',
@@ -467,9 +472,14 @@ test('orchestrator dispatches run-node-tests through an injected remote work que
           },
         },
       });
-      if (report.reason !== 'no-job') return report;
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      if (report.reason === 'no-job') {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        continue;
+      }
+      kinds.push(report.kind);
+      last = report;
     }
+    return last;
   })();
 
   const orchestrator = createMissionOrchestrator({
@@ -478,7 +488,7 @@ test('orchestrator dispatches run-node-tests through an injected remote work que
     bus: createMemoryResonanceBus(),
     executor: {
       async inspect() {
-        return { package: { name: 'athere-mesh', version: '0.1.0' }, sourceFilesOnDisk: 3, testFilesOnDisk: 9 };
+        throw new Error('local inspect must not run when remoteWorkQueue is injected');
       },
       async runTests() {
         throw new Error('local runTests must not run when remoteWorkQueue is injected');
@@ -495,6 +505,7 @@ test('orchestrator dispatches run-node-tests through an injected remote work que
 
   assert.equal(result.mission.status, 'completed');
   assert.deepEqual(result.tests, { tests: 4, passed: 4, failed: 0, skipped: 0 });
+  assert.deepEqual(kinds, ['inspect-repository', 'run-node-tests']);
   assert.equal(workerReport.ok, true);
   assert.equal(workerReport.worker.hostname, 'ichabodcrane');
   await queue.close();

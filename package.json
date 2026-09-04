@@ -19,7 +19,10 @@
     "smoke:remote-executor": "node scripts/smoke-remote-executor-dispatch.js",
     "smoke:functional-team": "node scripts/smoke-functional-team.js",
     "start:agent-api": "node scripts/start-agent-api.js",
-    "chat": "node scripts/chat.js"
+    "chat": "node scripts/chat.js",
+    "smoke:owner-api-mission": "node scripts/smoke-owner-api-mission.js",
+    "smoke:remote-work-lease": "node scripts/smoke-remote-work-lease.js",
+    "smoke:remote-executor-cohort": "node scripts/smoke-remote-executor-cohort.js"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.5",

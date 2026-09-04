@@ -8,9 +8,10 @@ import {
 } from '../../resonance/src/redis-resonance-bus.js';
 
 export const DEFAULT_WORK_NAMESPACE = 'athere:mesh:work';
+export const DEFAULT_LEASE_MS = 60_000;
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
-const JOB_KINDS = new Set(['run-node-tests']);
+const JOB_KINDS = new Set(['run-node-tests', 'inspect-repository']);
 
 const SEED_GUARD = `
 local seed = redis.call('GET', KEYS[1])
@@ -34,17 +35,32 @@ redis.call('RPUSH', KEYS[3], ARGV[4])
 return {0}
 `;
 
+// KEYS[2] queue, KEYS[3] job prefix, KEYS[4] processing zset (score = lease expiry ms).
+// ARGV[2] workerId, ARGV[3] nowMs, ARGV[4] leaseMs.
 const CLAIM_SCRIPT = `${SEED_GUARD}
+local now = tonumber(ARGV[3])
+local expired = redis.call('ZRANGEBYSCORE', KEYS[4], '-inf', now)
+for _, expiredId in ipairs(expired) do
+  redis.call('ZREM', KEYS[4], expiredId)
+  redis.call('DEL', KEYS[3] .. ':' .. expiredId .. ':claimed')
+  redis.call('RPUSH', KEYS[2], expiredId)
+end
 local jobId = redis.call('LPOP', KEYS[2])
 if not jobId then return false end
 local payload = redis.call('GET', KEYS[3] .. ':' .. jobId)
 if not payload then return redis.error_reply('ATHERE_MISSING_JOB ' .. jobId) end
+local expires = now + tonumber(ARGV[4])
+redis.call('ZADD', KEYS[4], expires, jobId)
 redis.call('SET', KEYS[3] .. ':' .. jobId .. ':claimed', ARGV[2])
 return payload
 `;
 
+// KEYS[2] result key, KEYS[3] processing zset, KEYS[4] claimed key.
+// ARGV[2] serialized result, ARGV[3] jobId.
 const COMPLETE_SCRIPT = `${SEED_GUARD}
 redis.call('SET', KEYS[2], ARGV[2])
+redis.call('ZREM', KEYS[3], ARGV[3])
+redis.call('DEL', KEYS[4])
 return 1
 `;
 
@@ -52,9 +68,44 @@ const RESULT_SCRIPT = `${SEED_GUARD}
 return redis.call('GET', KEYS[2])
 `;
 
+// KEYS[2] processing zset, KEYS[3] claimed key.
+// ARGV[2] workerId, ARGV[3] jobId, ARGV[4] nowMs, ARGV[5] leaseMs.
+const HEARTBEAT_SCRIPT = `${SEED_GUARD}
+local holder = redis.call('GET', KEYS[3])
+if not holder then return redis.error_reply('ATHERE_LEASE_MISSING') end
+if holder ~= ARGV[2] then return redis.error_reply('ATHERE_LEASE_HOLDER_MISMATCH') end
+local score = redis.call('ZSCORE', KEYS[2], ARGV[3])
+if not score then return redis.error_reply('ATHERE_LEASE_MISSING') end
+local expires = tonumber(ARGV[4]) + tonumber(ARGV[5])
+redis.call('ZADD', KEYS[2], expires, ARGV[3])
+return expires
+`;
+
+// KEYS[2] queue, KEYS[3] job prefix, KEYS[4] processing zset.
+// ARGV[2] nowMs. Returns count reclaimed.
+const RECLAIM_SCRIPT = `${SEED_GUARD}
+local now = tonumber(ARGV[2])
+local expired = redis.call('ZRANGEBYSCORE', KEYS[4], '-inf', now)
+local count = 0
+for _, expiredId in ipairs(expired) do
+  redis.call('ZREM', KEYS[4], expiredId)
+  redis.call('DEL', KEYS[3] .. ':' .. expiredId .. ':claimed')
+  redis.call('RPUSH', KEYS[2], expiredId)
+  count = count + 1
+end
+return count
+`;
+
 function requireId(value, label) {
   if (typeof value !== 'string' || !SAFE_ID.test(value)) throw new Error(`invalid ${label}`);
   return value;
+}
+
+function requireLeaseMs(leaseMs) {
+  if (!Number.isSafeInteger(leaseMs) || leaseMs < 1 || leaseMs > 3_600_000) {
+    throw new TypeError('leaseMs must be an integer from 1 through 3600000');
+  }
+  return leaseMs;
 }
 
 function fingerprint(value) {
@@ -113,17 +164,29 @@ export function resolveRemoteWorkQueueOptions(env = process.env) {
   });
 }
 
-export function createMemoryRemoteWorkQueue() {
+export function createMemoryRemoteWorkQueue({ defaultLeaseMs = DEFAULT_LEASE_MS } = {}) {
   const jobs = new Map();
   const fingerprints = new Map();
   const pending = [];
   const results = new Map();
   const waiters = new Map();
+  const leases = new Map();
 
   function wake(jobId) {
     const list = waiters.get(jobId) ?? [];
     waiters.delete(jobId);
     for (const resolve of list) resolve();
+  }
+
+  function reclaimExpiredInternal(now = Date.now()) {
+    let count = 0;
+    for (const [jobId, lease] of [...leases.entries()]) {
+      if (lease.expiresAt > now) continue;
+      leases.delete(jobId);
+      pending.push(jobId);
+      count += 1;
+    }
+    return count;
   }
 
   return Object.freeze({
@@ -143,24 +206,52 @@ export function createMemoryRemoteWorkQueue() {
       return { accepted: true, duplicate: false };
     },
 
-    async claim({ workerId, timeoutMs = 0 } = {}) {
+    async claim({ workerId, timeoutMs = 0, leaseMs = defaultLeaseMs } = {}) {
       requireId(workerId, 'worker id');
+      const leaseDuration = requireLeaseMs(leaseMs);
       const deadline = Date.now() + Math.max(0, timeoutMs);
       for (;;) {
+        reclaimExpiredInternal();
         const jobId = pending.shift();
         if (jobId !== undefined) {
           const job = jobs.get(jobId);
           if (job === undefined) throw new Error(`missing job payload for ${jobId}`);
-          return Object.freeze({ ...job, claimedBy: workerId, claimedAt: new Date().toISOString() });
+          const claimedAt = new Date().toISOString();
+          leases.set(jobId, {
+            workerId,
+            expiresAt: Date.now() + leaseDuration,
+          });
+          return Object.freeze({
+            ...job,
+            claimedBy: workerId,
+            claimedAt,
+            leaseExpiresAt: new Date(leases.get(jobId).expiresAt).toISOString(),
+          });
         }
         if (Date.now() >= deadline) return null;
         await sleep(Math.min(25, Math.max(1, deadline - Date.now())));
       }
     },
 
+    async heartbeat({ jobId, workerId, leaseMs = defaultLeaseMs } = {}) {
+      requireId(jobId, 'job id');
+      requireId(workerId, 'worker id');
+      const leaseDuration = requireLeaseMs(leaseMs);
+      const lease = leases.get(jobId);
+      if (lease === undefined) throw new Error(`lease missing for ${jobId}`);
+      if (lease.workerId !== workerId) throw new Error(`lease holder mismatch for ${jobId}`);
+      lease.expiresAt = Date.now() + leaseDuration;
+      return { accepted: true, leaseExpiresAt: new Date(lease.expiresAt).toISOString() };
+    },
+
+    async reclaimExpired() {
+      return { reclaimed: reclaimExpiredInternal() };
+    },
+
     async complete(result) {
       validateResult(result);
       if (!jobs.has(result.jobId)) throw new Error(`unknown job id: ${result.jobId}`);
+      leases.delete(result.jobId);
       const frozen = Object.freeze({ ...result });
       results.set(result.jobId, frozen);
       wake(result.jobId);
@@ -198,6 +289,7 @@ export function createRedisRemoteWorkQueue({
   namespace = DEFAULT_WORK_NAMESPACE,
   connectTimeoutMs,
   commandTimeoutMs,
+  defaultLeaseMs = DEFAULT_LEASE_MS,
 } = {}) {
   if (typeof expectedSeedId !== 'string' || expectedSeedId.trim().length === 0) {
     throw new TypeError('expectedSeedId is required: the work queue refuses to operate without a mesh seed identity guard');
@@ -220,6 +312,12 @@ export function createRedisRemoteWorkQueue({
     }
     if (message.includes('ATHERE_MISSING_JOB')) {
       return new Error(`corrupt work queue on ${target}: claimed job id has no payload`);
+    }
+    if (message.includes('ATHERE_LEASE_MISSING')) {
+      return new Error(`lease missing on ${target}`);
+    }
+    if (message.includes('ATHERE_LEASE_HOLDER_MISMATCH')) {
+      return new Error(`lease holder mismatch on ${target}`);
     }
     return error;
   }
@@ -244,10 +342,16 @@ export function createRedisRemoteWorkQueue({
     return `${namespace}:result:${jobId}`;
   }
 
-  // Prefix used by CLAIM_SCRIPT: KEYS[3] is `${namespace}:job` so payload is at
-  // KEYS[3] .. ':' .. jobId  == jobKey(jobId).
   function jobPrefix() {
     return `${namespace}:job`;
+  }
+
+  function processingKey() {
+    return `${namespace}:processing`;
+  }
+
+  function claimedKey(jobId) {
+    return `${namespace}:job:${jobId}:claimed`;
   }
 
   return Object.freeze({
@@ -266,28 +370,61 @@ export function createRedisRemoteWorkQueue({
       return { accepted: true, duplicate: duplicate === 1 };
     },
 
-    async claim({ workerId, timeoutMs = 0 } = {}) {
+    async claim({ workerId, timeoutMs = 0, leaseMs = defaultLeaseMs } = {}) {
       requireId(workerId, 'worker id');
+      const leaseDuration = requireLeaseMs(leaseMs);
       const deadline = Date.now() + Math.max(0, timeoutMs);
       for (;;) {
+        const now = Date.now();
         const payload = await evaluate(
           CLAIM_SCRIPT,
-          [seedKey, queueKey(), jobPrefix()],
-          [expectedSeedId, workerId],
+          [seedKey, queueKey(), jobPrefix(), processingKey()],
+          [expectedSeedId, workerId, String(now), String(leaseDuration)],
         );
         if (payload) {
           const job = JSON.parse(payload);
-          return Object.freeze({ ...job, claimedBy: workerId, claimedAt: new Date().toISOString() });
+          return Object.freeze({
+            ...job,
+            claimedBy: workerId,
+            claimedAt: new Date().toISOString(),
+            leaseExpiresAt: new Date(now + leaseDuration).toISOString(),
+          });
         }
         if (Date.now() >= deadline) return null;
         await sleep(Math.min(100, Math.max(1, deadline - Date.now())));
       }
     },
 
+    async heartbeat({ jobId, workerId, leaseMs = defaultLeaseMs } = {}) {
+      requireId(jobId, 'job id');
+      requireId(workerId, 'worker id');
+      const leaseDuration = requireLeaseMs(leaseMs);
+      const now = Date.now();
+      const expires = await evaluate(
+        HEARTBEAT_SCRIPT,
+        [seedKey, processingKey(), claimedKey(jobId)],
+        [expectedSeedId, workerId, jobId, String(now), String(leaseDuration)],
+      );
+      return { accepted: true, leaseExpiresAt: new Date(Number(expires)).toISOString() };
+    },
+
+    async reclaimExpired() {
+      const reclaimed = await evaluate(
+        RECLAIM_SCRIPT,
+        [seedKey, queueKey(), jobPrefix(), processingKey()],
+        [expectedSeedId, String(Date.now())],
+      );
+      return { reclaimed: Number(reclaimed) };
+    },
+
     async complete(result) {
       validateResult(result);
       const payload = serialize(result, 'result');
-      await evaluate(COMPLETE_SCRIPT, [seedKey, resultKey(result.jobId)], [expectedSeedId, payload]);
+      await evaluate(
+        COMPLETE_SCRIPT,
+        [seedKey, resultKey(result.jobId), processingKey(), claimedKey(result.jobId)],
+        [expectedSeedId, payload, result.jobId],
+      );
       return { accepted: true };
     },
 

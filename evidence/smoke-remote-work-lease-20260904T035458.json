@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "smoke": "remote-work-lease-reclaim",
+  "claim": "Worker A claims with a short lease and abandons; after expiry, reclaim returns the job and Worker B claims it. Proves multi-worker lease beyond LPOP-only.",
+  "at": "2026-09-04T03:54:58.543Z",
+  "namespace": "athere:mesh:work:lease-smoke:20260904T035458",
+  "seedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+  "dispatcher": {
+    "hostname": "JustinLenovo",
+    "pid": 532,
+    "node": "v24.14.1"
+  },
+  "steps": [
+    {
+      "step": "enqueue",
+      "jobId": "job-lease-eafc1691b1"
+    },
+    {
+      "step": "claim-a",
+      "claimedBy": "worker-a-abandon",
+      "leaseExpiresAt": "2026-09-04T03:54:59.009Z"
+    },
+    {
+      "step": "claim-b-while-leased",
+      "got": null
+    },
+    {
+      "step": "reclaimExpired",
+      "reclaimed": {
+        "reclaimed": 1
+      }
+    },
+    {
+      "step": "claim-b-after-reclaim",
+      "claimedBy": "worker-b",
+      "leaseExpiresAt": "2026-09-04T03:55:04.377Z"
+    },
+    {
+      "step": "complete-b",
+      "ok": true
+    }
+  ]
+}

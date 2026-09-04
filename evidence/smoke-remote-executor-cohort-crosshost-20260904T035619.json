@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "smoke": "remote-executor-cohort-crosshost",
+  "claim": "Standing Ichabod worker runs a multi-file contract cohort (not pin-only) dispatched from Lenovo over mesh Redis with zero mid-flight SSH claim.",
+  "at": "2026-09-04T03:56:19.262Z",
+  "workNamespace": "athere:mesh:work",
+  "cohort": [
+    "tests/contract/remote-executor-smoke-pin.test.js",
+    "tests/contract/authority-chain.test.js",
+    "tests/contract/execution-roles.test.js",
+    "tests/contract/fleet-contract.test.js"
+  ],
+  "remoteRepositoryRoot": "/home/the_founder/athere-mesh",
+  "midFlightSshClaim": false,
+  "dispatcher": {
+    "hostname": "JustinLenovo",
+    "pid": 5008,
+    "node": "v24.14.1"
+  },
+  "enqueued": {
+    "accepted": true,
+    "duplicate": false
+  },
+  "result": {
+    "jobId": "job-cohort-20260904T035619",
+    "ok": true,
+    "worker": {
+      "hostname": "ichabodcrane",
+      "platform": "linux 7.0.0-30-generic",
+      "nodeVersion": "v24.19.0",
+      "pid": 2263291
+    },
+    "result": {
+      "command": "node --test tests/contract/remote-executor-smoke-pin.test.js tests/contract/authority-chain.test.js tests/contract/execution-roles.test.js tests/contract/fleet-contract.test.js",
+      "exitCode": 0,
+      "tests": 20,
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "stdout": "✔ dangerous-authority keys belong only to Vale Prime and The Britt besides the founder (1.807942ms)\n✔ QRA Sentinel screens output and assigns blast radius; soft deletes do not trip command-grade rules (1.818846ms)\n✔ founder override assesses and logs but does not suppress (0.365739ms)\n✔ authority constants keep QRA Sentinel distinct from Cluster QC Sentinel and public Agent Vale (0.195661ms)\n✔ operational agents map onto manager, executor, auditor, and recovery roles (2.66136ms)\n✔ only auditor may emit completed; manager and executor cannot (0.531223ms)\n✔ only auditor may advance completedWork; executor and manager cannot (1.212846ms)\n✔ auditor cannot perform executor actions; executor cannot perform auditor actions (0.537343ms)\n✔ recorded performers come from the service-written ledger, never from payload content (0.410093ms)\n✔ success certification rejects when the certifier is a recorded performer (0.475367ms)\n✔ authorizeCompletedWorkClaim enforces auditor-only completedWork advancement (0.618841ms)\n✔ fleet registry preserves every recovered agent and cluster while limiting operational status to implemented executors (4.012942ms)\n✔ Vale Prime is canonical while legacy core remains a compatibility alias (0.252256ms)\n✔ Agent Vale remains a separate public specialist and Caretaker remains a founder agent (0.183425ms)\n✔ founder doctrine agents LOOM ECHO Caretaker Sentinel Governor Britt and QC remain agents (0.294448ms)\n✔ Vale Prime deployment requires a verified artifact before any target is staged (0.808045ms)\n✔ Vale Prime fleet deployment asks once for the exact batch, not once per target (0.350876ms)\n✔ approved Vale Prime deployment points at QRA then every fleet cluster (0.496701ms)\n✔ approval cannot be replayed for a different Vale artifact (0.271796ms)\n✔ remote executor smoke pin (0.980453ms)\nℹ tests 20\nℹ suites 0\nℹ pass 20\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 103.037999\n",
+      "stderr": ""
+    },
+    "startedAt": "2026-09-04T03:56:18.844Z",
+    "completedAt": "2026-09-04T03:56:18.996Z"
+  }
+}

@@ -89,14 +89,21 @@ export function createMissionOrchestrator({
     }
   }
   const localExecutor = executorForTests(executor);
-  // Narrow remote path: inspect stays local; run-node-tests is dispatched when
-  // a work queue is injected. Offline hermetic tests omit the queue.
+  // When a work queue is injected, both inspect-repository and run-node-tests
+  // are dispatched to the remote worker (lease-claimed). Offline hermetic
+  // tests omit the queue and keep the previous in-process executor path.
+  // Envelope input bindings must hash the worker's repository root — the
+  // worker validates bindings against job.repositoryRoot, not the owner's
+  // local checkout path.
+  const workerRepositoryRoot = remoteWorkQueue === undefined
+    ? repositoryRoot
+    : (remoteRepositoryRoot ?? repositoryRoot);
   const testExecutor = remoteWorkQueue === undefined
     ? localExecutor
     : createRemoteDispatchExecutor({
       localExecutor,
       workQueue: remoteWorkQueue,
-      workerRepositoryRoot: remoteRepositoryRoot ?? repositoryRoot,
+      workerRepositoryRoot,
     });
   // Default remains the hermetic filesystem store. Inject a shared store
   // (Postgres adapter) only when the operator has configured one.
@@ -216,7 +223,7 @@ export function createMissionOrchestrator({
 
       try {
         const inspection = parseRepositoryInspectionResult(await testExecutor.inspect({
-          repositoryRoot,
+          repositoryRoot: workerRepositoryRoot,
           envelope: executionEnvelope({
             record,
             taskId: 'inspect-repository',
@@ -228,7 +235,7 @@ export function createMissionOrchestrator({
             timeout: 30_000,
             budget: { max_filesystem_entries: 100_000 },
             outputFields: ['package', 'sourceFilesOnDisk', 'testFilesOnDisk'],
-            inputBinding: nodeExecutionInputBinding({ repositoryRoot, operation: 'inspect' }),
+            inputBinding: nodeExecutionInputBinding({ repositoryRoot: workerRepositoryRoot, operation: 'inspect' }),
           }),
         }));
         const nyxEvidence = Object.freeze({ executor: 'repository-inspector', result: inspection });
@@ -242,7 +249,7 @@ export function createMissionOrchestrator({
           activeAgents: ['nyx'],
         });
         const result = parseNodeTestExecutionResult(await testExecutor.runTests({
-          repositoryRoot,
+          repositoryRoot: workerRepositoryRoot,
           envelope: executionEnvelope({
             record,
             taskId: 'run-node-tests',
@@ -254,7 +261,7 @@ export function createMissionOrchestrator({
             timeout: 300_000,
             budget: { max_processes: 1, max_output_bytes: 1_048_576 },
             outputFields: ['command', 'exitCode', 'tests', 'passed', 'failed', 'skipped', 'stdout', 'stderr'],
-            inputBinding: nodeExecutionInputBinding({ repositoryRoot, operation: 'test' }),
+            inputBinding: nodeExecutionInputBinding({ repositoryRoot: workerRepositoryRoot, operation: 'test' }),
           }),
         }));
         const validatedCounts = testCounts(result);
