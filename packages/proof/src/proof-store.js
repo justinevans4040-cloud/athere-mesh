@@ -169,6 +169,12 @@ export async function verifyProof({ root, ref }) {
   return { verified: true, sha256: actual };
 }
 
+export async function readProofBytes(root, ref) {
+  if (!ref || typeof ref.path !== 'string') throw new Error('invalid proof reference');
+  const proofPath = containedProofPath(root, ref.path);
+  return readFile(proofPath);
+}
+
 export async function writeArtifactProof({
   root,
   missionId,

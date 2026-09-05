@@ -27,7 +27,10 @@ function honestMission(overrides = {}) {
     artifactReferences: [{
       id: 'mission-proof',
       artifactId: 'mission-proof',
+      path: 'proofs/artifacts/mission-qr18-1/mission-proof-deadbeef.json',
+      operationId: 'op-artifact-1',
       verified: true,
+      serviceVerified: true,
       artifactHash: 'a'.repeat(64),
       proofHash: 'b'.repeat(64),
       agent: 'qra_emerge_audit',

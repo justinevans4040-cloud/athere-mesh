@@ -164,14 +164,14 @@ export function normalizeAgentId(value) {
 }
 
 /**
- * A ledger entry records *performance* when the actor wrote work evidence into
- * authoritative mission state, or performed an executor action. Both facts are
- * written by the mission state service from the validated envelope and its own
- * before/after state diff — a caller cannot author either one.
+ * A ledger entry records *performance* only when the actor wrote work evidence
+ * into authoritative mission state. Executor action strings alone are not
+ * performance — a heartbeat/activeAgents update must not unlock success cert.
+ * Both the actor and the evidence write are service-authored from the validated
+ * envelope and before/after diff.
  */
 function entryRecordsPerformance(entry) {
   if (!entry || typeof entry !== 'object') return false;
-  if (typeof entry.action === 'string' && EXECUTOR_ACTIONS.has(entry.action)) return true;
   const evidenceChange = entry.changes?.evidence;
   if (!evidenceChange || typeof evidenceChange !== 'object') return false;
   return Array.isArray(evidenceChange.after) && evidenceChange.after.length > 0;

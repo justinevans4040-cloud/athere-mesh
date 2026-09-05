@@ -1,8 +1,20 @@
 # Athere Active Run
 
-**Status:** Active — **FULL FLEET ONLINE** + **keep-mesh / add-agents**. Vale Prime sole Miss Vale. NYX Apex Coder routed on default path. Command Deck live. Local-only.
+**Status:** Active — Command Deck live; Items 3–11 Phase 1–3 gates under hostile audit ckpt 126. **Do not read “FULL FLEET ONLINE” as Phases 1–3 complete without residual risk** — see ckpt 126 residuals. Vale Prime sole Miss Vale. Local-only.
 
 **Archive (ckpts 1–91):** `archive/runs/ATHERE_ACTIVE_RUN_ckpts_1-91_2026-09-04.md`
+
+## PHASES 1–3 HOSTILE AUDIT — CRITICAL/HIGH CLOSES (ckpt 126) — Justin 2026-09-05
+
+**Order:** Hostile audit Phases 1–3 (Items 3–11) for bloat / weak / theater / security. Do not soften the audit.
+
+| Hole | Severity | Result | Evidence |
+|---|---|---|---|
+| F1 forged `artifactReferences` complete | CRITICAL | CLOSED — proof-store `verifyArtifactProof` on `completed` | `evidence/phase1-3-hostile-audit-20260905T214500Z.json` |
+| F2 noop executor heartbeat = performer | HIGH | CLOSED — evidence-write-only `recordedWorkPerformers` | same |
+| F4 tampered ledger loads until opt-in verify | HIGH | CLOSED — verify on `transition` load + `get()` | `mea-hostile-phase1-3-ledger-tamper.test.js` |
+
+**Residual OPEN (MEDIUM/LOW — not claimed closed):** F5 recovery empty-permissions bypass; F6 envelope timeout unused on mission path; F7 fact ops without envelope; F8 bridge CAS; F9 Windows lock PID reuse; F10 pre-ledger import boundary; F11 proof payload ≠ work semantics; F12 verification_gate regex heuristic; F13 service bloat (Item 12+ surfaces); F14 historical facts via `select`.
 
 ## ITEM 11 WORKFLOW GRAPHS — FAILED-SKIP CLOSED (ckpt 125) — Justin 2026-09-05
 
@@ -27,7 +39,7 @@
 | Focused suite | **21/21 GREEN** | same evidence |
 | Service path | clear evidence → complete still L1 via ledger `nyx` | `mea-hostile-item10-level1-ledger.test.js` |
 
-**Production:** `packages/proof/src/qr18-layered-verification.js`. Item 11 not started this turn.
+**Production:** `packages/proof/src/qr18-layered-verification.js`. (Item 11 closed in ckpt 125.)
 
 ## ITEM 9 MEA — VACUUM CERT CLOSED (ckpt 123) — Justin 2026-09-05
 
@@ -42,7 +54,7 @@
 
 **Production:** `packages/contracts/src/execution-roles.js` — reject success certification when `recordedWorkPerformers` is empty (after independence / same-update checks).
 
-**Docs:** `docs/current/ATHERE_MANAGER_EXECUTOR_AUDITOR.md` updated. Item 10 not started.
+**Docs:** `docs/current/ATHERE_MANAGER_EXECUTOR_AUDITOR.md` updated. (Items 10–11 closed in later ckpts.)
 
 ## COMMAND DECK UP + SALES HUNTER → FORGEFRONT (ckpt 121) — Justin 2026-09-05
 

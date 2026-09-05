@@ -6,11 +6,15 @@ import path from 'node:path';
 import { createAgentOperationEnvelope } from '../../packages/contracts/src/agent-operation.js';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 import { evaluateQr18Layers } from '../../packages/proof/src/qr18-layered-verification.js';
-import { writeProof } from '../../packages/proof/src/proof-store.js';
+import { readProofBytes, verifyArtifactProof, writeArtifactProof, writeProof } from '../../packages/proof/src/proof-store.js';
 
 const artifact = {
   id: 'mission-proof',
+  artifactId: 'mission-proof',
+  path: 'proofs/artifacts/x/mission-proof-deadbeef.json',
+  operationId: 'op-art',
   verified: true,
+  serviceVerified: true,
   artifactHash: 'a'.repeat(64),
   proofHash: 'b'.repeat(64),
   agent: 'qra_emerge_audit',
@@ -126,6 +130,21 @@ test('service completion after evidence clear still traces Level 1 to ledger per
     operationId: 'op-i10-clear-proof',
     payload: { result: 'ok' },
   });
+  const proofBytes = await readProofBytes(root, proof);
+  const artifactRef = await writeArtifactProof({
+    root,
+    missionId: created.mission.id,
+    artifactId: 'mission-proof',
+    artifact: proofBytes,
+    operationId: 'op-i10-clear-artifact',
+    predecessorHash: null,
+    agent: 'qra_emerge_audit',
+    action: 'verify_proof',
+    verifierResult: { verifier: 'qra_emerge_audit', verified: true, proofSha256: proof.sha256 },
+    missionStateVersion: cleared.revision,
+    timestamp: clock(),
+  });
+  const artifactVerification = await verifyArtifactProof({ root, ref: artifactRef, artifact: proofBytes });
   const completed = await service.transition({
     operationId: 'op-i10-clear-complete',
     missionId: created.mission.id,
@@ -139,7 +158,7 @@ test('service completion after evidence clear still traces Level 1 to ledger per
       completedWork: ['inspect'],
       pendingWork: [],
       failedWork: [],
-      artifactReferences: [artifact],
+      artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
     },
     envelope: envelope(cleared, 'op-i10-clear-complete', 'qra_emerge_audit'),
   });

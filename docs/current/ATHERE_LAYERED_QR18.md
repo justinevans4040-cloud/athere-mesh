@@ -13,7 +13,7 @@ QR18 is no longer a single completion hash check. Completion requires structured
 | Level | Id | Question |
 |---|---|---|
 | 1 | `action` | Did recorded work performers exist on the ledger? (caller evidence bags are not the gate) |
-| 2 | `artifact` | Is there verified artifact lineage (hash + producer agent/action + verifier)? |
+| 2 | `artifact` | Is there **service-verified** artifact lineage (proof-store path + producer agent/action + verifier)? Caller-attested hashes alone fail. |
 | 3 | `state-transition` | Is the certifier independent of recorded performers? |
 | 4 | `subgoal` | Does `completedWork` cover the plan/subgoals? |
 | 5 | `workflow` | Empty pending/failed work; dependencies satisfied? |

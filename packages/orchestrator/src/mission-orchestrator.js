@@ -535,7 +535,7 @@ export function createMissionOrchestrator({
       pendingWork: [],
       failedWork: [],
       activeAgents: [],
-      artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
+      artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification, serviceVerified: true }],
     };
     const qr18 = evaluateQr18Layers({
       mission: Object.freeze({ ...record.mission, ...completionUpdate }),

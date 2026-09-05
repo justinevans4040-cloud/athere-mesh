@@ -13,7 +13,7 @@ import {
   assessEpistemicState,
   normalizeEpistemicClaim,
 } from '../../contracts/src/epistemic-state.js';
-import { verifyProof } from '../../proof/src/proof-store.js';
+import { readProofBytes, verifyArtifactProof, verifyProof } from '../../proof/src/proof-store.js';
 import {
   assertQr18LayersVerified,
   evaluateQr18Layers,
@@ -794,8 +794,11 @@ export function createMissionStateService({
       const operation = requiredId(operationId, 'operation id');
       const current = await store.loadMission({ root, missionId: id });
       const existingHistory = current.mission.transitionHistory ?? [];
+      if (existingHistory.length > 0) {
+        verifyTransitionHistory(current.mission, current.revision);
+      }
       const history = existingHistory.length > 0 ? existingHistory : [legacyImportRecord(current.mission, current.revision, clock())];
-      const stateUpdate = validateUpdate(update, current.mission);
+      let stateUpdate = validateUpdate(update, current.mission);
       const authorization = authorizeAgentOperation({ envelope, mission: current.mission, expectedRevision, operationId: operation, signalType: signal?.type });
       const authorizedAgentId = authorization.envelope.agent_id;
       identities.assertActive(authorizedAgentId);
@@ -821,6 +824,55 @@ export function createMissionStateService({
       if (signal?.type === 'completed') {
         const verification = await verifyProof({ root, ref: signal.proof });
         if (verification.verified !== true) throw new Error(`completion proof verification failed: ${verification.reason ?? 'unknown'}`);
+        // Item 6/10: artifact lineage must re-verify against the proof store using
+        // the service-read mission proof bytes. Caller-attested verified/hash bags
+        // alone cannot satisfy Level 2.
+        const proofBytes = await readProofBytes(root, signal.proof);
+        const proposedRefs = Object.hasOwn(stateUpdate, 'artifactReferences')
+          ? stateUpdate.artifactReferences
+          : (current.mission.artifactReferences ?? []);
+        if (!Array.isArray(proposedRefs) || proposedRefs.length === 0) {
+          throw new Error('QR18 layered verification failed: artifact');
+        }
+        const serviceVerifiedRefs = [];
+        for (const ref of proposedRefs) {
+          if (!ref || typeof ref !== 'object' || Array.isArray(ref)) {
+            throw new Error('artifact provenance verification failed: invalid artifact reference');
+          }
+          let artifactVerification;
+          try {
+            artifactVerification = await verifyArtifactProof({
+              root,
+              ref: {
+                path: ref.path,
+                operationId: ref.operationId,
+                artifactId: ref.artifactId ?? ref.id,
+                artifactHash: ref.artifactHash,
+                proofHash: ref.proofHash,
+                missionId: current.mission.id,
+              },
+              artifact: proofBytes,
+            });
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : 'invalid artifact reference';
+            throw new Error(`artifact provenance verification failed: ${reason}`);
+          }
+          if (artifactVerification.verified !== true) {
+            throw new Error(`artifact provenance verification failed: ${artifactVerification.reason ?? 'unknown'}`);
+          }
+          serviceVerifiedRefs.push(Object.freeze({
+            ...structuredClone(ref),
+            ...artifactVerification,
+            id: ref.id ?? artifactVerification.artifactId,
+            path: ref.path,
+            proofHash: ref.proofHash,
+            serviceVerified: true,
+          }));
+        }
+        stateUpdate = Object.freeze({
+          ...stateUpdate,
+          artifactReferences: Object.freeze(serviceVerifiedRefs),
+        });
         // Item 10: layered QR18 is evaluated from the authoritative mission snapshot
         // (current state + validated update) and the service-verified proof. Caller
         // qr18 bags are ignored — evaluateQr18Layers is the authority.
@@ -1269,6 +1321,9 @@ export function createMissionStateService({
     async get({ missionId, includeHistorical = false }) {
       if (typeof includeHistorical !== 'boolean') throw new TypeError('includeHistorical must be a boolean');
       const record = await store.loadMission({ root, missionId: requiredId(missionId, 'mission id') });
+      if (Array.isArray(record.mission.transitionHistory) && record.mission.transitionHistory.length > 0) {
+        verifyTransitionHistory(record.mission, record.revision);
+      }
       if (includeHistorical) return record;
       const { transitionHistory: ignoredHistory, ...currentMission } = record.mission;
       return Object.freeze({

@@ -65,6 +65,12 @@ function evaluateArtifact(mission) {
   const refs = Array.isArray(mission?.artifactReferences) ? mission.artifactReferences : [];
   const accepted = refs.filter((ref) => plainObject(ref)
     && ref.verified === true
+    && typeof ref.path === 'string'
+    && ref.path.length > 0
+    && typeof ref.operationId === 'string'
+    && ref.operationId.length > 0
+    && typeof ref.artifactId === 'string'
+    && ref.artifactId.length > 0
     && typeof ref.artifactHash === 'string'
     && /^[a-f0-9]{64}$/.test(ref.artifactHash)
     && typeof ref.proofHash === 'string'
@@ -73,7 +79,8 @@ function evaluateArtifact(mission) {
     && typeof ref.verifierResult.verifier === 'string'
     && ref.verifierResult.verified === true
     && typeof ref.agent === 'string'
-    && typeof ref.action === 'string');
+    && typeof ref.action === 'string'
+    && ref.serviceVerified === true);
   const verified = accepted.length > 0;
   return levelRecord({
     level: 2,
@@ -89,9 +96,11 @@ function evaluateArtifact(mission) {
         agent: ref.agent,
         action: ref.action,
         verifier: ref.verifierResult.verifier,
+        path: ref.path,
+        operationId: ref.operationId,
       }))),
     },
-    ...(verified ? {} : { reason: 'no verified artifact lineage with producer and verifier' }),
+    ...(verified ? {} : { reason: 'no service-verified artifact lineage with producer and verifier' }),
   });
 }
 
