@@ -29,7 +29,7 @@ Independence used to be decided by deep-scraping caller-supplied payloads (`evid
 Independence is now decided from identity the **service** established:
 
 - **Recorded performer set.** Every entry in the mission's hash-chained `transitionHistory` carries an `actor` written from `authorization.envelope.agent_id` and an `action` from the closed `OPERATIONS` map. A caller cannot author either without passing envelope authorization. `recordedWorkPerformers` collects the actors of entries that **performed work**: entries whose service-computed `changes` show a non-empty write to the authoritative `evidence` array, or whose recorded action is an executor action.
-- **Independence rule.** When an agent advances `completedWork` or emits `completed`, the authorized envelope agent is rejected if it appears in that recorded performer set, or if the transition under authorization would itself write work evidence into authoritative state (perform-and-certify in one act). Service-recorded identities are compared to service-recorded identities.
+- **Independence rule.** When an agent advances `completedWork` or emits `completed`, the authorized envelope agent is rejected if it appears in that recorded performer set, or if the transition under authorization would itself write work evidence into authoritative state (perform-and-certify in one act). Service-recorded identities are compared to service-recorded identities. Certification with an empty recorded performer set is also rejected (vacuum / rubber-stamp success with no resulting reality).
 - **Normalization.** Recorded ids come from the closed fleet registry, so `normalizeAgentId` is trim + casefold and nothing else. No lookalike map, no NFKD folding, no base64/URI decoding, no deep walk, no node budget.
 - **Caller payloads are not an identity source at all.** `evidence` contents, `signal.result`, `signal.evidence`, `artifactReferences`, and `activeAgents` do not influence the decision. An executor may write any string it likes into evidence without affecting the auditor's authority, and no payload can rescue a certifier that the ledger recorded as a performer.
 
@@ -64,6 +64,7 @@ Structural enforcement:
 - `tests/integration/mea-hostile-signal-envelope-mismatch.test.js`: rejects forged `signal.agent` that disagrees with `envelope.agent_id`.
 - `tests/integration/mea-hostile-completed-bypasses-completedWork.test.js`: rejects proof-gated `completed` that omits auditor-certified work coverage.
 - `tests/integration/mea-hostile-completed-with-failedWork.test.js`: rejects `completed` while `failedWork` remains non-empty.
+- `tests/integration/mea-hostile-no-performers-cert.test.js`: rejects auditor `completedWork` when the ledger has no recorded work performers (vacuum certification).
 - `tests/integration/mea-hostile-same-update-self-cert.test.js`: rejects auditor perform+certify in one `completedWork` update.
 
 Retired scrape-channel re-audit files (fifth/sixth/seventh, nested evidence/wrap, signal-result, signal-evidence-object, evidence-verifier) were **deleted** in ckpt 92 bloat cleanup. Their genuine acceptance requirements already live in `mea-structural-provenance` and the kept hostile pins above; payload IRRELEVANT duplicates were not retained.

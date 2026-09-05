@@ -1,0 +1,57 @@
+{
+  "checkpoint": 123,
+  "item": 9,
+  "title": "Manager / Executor / Auditor — vacuum certification hole closed",
+  "utc": "20260905T132234Z",
+  "claim": "The component that performs an action does not possess sole authority to declare that action successful; auditor cannot advance completedWork or emit completed with zero recorded work performers.",
+  "holeClosed": {
+    "id": "vacuum-certification",
+    "before": "auditor_no_performers_completedWork ACCEPT on create-only ledger",
+    "after": "REJECT cannot certify success without recorded work performers",
+    "production": "packages/contracts/src/execution-roles.js authorizeCompletedWorkClaim"
+  },
+  "focusedSuite": {
+    "tests": 26,
+    "pass": 26,
+    "fail": 0,
+    "files": [
+      "tests/contract/execution-roles.test.js",
+      "tests/integration/manager-executor-auditor.test.js",
+      "tests/integration/mea-structural-provenance.test.js",
+      "tests/integration/mea-hostile-no-performers-cert.test.js",
+      "tests/integration/mea-hostile-same-update-self-cert.test.js",
+      "tests/integration/mea-hostile-signal-envelope-mismatch.test.js",
+      "tests/integration/mea-hostile-completed-bypasses-completedWork.test.js",
+      "tests/integration/mea-hostile-completed-with-failedWork.test.js"
+    ]
+  },
+  "hostileProbe": {
+    "script": "scratch/mea-item9-hostile-probe.mjs",
+    "attacks": [
+      { "name": "executor_completedWork", "result": "REJECT" },
+      { "name": "auditor_no_performers_completedWork", "result": "REJECT", "error": "cannot certify success without recorded work performers" },
+      { "name": "manager_vale_completedWork", "result": "REJECT" },
+      { "name": "the_britt_completedWork", "result": "REJECT" },
+      { "name": "sales_hunter_completedWork", "result": "REJECT" },
+      { "name": "qra_sentinel_completedWork", "result": "REJECT" },
+      { "name": "cluster_qc_completedWork", "result": "REJECT" },
+      { "name": "recovery_transition_completedWork", "result": "REJECT" },
+      { "name": "honest_nyx_evidence", "result": "ACCEPT" },
+      { "name": "auditor_after_nyx_partial_ok", "result": "ACCEPT" },
+      { "name": "auditor_perform_and_certify_same_update", "result": "REJECT" },
+      { "name": "completed_signal_no_performers", "result": "REJECT", "error": "cannot certify success without recorded work performers" }
+    ]
+  },
+  "fullSuiteNote": {
+    "tests": 465,
+    "pass": 442,
+    "fail": 6,
+    "item9RelatedFail": 0,
+    "preexistingUnrelated": [
+      "tests/contract/agent-runtime.test.js (disabled agent routing)",
+      "tests/integration/functional-smoke.test.js (team roster mismatch)",
+      "tests/integration/mea-hostile-item12.test.js (regex expects cannot override action; still REJECT)"
+    ]
+  },
+  "verdict": "READY"
+}

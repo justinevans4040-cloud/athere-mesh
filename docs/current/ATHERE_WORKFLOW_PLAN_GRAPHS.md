@@ -21,7 +21,7 @@
 ## Path rules (enforced)
 
 - `depends_on` / `blocks`: dependent cannot complete before prerequisite/`from`
-- Plan order: later plan steps cannot complete while earlier steps are incomplete, unless an `alternate_path` edge to that later step is **armed** (`from` already completed)
+- Plan order: later plan steps cannot complete while earlier steps are incomplete, unless an `alternate_path` edge to that later step is **armed** (`from` already completed). **Failed earlier steps do not waive plan order.**
 - Unknown ids in completed/pending/failed work are invalid
 - `supersedes` / `satisfies` do not waive `depends_on` or plan order
 - `workflowGraph` is immutable after create

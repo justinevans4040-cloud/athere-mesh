@@ -296,10 +296,16 @@ export function authorizeCompletedWorkClaim({
   if (isMissionCompletion) {
     assertCompletedSignalWorkCertified({ mission, update });
   }
+  const performers = recordedWorkPerformers(transitionHistory);
   assertIndependentSuccessCertification({
     certifierAgentId: agentId,
-    recordedPerformers: recordedWorkPerformers(transitionHistory),
+    recordedPerformers: performers,
     certifierPerformsInThisTransition: updateWritesWorkEvidence(update),
   });
+  // Vacuum certification: an auditor with no recorded work performers has sole
+  // authority to declare success without any independent resulting reality.
+  if (performers.size === 0) {
+    throw new Error('cannot certify success without recorded work performers');
+  }
   return Object.freeze({ enforced: true, role, agentId });
 }

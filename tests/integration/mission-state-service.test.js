@@ -364,6 +364,7 @@ test('the authoritative completion boundary re-reads and verifies proof bytes', 
     id: 'mission-proof-boundary-1',
     permissions: [
       { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
+      { actor: 'nyx', actions: ['observe_repository'] },
       { actor: 'qra_emerge_audit', actions: ['verify_proof'] },
     ],
   });
@@ -381,25 +382,40 @@ test('the authoritative completion boundary re-reads and verifies proof bytes', 
       createdAt: clock(),
     }),
   });
+  const performedOperation = 'op-proof-boundary-perform-1';
+  const performed = await rawService.transition({
+    operationId: performedOperation,
+    missionId: created.mission.id,
+    expectedRevision: running.revision,
+    signal: { type: 'running', agent: 'nyx', detail: 'executor records evidence before proof gate' },
+    update: { evidence: [{ id: 'evidence-inspect', kind: 'repository_observation' }], activeAgents: ['nyx'] },
+    envelope: createAgentOperationEnvelope({
+      record: running,
+      operationId: performedOperation,
+      agentId: 'nyx',
+      objective: 'record work before proof boundary',
+      createdAt: clock(),
+    }),
+  });
   const completionOperation = 'op-proof-boundary-complete-1';
   await assert.rejects(rawService.transition({
     operationId: completionOperation,
     missionId: created.mission.id,
-    expectedRevision: running.revision,
+    expectedRevision: performed.revision,
     signal: {
       type: 'completed',
       agent: 'qra_emerge_audit',
       proof: { verified: true, path: 'proofs/missing.json', sha256: 'a'.repeat(64), operationId: 'missing-proof' },
     },
-    // MEA: completed still requires auditor-certified work coverage; this test
-    // isolates the proof re-read boundary after that gate.
+    // MEA: completed still requires auditor-certified work coverage and recorded
+    // performers; this test isolates the proof re-read boundary after those gates.
     update: {
       completedWork: ['inspect', 'verify'],
       pendingWork: [],
       activeAgents: [],
     },
     envelope: createAgentOperationEnvelope({
-      record: running,
+      record: performed,
       operationId: completionOperation,
       agentId: 'qra_emerge_audit',
       objective: 'verify completion proof',

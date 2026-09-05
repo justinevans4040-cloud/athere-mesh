@@ -237,10 +237,11 @@ export function assessMissionPath({
     }
   }
 
-  // Plan order: earlier incomplete steps cannot be skipped while a later step is
-  // completed, unless an alternate_path edge to that later step has its `from`
-  // node already completed (armed alternate). A bare alternate_path declaration
-  // does not waive order.
+  // Plan order: earlier plan steps must be completed before a later step is
+  // completed, unless an alternate_path edge to that later step is armed
+  // (`from` already completed). Failed earlier steps do NOT waive order — that
+  // would let a later completion skip still-incomplete prior work. Recovery /
+  // retry paths are Item 12; alternate_path is the only create-time skip arm.
   const planActions = workflowGraph.nodes
     .filter((node) => node.kind === 'action' && typeof node.subgoalId === 'string')
     .map((node) => node.subgoalId);
@@ -255,13 +256,8 @@ export function assessMissionPath({
     if (alternateArmed) continue;
     for (let earlier = 0; earlier < index; earlier += 1) {
       const prior = planActions[earlier];
-      if (completed.has(prior) || failed.has(prior)) continue;
-      const hasDepends = workflowGraph.edges.some(
-        (edge) => edge.kind === 'depends_on' && edge.from === prior && edge.to === step,
-      );
-      if (hasDepends || earlier === index - 1) {
-        violations.push(`plan_order:${step}->skips:${prior}`);
-      }
+      if (completed.has(prior)) continue;
+      violations.push(`plan_order:${step}->skips:${prior}`);
     }
   }
 

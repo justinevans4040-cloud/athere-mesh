@@ -4,6 +4,46 @@
 
 **Archive (ckpts 1–91):** `archive/runs/ATHERE_ACTIVE_RUN_ckpts_1-91_2026-09-04.md`
 
+## ITEM 11 WORKFLOW GRAPHS — FAILED-SKIP CLOSED (ckpt 125) — Justin 2026-09-05
+
+**Order:** Execute backlog Item 11 — explicit workflow/plan graphs. No rebuild.
+
+| Gate | Result | Evidence |
+|---|---|---|
+| Acceptance | Execution must remain on a valid mission path | `assessMissionPath` / `assertValidMissionPath` on work-partition mutations |
+| Hole closed | Failed intermediate cannot waive plan-order for earlier incomplete steps | `evidence/item11-workflow-failed-skip-20260905T135300Z.json` |
+| Focused suite | **32/32 GREEN** | workflow + Item 10/11 reaudit + new fail-skip tests |
+
+**Production:** `packages/contracts/src/workflow-graph.js`. QR18 legacy L5 aligned. Item 12 not started.
+
+## ITEM 10 QR18 LAYERED — LEVEL 1 LEDGER GATE (ckpt 124) — Justin 2026-09-05
+
+**Order:** Execute backlog Item 10 — layered QR18. No rebuild.
+
+| Gate | Result | Evidence |
+|---|---|---|
+| Acceptance | Completion claims traceable to evidence + verifier (Levels 1–6) | `evaluateQr18Layers` on every `completed` transition |
+| Hole closed | Level 1 requires **recorded work performers**; planted evidence alone REJECT; `Set.length` bug fixed | `evidence/item10-qr18-level1-ledger-20260905T134606Z.json` |
+| Focused suite | **21/21 GREEN** | same evidence |
+| Service path | clear evidence → complete still L1 via ledger `nyx` | `mea-hostile-item10-level1-ledger.test.js` |
+
+**Production:** `packages/proof/src/qr18-layered-verification.js`. Item 11 not started this turn.
+
+## ITEM 9 MEA — VACUUM CERT CLOSED (ckpt 123) — Justin 2026-09-05
+
+**Order:** Backlog Item 9 — worker cannot also mark the job done. No rebuild.
+
+| Gate | Result | Evidence |
+|---|---|---|
+| Acceptance | Performer ≠ sole success authority on mission-state path | `authorizeCompletedWorkClaim` + ledger `recordedWorkPerformers` |
+| Hole closed | Auditor cannot certify with **zero** recorded work performers | `evidence/item9-mea-vacuum-cert-20260905T132234Z.json` |
+| Focused MEA suite | **26/26 GREEN** | same evidence `focusedSuite` |
+| Hostile probe | vacuum / executor / manager / The Britt 4.0 / Sales Hunter / QRA Sentinel / recovery REJECT; honest nyx→auditor ACCEPT | `scratch/mea-item9-hostile-probe.mjs` |
+
+**Production:** `packages/contracts/src/execution-roles.js` — reject success certification when `recordedWorkPerformers` is empty (after independence / same-update checks).
+
+**Docs:** `docs/current/ATHERE_MANAGER_EXECUTOR_AUDITOR.md` updated. Item 10 not started.
+
 ## COMMAND DECK UP + SALES HUNTER → FORGEFRONT (ckpt 121) — Justin 2026-09-05
 
 **Order:** Bring Command Deck up first, then wire Sales Hunter to ForgeFront.

@@ -227,17 +227,27 @@ test('content-based identity is not a security boundary: planted payload names d
  * `evidence` write. Writing `artifactReferences` is the auditor's own certification
  * output (Item 6 provenance) and must stay allowed, and `environmentObservations` and
  * atomic fact operations are separate lifecycles. An auditor can therefore touch those
- * fields and still certify. Pinned here so the limit is explicit rather than accidental.
+ * fields and still certify after an independent executor has performed. Vacuum
+ * certification (no performers) is rejected separately. Pinned here so the limit is
+ * explicit rather than accidental.
  */
 test('documented boundary: artifactReferences, observations, and fact writes are not performance', async () => {
   const artifacts = await createMission('boundary-artifacts');
+  const nyxArtifacts = await artifacts.service.transition({
+    operationId: 'op-mea-structural-boundary-artifacts-0',
+    missionId: artifacts.created.mission.id,
+    expectedRevision: artifacts.created.revision,
+    signal: { type: 'running', agent: 'nyx', detail: 'executor records evidence' },
+    update: { evidence: [{ id: 'evidence-inspect', kind: 'repository_observation' }] },
+    envelope: envelopeFor(artifacts.created, 'op-mea-structural-boundary-artifacts-0', 'nyx'),
+  });
   const wroteArtifacts = await artifacts.service.transition({
     operationId: 'op-mea-structural-boundary-artifacts-1',
     missionId: artifacts.created.mission.id,
-    expectedRevision: artifacts.created.revision,
+    expectedRevision: nyxArtifacts.revision,
     signal: { type: 'running', agent: AUDITOR, detail: 'auditor records artifact provenance' },
     update: { artifactReferences: [{ id: 'mission-proof', agent: AUDITOR }] },
-    envelope: envelopeFor(artifacts.created, 'op-mea-structural-boundary-artifacts-1', AUDITOR),
+    envelope: envelopeFor(nyxArtifacts, 'op-mea-structural-boundary-artifacts-1', AUDITOR),
   });
   const certifiedAfterArtifacts = await artifacts.service.transition({
     operationId: 'op-mea-structural-boundary-artifacts-2',
@@ -250,15 +260,23 @@ test('documented boundary: artifactReferences, observations, and fact writes are
   assert.deepEqual(certifiedAfterArtifacts.mission.completedWork, ['inspect']);
 
   const observations = await createMission('boundary-observations');
+  const nyxObservations = await observations.service.transition({
+    operationId: 'op-mea-structural-boundary-observations-0',
+    missionId: observations.created.mission.id,
+    expectedRevision: observations.created.revision,
+    signal: { type: 'running', agent: 'nyx', detail: 'executor records evidence' },
+    update: { evidence: [{ id: 'evidence-inspect', kind: 'repository_observation' }] },
+    envelope: envelopeFor(observations.created, 'op-mea-structural-boundary-observations-0', 'nyx'),
+  });
   const wroteObservations = await observations.service.transition({
     operationId: 'op-mea-structural-boundary-observations-1',
     missionId: observations.created.mission.id,
-    expectedRevision: observations.created.revision,
+    expectedRevision: nyxObservations.revision,
     signal: { type: 'running', agent: AUDITOR, detail: 'auditor records an observation' },
     update: {
       environmentObservations: [{ source: 'auditor', key: 'probe', value: 1, observedAt: '2026-09-05T09:59:30.000Z' }],
     },
-    envelope: envelopeFor(observations.created, 'op-mea-structural-boundary-observations-1', AUDITOR),
+    envelope: envelopeFor(nyxObservations, 'op-mea-structural-boundary-observations-1', AUDITOR),
   });
   const certifiedAfterObservations = await observations.service.transition({
     operationId: 'op-mea-structural-boundary-observations-2',

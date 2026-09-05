@@ -20,7 +20,9 @@ Do not invent or substitute. Load this before any external email, sample request
 - ForgeFront Solar/PM (tunnel → Ichabod `:8787`): `http://127.0.0.1:18787/` and `/pm`
 - Sales Hunter Tier Zero may merge qualified pipeline into ForgeFront `/api/state` when ingest is explicitly enabled.
 - Next capability under Zero: `outreach_send` with `humanApproved:true` (one lead) → local outbox + CRM follow-up. `phone_call` still denied.
-
+- Backlog Item 9 MEA: vacuum certification closed (ckpt 123) — auditor cannot certify without recorded work performers.
+- Backlog Item 10 QR18: Level 1 ledger action proof closed (ckpt 124) — planted evidence alone cannot satisfy action proof.
+- Backlog Item 11 workflow graphs: failed intermediate cannot waive plan order (ckpt 125). Item 12 not started.
 ## Canonical locations
 
 - Local repository: `C:\Users\justi\Titan`

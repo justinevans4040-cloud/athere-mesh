@@ -37,13 +37,16 @@ function planSteps(mission) {
   return [];
 }
 
-function evaluateAction(mission) {
+function evaluateAction(mission, transitionHistory) {
   const evidence = Array.isArray(mission?.evidence) ? mission.evidence : [];
-  const performers = evidence
+  const evidenceAgents = evidence
     .map((entry) => (plainObject(entry) ? entry.agent ?? entry.executor : null))
     .filter((value) => typeof value === 'string' && value.length > 0);
-  const historyActors = recordedWorkPerformers(mission?.transitionHistory ?? []);
-  const verified = evidence.length > 0 || historyActors.length > 0;
+  // Action proof is structural: service-recorded performers from the ledger.
+  // Caller-planted evidence entries are supporting detail only — never the gate.
+  const historyActors = recordedWorkPerformers(transitionHistory ?? mission?.transitionHistory ?? []);
+  const recordedPerformers = Object.freeze([...historyActors]);
+  const verified = recordedPerformers.length > 0;
   return levelRecord({
     level: 1,
     id: 'action',
@@ -51,10 +54,10 @@ function evaluateAction(mission) {
     verified,
     evidence: {
       evidenceEntries: evidence.length,
-      evidenceAgents: Object.freeze(performers),
-      recordedPerformers: Object.freeze([...historyActors]),
+      evidenceAgents: Object.freeze(evidenceAgents),
+      recordedPerformers,
     },
-    ...(verified ? {} : { reason: 'no recorded action evidence' }),
+    ...(verified ? {} : { reason: 'no recorded work performers' }),
   });
 }
 
@@ -169,7 +172,7 @@ function evaluateWorkflow(mission) {
       for (let earlier = 0; earlier < index; earlier += 1) {
         const prior = planSteps[earlier];
         if (typeof prior !== 'string') continue;
-        if (completedSet.has(prior) || failed.includes(prior)) continue;
+        if (completedSet.has(prior)) continue;
         broken.push(`plan_order:${step}->skips:${prior}`);
       }
     }
@@ -266,7 +269,7 @@ export function evaluateQr18Layers({
   if (!plainObject(mission)) throw new TypeError('mission is required for QR18 layered verification');
 
   const levels = Object.freeze([
-    evaluateAction(mission),
+    evaluateAction(mission, transitionHistory),
     evaluateArtifact(mission),
     evaluateStateTransition(mission, certifierAgentId, transitionHistory),
     evaluateSubgoal(mission),

@@ -81,11 +81,15 @@ test('honest completion claim returns structured verified evidence at every QR18
   assertQr18LayersVerified(qr18);
 });
 
-test('Level 1 rejects completion with no action evidence', () => {
+test('Level 1 rejects completion with no recorded work performers', () => {
   const qr18 = evaluateQr18Layers({
-    mission: honestMission({ evidence: [], transitionHistory: [] }),
+    mission: honestMission({
+      evidence: [{ agent: 'nyx', note: 'planted only' }],
+      transitionHistory: [],
+    }),
     proofVerification: proofOk,
     certifierAgentId: 'qra_emerge_audit',
+    transitionHistory: [],
   });
   assert.equal(qr18.verified, false);
   assert.ok(qr18.failedLevels.includes('action'));
