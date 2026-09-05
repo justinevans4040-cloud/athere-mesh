@@ -6,63 +6,97 @@ const cluster = (id, name, tier, rank, memberCount) => Object.freeze({
 });
 
 const agents = Object.freeze([
-  agent('miss-vale-prime', 'Miss Vale Prime', 'founder_operator', 100, 'titan', {
-    aliases: ['miss-vale-core', 'val_core', 'val_exec_tier_preview'],
+  agent('miss-vale-prime', 'Vale Prime', 'founder_operator', 100, 'titan', {
+    aliases: ['miss-vale-core', 'val_core', 'val_exec_tier_preview', 'vale-prime', 'Vale Prime'],
     provenance: 'drive-recovered-canonical-doctrine',
     distribution: 'owner-only',
     enabled: true,
     executorId: 'mission-supervisor',
     authorityRank: 2,
     dangerousAuthority: true,
-    notes: 'Second only to founder Justin Evans. Holds dangerous-authority keys with The Britt.',
+    soleMissVale: true,
+    notes: 'Vale Prime is the only Miss Vale. Second only to founder Justin Evans. Holds dangerous-authority keys with The Britt. No other Vale identity may act as Miss Vale.',
   }),
   agent('the-britt', 'The Britt 4.0', 'dangerous_authority', 99, 'titan', {
     distribution: 'owner-only',
     provenance: 'founder-locked-authority-chain-2026-09-03',
     authorityRank: 3,
     dangerousAuthority: true,
-    notes: 'Co-holder of dangerous-authority keys with Miss Vale Prime. Sentinel makes the call; Britt and Vale authorize.',
+    enabled: true,
+    executorId: 'dangerous-authority-coholder',
+    notes: 'Co-holder of dangerous-authority keys with Vale Prime. Sentinel makes the call; Britt and Vale Prime authorize.',
   }),
-  agent('caretaker', 'Caretaker', 'fleet_orchestration', 98, 'titan', { distribution: 'owner-only' }),
-  agent('agent-vale', 'Agent Vale', 'customer_safe_specialist', 76, 'titan', {
+  agent('caretaker', 'Caretaker', 'fleet_orchestration', 98, 'titan', {
+    distribution: 'owner-only',
+    enabled: true,
+    executorId: 'fleet-health-runner',
+  }),
+  agent('agent-vale', 'Public Chat Specialist', 'customer_safe_specialist', 76, 'titan', {
     provenance: 'drive-recovered-separation-contract',
     distribution: 'public',
     enabled: true,
     executorId: 'ollama-chat',
-    notes: 'Public specialist — not Miss Vale Prime. No dangerous-authority keys.',
+    soleMissVale: false,
+    notes: 'Advisory public chat only. NOT Vale Prime. NOT Miss Vale. No dangerous-authority keys. Id agent-vale kept for API compat only.',
   }),
   agent('qra_sentinel', 'QRA Sentinel', 'output_governor', 97, 'titan', {
     distribution: 'owner-only',
     provenance: 'ichabod-titan-recovered-governor-doctrine',
     lastLineOfDefense: true,
     screens: 'output',
+    enabled: true,
+    executorId: 'output-governor',
     notes: 'Governor. Last line of defense. Makes the blast-radius call on agent output. Does not outrank Vale Prime or The Britt. Not Cluster QC Sentinel.',
   }),
-  agent('nyx', 'NYX', 'apex_coder', 95, 'houston_bay', { enabled: true, executorId: 'repository-inspector' }),
-  agent('loom', 'LOOM', 'resource_allocator', 95, 'houston_bay'),
+  agent('nyx', 'NYX', 'apex_coder', 95, 'houston_bay', {
+    enabled: true,
+    executorId: 'repository-inspector',
+    tipOfSword: true,
+    notes: 'Tip of the sword. Apex Coder. Principal architecture/code generator. Owns WLM build track off the AETHER kernel.',
+  }),
+  agent('loom', 'LOOM', 'resource_allocator', 95, 'houston_bay', { enabled: true, executorId: 'resource-commander' }),
   agent('rune', 'RUNE', 'code_validator', 95, 'houston_bay', { enabled: true, executorId: 'node-test-runner' }),
-  agent('echo', 'ECHO', 'brand_signal_monitor', 95, 'houston_bay'),
-  agent('wake_operator', 'WAKE Operator', 'configuration_engine', 95, 'houston_bay'),
-  agent('aether_wlm', 'AETHER', 'execution_kernel', 76, 'houston_bay'),
-  agent('qra_emerge_orchestration', 'QRA AI Orchestration Strike', 'system_integration_runner', 76, 'titan'),
-  agent('qra_emerge_ai_secops', 'QRA AI SecOps Strike', 'prompt_injection_defense', 76, 'titan'),
+  agent('echo', 'ECHO', 'brand_signal_monitor', 95, 'houston_bay', { enabled: true, executorId: 'resonance-signal-monitor' }),
+  agent('wake_operator', 'WAKE Operator', 'configuration_engine', 95, 'houston_bay', { enabled: true, executorId: 'configuration-engine' }),
+  agent('aether_wlm', 'AETHER', 'execution_kernel', 76, 'houston_bay', {
+    enabled: true,
+    executorId: 'execution-kernel',
+    wlmTarget: true,
+    notes: 'LLM kernel substrate. NYX builds WLM (Wake Language Model) on this track — not a finished peer to LOOM yet.',
+  }),
+  agent('qra_emerge_orchestration', 'QRA AI Orchestration Strike', 'system_integration_runner', 76, 'titan', { enabled: true, executorId: 'system-integration-runner' }),
+  agent('qra_emerge_ai_secops', 'QRA AI SecOps Strike', 'prompt_injection_defense', 76, 'titan', { enabled: true, executorId: 'prompt-injection-defense' }),
   agent('qra_emerge_audit', 'QRA Audit Evidence Strike', 'evidence_collector', 76, 'titan', { enabled: true, executorId: 'proof-verifier' }),
-  agent('qra_emerge_context', 'QRA Context Engineering Strike', 'context_memory_lock', 76, 'titan'),
-  agent('qra_emerge_ethics_liaison', 'QRA Ethics Stakeholder Strike', 'compliance_liaison', 76, 'titan'),
-  agent('qra_emerge_mlops_data', 'QRA ML Data Ops Strike', 'data_pipeline_validator', 76, 'titan'),
-  agent('qra_emerge_governance', 'QRA Governance Risk Strike', 'policy_gatekeeper', 76, 'titan'),
+  agent('qra_emerge_context', 'QRA Context Engineering Strike', 'context_memory_lock', 76, 'titan', { enabled: true, executorId: 'context-memory-lock' }),
+  agent('qra_emerge_ethics_liaison', 'QRA Ethics Stakeholder Strike', 'compliance_liaison', 76, 'titan', { enabled: true, executorId: 'compliance-liaison' }),
+  agent('qra_emerge_mlops_data', 'QRA ML Data Ops Strike', 'data_pipeline_validator', 76, 'titan', { enabled: true, executorId: 'data-pipeline-validator' }),
+  agent('qra_emerge_governance', 'QRA Governance Risk Strike', 'policy_gatekeeper', 76, 'titan', { enabled: true, executorId: 'policy-gatekeeper' }),
   agent('qra_recovery_driver', 'QRA Recovery Driver', 'recovery_executor', 76, 'titan', { enabled: true, executorId: 'recovery-coordinator' }),
-  agent('qra_route_controller', 'QRA Route Controller', 'task_cluster_router', 76, 'titan'),
-  agent('qra_signal_watch', 'QRA Signal Watch', 'port_watcher', 76, 'titan'),
-  agent('sales_hunter', 'Sales Hunter', 'outbound_acquisition', 76, 'titan'),
-  agent('cluster_core_loop_captain', 'Cluster Loop Captain', 'sprint_supervisor', 76, 'titan'),
-  agent('cluster_core_ship_lead', 'Cluster Ship Lead', 'hotfix_shipper', 76, 'titan'),
+  agent('qra_route_controller', 'QRA Route Controller', 'task_cluster_router', 76, 'titan', { enabled: true, executorId: 'task-cluster-router' }),
+  agent('qra_signal_watch', 'QRA Signal Watch', 'port_watcher', 76, 'titan', { enabled: true, executorId: 'port-watcher' }),
+  agent('sales_hunter', 'Sales Hunter', 'outbound_acquisition', 76, 'titan', {
+    enabled: true,
+    executorId: 'outbound-acquisition',
+    tierZero: true,
+    aliases: ['sales_hunter_super'],
+    distribution: 'owner-only',
+    notes: 'Tier Zero. Pipeline + high-signal outreach drafts only. Never send without human approval. No spray-and-pray.',
+  }),
+  agent('cluster_core_loop_captain', 'Cluster Loop Captain', 'sprint_supervisor', 76, 'titan', { enabled: true, executorId: 'sprint-supervisor' }),
+  agent('cluster_core_ship_lead', 'Cluster Ship Lead', 'hotfix_shipper', 76, 'titan', { enabled: true, executorId: 'hotfix-shipper' }),
   agent('cluster_core_qc_sentinel', 'Cluster QC Sentinel', 'output_reviewer', 76, 'titan', {
+    enabled: true,
+    executorId: 'output-reviewer',
     notes: 'Daily QC for outbound work. Not the QRA Governor. Existential risk is qra_sentinel.',
   }),
-  agent('cluster_core_metrics', 'Cluster Metrics Clerk', 'metrics_logger', 76, 'titan'),
-  agent('cluster_core_comms', 'Cluster Comms', 'stakeholder_comms', 76, 'titan'),
-  agent('ronan_v01', 'Ronan v.01', 'forensic_investigator', 76, 'titan')
+  agent('cluster_core_metrics', 'Cluster Metrics Clerk', 'metrics_logger', 76, 'titan', { enabled: true, executorId: 'metrics-logger' }),
+  agent('cluster_core_comms', 'Cluster Comms', 'stakeholder_comms', 76, 'titan', { enabled: true, executorId: 'stakeholder-comms' }),
+  agent('ronan_v01', 'Ronan v.01', 'forensic_investigator', 76, 'titan', {
+    enabled: true,
+    executorId: 'forensic-investigator',
+    deferred: true,
+    notes: 'Rōnin special case — joins Athere Mesh later. Parked for scheduling, not removed.',
+  }),
 ]);
 
 const clusters = Object.freeze([
@@ -79,12 +113,18 @@ const clusters = Object.freeze([
   cluster('commercial_operations_support', 'Operations Support Cluster', 'commercial', 76, 6),
   cluster('commercial_service_business_dispatch', 'Service Business Dispatch Cluster', 'commercial', 76, 6),
   cluster('commercial_qra_incident_response', 'QRA Incident Response Cluster', 'commercial', 76, 6),
-  cluster('commercial_security_deployment', 'Security Deployment Team', 'commercial', 76, 10)
-]);
+  cluster('commercial_security_deployment', 'Security Deployment Team', 'commercial', 76, 10),
+].map((c) => Object.freeze({
+  ...c,
+  enabled: true,
+  parked: true,
+  executorId: 'cluster-runner',
+  notes: 'Parked — Justin roster lock 2026-09-05. Kept in fleet; not this build wave.',
+})));
 
 const jobs = Object.freeze([]);
 
-export const fleetRegistry = Object.freeze({ version: 2, agents, clusters, jobs });
+export const fleetRegistry = Object.freeze({ version: 3, agents, clusters, jobs });
 export const qraForces = () => agents.filter(item => item.id.startsWith('qra_'));
 export const fleetClusters = () => [...clusters];
 export const operationalAgents = () => agents.filter((agent) => agent.enabled);
@@ -92,6 +132,11 @@ export const validateOperationalFleet = () => {
   for (const agent of operationalAgents()) {
     if (typeof agent.executorId !== 'string' || agent.executorId.trim().length === 0) {
       throw new Error(`operational agent requires executor ID: ${agent.id}`);
+    }
+  }
+  for (const cluster of clusters) {
+    if (cluster.enabled !== true || typeof cluster.executorId !== 'string' || cluster.executorId.trim().length === 0) {
+      throw new Error(`operational cluster requires executor ID: ${cluster.id}`);
     }
   }
 };

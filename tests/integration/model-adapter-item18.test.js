@@ -38,6 +38,10 @@ test('Item 18: titan chat still works when complete is built from a swapped adap
     profile: 'owner',
     authToken: 'test-owner-token-0123456789abcdef0123456789',
     runtime,
+    team: {
+      version: 1,
+      agents: [{ id: 'agent-vale', name: 'Public Chat Specialist', distribution: 'public', enabled: true, executorId: 'public-chat' }],
+    },
     orchestrator: {
       async execute() { return { status: 'blocked', reason: 'unused' }; },
       async getMission() { return null; },

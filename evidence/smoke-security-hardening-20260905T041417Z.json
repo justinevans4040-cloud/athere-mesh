@@ -1,0 +1,15 @@
+{
+  "stamp": "20260905T041417Z",
+  "ok": true,
+  "claim": "Deck bootstrap same-origin-only; advisory chat public-only; cross-site commands fail closed",
+  "anonymousBootstrapToken": null,
+  "tokenPolicy": "same-origin-only",
+  "sameOriginTokenMatch": true,
+  "missValePrimeChatStatus": 403,
+  "nyxChatStatus": 403,
+  "crossSiteCommandStatus": 403,
+  "healthUnauthStatus": 401,
+  "testsFocused": "35/35 GREEN functional-api+text-chat+model-adapter+notebook-lifecycle+authority+fleet",
+  "gitignorePhoneDumps": true,
+  "sentinelEmptyFailClosed": true
+}

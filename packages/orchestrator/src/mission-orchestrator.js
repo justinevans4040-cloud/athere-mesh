@@ -8,11 +8,40 @@ import { nodeExecutionInputBinding } from '../../execution/src/node-test-executo
 import { createRemoteDispatchExecutor } from '../../execution/src/remote-dispatch-executor.js';
 import { createWorkspaceFileExecutor } from '../../execution/src/workspace-file-executor.js';
 import { createTitanBuildExecutor } from '../../execution/src/titan-build-executor.js';
+import { createRoleCapabilityExecutor } from '../../execution/src/role-capability-executor.js';
+import { createNyxSchema, assertNyxKillSwitch } from '../../nyx/src/nyx-schema.js';
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 import { createSharedProofFacade } from '../../proof/src/shared-proof-facade.js';
 import { evaluateQr18Layers, assertQr18LayersVerified } from '../../proof/src/qr18-layered-verification.js';
 import { healMissionFromCheckpoint, recoverAndHealMissions } from '../../recovery/src/recovery-coordinator.js';
 import { createMemoryResonanceBus } from '../../resonance/src/resonance-bus.js';
+
+/**
+ * Keep-mesh OS lifecycle gates (beyond Vale Prime / NYX+RUNE work / audit).
+ * Houston is a label only — agents matter.
+ */
+const NOTEBOOK_LIFECYCLE_PERMISSIONS = Object.freeze([
+  { actor: 'caretaker', actions: ['fleet_health_check'] },
+  { actor: 'qra_emerge_orchestration', actions: ['run_system_integration'] },
+  { actor: 'qra_route_controller', actions: ['route_cluster_task'] },
+  { actor: 'loom', actions: ['resource_clearance'] },
+  { actor: 'the-britt', actions: ['cohold_dangerous_authority'] },
+  { actor: 'echo', actions: ['analyze_resonance_signals'] },
+  { actor: 'qra_sentinel', actions: ['screen_agent_output'] },
+]);
+
+function withNotebookLifecyclePermissions(permissions) {
+  return Object.freeze([...permissions, ...NOTEBOOK_LIFECYCLE_PERMISSIONS]);
+}
+
+function buildLifecycleResult({ preStages, workAgents, postStages }) {
+  return Object.freeze({
+    design: 'keep-mesh-add-agents',
+    vale: 'Vale Prime',
+    apexCoder: 'nyx',
+    stages: Object.freeze([...preStages, ...workAgents, ...postStages]),
+  });
+}
 
 function requirePath(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) throw new TypeError(`${label} is required`);
@@ -76,6 +105,7 @@ export function createMissionOrchestrator({
   executor,
   fileExecutor,
   buildExecutor,
+  roleExecutor,
   remoteWorkQueue,
   remoteRepositoryRoot,
   proofStore = createSharedProofFacade(),
@@ -108,6 +138,17 @@ export function createMissionOrchestrator({
   const titanBuild = buildExecutor ?? createTitanBuildExecutor();
   if (typeof titanBuild?.build !== 'function') {
     throw new TypeError('buildExecutor must provide build');
+  }
+  const roles = roleExecutor ?? createRoleCapabilityExecutor({
+    repositoryRoot,
+    workspaceRoot,
+  });
+  if (typeof roles?.caretakerFleetHealth !== 'function'
+    || typeof roles?.loomClearance !== 'function'
+    || typeof roles?.echoAnalyze !== 'function'
+    || typeof roles?.sentinelScreen !== 'function'
+    || typeof roles?.execute !== 'function') {
+    throw new TypeError('roleExecutor must provide caretakerFleetHealth, loomClearance, echoAnalyze, sentinelScreen, and execute');
   }
   const localExecutor = executorForTests(executor);
   // When a work queue is injected, both inspect-repository and run-node-tests
@@ -192,6 +233,170 @@ export function createMissionOrchestrator({
     return saved;
   }
 
+  /**
+   * OS pre-work gates after Vale Prime (keep mesh, add agents):
+   * Caretaker → QRA org → QRA route (NYX Apex Coder) → LOOM → Britt cohold.
+   * Does not write mission.evidence (MEA work evidence stays NYX/RUNE performers).
+   */
+  async function runNotebookPreLifecycle(record, { domain = 'code' } = {}) {
+    const stages = [];
+    let current = record;
+    const fail = (message) => {
+      const error = new Error(message);
+      error.lastRecord = current;
+      throw error;
+    };
+
+    const caretakerResult = await roles.caretakerFleetHealth({
+      services: [
+        { id: 'repository', path: path.resolve(repositoryRoot) },
+        { id: 'workspace', path: path.resolve(workspaceRoot) },
+      ],
+    });
+    if (caretakerResult?.decision === 'DEGRADED' || caretakerResult?.healthy === false) {
+      fail(`Caretaker fleet health DEGRADED: ${JSON.stringify(caretakerResult?.services ?? caretakerResult)}`);
+    }
+    current = await persistTransition(current, `${current.mission.id}-caretaker`, {
+      type: 'running',
+      agent: 'caretaker',
+      action: 'fleet_health_check',
+      detail: 'Caretaker fleet orchestration',
+      evidence: Object.freeze({ stage: 'caretaker', result: caretakerResult }),
+    }, { activeAgents: ['caretaker'] });
+    stages.push('caretaker');
+
+    const qraOrg = await roles.execute('system-integration-runner', { agentId: 'qra_emerge_orchestration' });
+    current = await persistTransition(current, `${current.mission.id}-qra-org`, {
+      type: 'running',
+      agent: 'qra_emerge_orchestration',
+      action: 'run_system_integration',
+      detail: 'QRA operational coordination',
+      evidence: Object.freeze({ stage: 'qra_emerge_orchestration', result: qraOrg }),
+    }, { activeAgents: ['qra_emerge_orchestration'] });
+    stages.push('qra_emerge_orchestration');
+
+    const nyxSchema = createNyxSchema();
+    assertNyxKillSwitch(nyxSchema);
+    const routeResult = await roles.execute('task-cluster-router', {
+      agentId: 'qra_route_controller',
+      domain,
+      assignedAgentId: 'nyx',
+      assignedRole: 'apex_coder',
+      nyxSchema,
+    });
+    current = await persistTransition(current, `${current.mission.id}-qra-route`, {
+      type: 'running',
+      agent: 'qra_route_controller',
+      action: 'route_cluster_task',
+      detail: 'QRA route assigns NYX Apex Coder',
+      evidence: Object.freeze({
+        stage: 'qra_route_controller',
+        assignedAgentId: 'nyx',
+        assignedRole: 'apex_coder',
+        nyxSchema,
+        result: routeResult,
+      }),
+    }, { activeAgents: ['qra_route_controller'] });
+    stages.push('qra_route_controller');
+    stages.push('nyx');
+
+    const loomResult = await roles.loomClearance();
+    if (loomResult?.decision === 'BLOCK') {
+      fail(`LOOM resource clearance BLOCK: ${(loomResult.reasons || []).join(',') || 'resource gate'}`);
+    }
+    current = await persistTransition(current, `${current.mission.id}-loom`, {
+      type: 'running',
+      agent: 'loom',
+      action: 'resource_clearance',
+      detail: 'LOOM resource clearance before NYX work',
+      evidence: Object.freeze({ stage: 'loom', result: loomResult }),
+    }, { activeAgents: ['loom'] });
+    stages.push('loom');
+
+    const brittCohold = await roles.execute('dangerous-authority-coholder', { agentId: 'the-britt' });
+    current = await persistTransition(current, `${current.mission.id}-britt-cohold`, {
+      type: 'running',
+      agent: 'the-britt',
+      action: 'cohold_dangerous_authority',
+      detail: 'Britt durable-execution cohold (does not replace NYX)',
+      evidence: Object.freeze({ stage: 'the-britt-cohold', result: brittCohold }),
+    }, { activeAgents: ['the-britt'] });
+    stages.push('the-britt');
+
+    return { record: current, stages: Object.freeze(stages), assignedAgentId: 'nyx' };
+  }
+
+  /**
+   * OS post-work gates before auditor:
+   * Britt assemble → ECHO → QRA Sentinel. Auditor alone still certifies.
+   */
+  async function runNotebookPostLifecycle(record, { screenText }) {
+    const stages = [];
+    let current = record;
+    const fail = (message) => {
+      const error = new Error(message);
+      error.lastRecord = current;
+      throw error;
+    };
+
+    const assembled = Object.freeze({
+      stage: 'result-assembly',
+      missionId: current.mission.id,
+      revision: current.revision,
+      specialistEvidenceAgents: (current.mission.evidence ?? []).map((entry) => entry.agent),
+    });
+    const brittAssemble = await roles.execute('dangerous-authority-coholder', {
+      agentId: 'the-britt',
+      assembly: assembled,
+    });
+    current = await persistTransition(current, `${current.mission.id}-britt-assemble`, {
+      type: 'running',
+      agent: 'the-britt',
+      action: 'cohold_dangerous_authority',
+      detail: 'Britt result assembly before validation',
+      evidence: Object.freeze({ stage: 'the-britt-assemble', result: brittAssemble, assembled }),
+    }, { activeAgents: ['the-britt'] });
+    stages.push('the-britt');
+
+    const echoResult = await roles.echoAnalyze();
+    if (echoResult?.decision === 'DRIFT') {
+      fail(`ECHO resonance DRIFT: ${JSON.stringify(echoResult.driftFlags ?? [])}`);
+    }
+    current = await persistTransition(current, `${current.mission.id}-echo`, {
+      type: 'running',
+      agent: 'echo',
+      action: 'analyze_resonance_signals',
+      detail: 'ECHO post-work resonance validation',
+      evidence: Object.freeze({ stage: 'echo', result: echoResult }),
+    }, { activeAgents: ['echo'] });
+    stages.push('echo');
+
+    const sentinelInput = [
+      typeof current.mission?.objective === 'string' ? current.mission.objective : '',
+      typeof screenText === 'string' ? screenText : '',
+    ].filter((part) => part.trim().length > 0).join('\n');
+    if (sentinelInput.trim().length === 0) {
+      fail('QRA Sentinel refused empty screen input');
+    }
+    const sentinelResult = roles.sentinelScreen({
+      text: sentinelInput,
+      agentId: 'specialist-assembly',
+    });
+    if (sentinelResult?.safe !== true || sentinelResult?.cleared !== true) {
+      fail(`QRA Sentinel blocked delivery: ${sentinelResult?.feedback ?? 'output unsafe'}`);
+    }
+    current = await persistTransition(current, `${current.mission.id}-sentinel`, {
+      type: 'running',
+      agent: 'qra_sentinel',
+      action: 'screen_agent_output',
+      detail: 'QRA Sentinel output-boundary assessment',
+      evidence: Object.freeze({ stage: 'qra_sentinel', result: sentinelResult }),
+    }, { activeAgents: ['qra_sentinel'] });
+    stages.push('qra_sentinel');
+
+    return { record: current, stages: Object.freeze(stages) };
+  }
+
   async function createAuthoritativeMission({ id, objective }) {
     const record = await missionState.create({
       operationId: `${id}-create`,
@@ -208,7 +413,7 @@ export function createMissionOrchestrator({
         { prerequisite: 'run-node-tests', dependent: 'verify-proof' },
       ],
       constraints: ['completion requires independently verified proof', 'model output is advisory only'],
-      permissions: [
+      permissions: withNotebookLifecyclePermissions([
         { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
         { actor: 'nyx', actions: ['observe_repository'] },
         { actor: 'rune', actions: ['execute_node_tests'] },
@@ -221,7 +426,7 @@ export function createMissionOrchestrator({
           'rollback_to_checkpoint',
           'retry_from_checkpoint',
         ] },
-      ],
+      ]),
       currentPlan: { id: 'titan-test-plan', version: 1, steps: ['inspect-repository', 'run-node-tests', 'verify-proof'] },
       environmentObservations: [{ source: 'titan', key: 'repository_root', value: repositoryRoot, observedAt: clock() }],
     });
@@ -249,7 +454,7 @@ export function createMissionOrchestrator({
         { prerequisite: workSubgoal, dependent: 'verify-proof' },
       ],
       constraints: ['completion requires independently verified proof', 'model output is advisory only'],
-      permissions: [
+      permissions: withNotebookLifecyclePermissions([
         { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
         { actor: 'nyx', actions: [nyxAction] },
         { actor: 'qra_emerge_audit', actions: ['verify_proof'] },
@@ -261,7 +466,7 @@ export function createMissionOrchestrator({
           'rollback_to_checkpoint',
           'retry_from_checkpoint',
         ] },
-      ],
+      ]),
       currentPlan: { id: 'owner-file-work-plan', version: 1, steps: [workSubgoal, 'verify-proof'] },
       environmentObservations: [
         { source: 'titan', key: 'file_work_target', value: action.target, observedAt: clock() },
@@ -361,10 +566,13 @@ export function createMissionOrchestrator({
     const capabilityId = isOrganize ? 'workspace-file-worker' : 'repository-inspector';
     let record = await createFileWorkMission({ id: missionId(idFactory), objective: text, action });
     record = await persistTransition(record, `${record.mission.id}-supervision`, {
-      type: 'running', agent: 'miss-vale-prime', detail: 'mission supervision started',
+      type: 'running', agent: 'miss-vale-prime', detail: 'Vale Prime mission supervision started',
     }, { activeAgents: ['miss-vale-prime'] });
 
     try {
+      const pre = await runNotebookPreLifecycle(record, { domain: 'files' });
+      record = pre.record;
+
       const workStarted = Date.now();
       const fileResult = isOrganize
         ? await workspaceFiles.organizeByType({ target: action.target, dryRun: false })
@@ -397,15 +605,25 @@ export function createMissionOrchestrator({
       const agentEvidence = Object.freeze([
         Object.freeze({ agent: 'nyx', ...nyxEvidence }),
       ]);
+      const post = await runNotebookPostLifecycle(record, {
+        screenText: JSON.stringify({ fileWork: fileResult, agentEvidence }),
+      });
+      record = post.record;
+      const lifecycle = buildLifecycleResult({
+        preStages: pre.stages,
+        workAgents: ['nyx'],
+        postStages: post.stages,
+      });
       record = await certifyWithProof({
         record,
         payload: {
           fileWork: fileResult,
           agentEvidence,
+          lifecycle,
         },
         agentEvidence,
         completedWork: [workSubgoal, 'verify-proof'],
-        resultExtras: { fileWork: fileResult },
+        resultExtras: { fileWork: fileResult, lifecycle },
       });
       return Object.freeze({
         revision: record.revision,
@@ -413,7 +631,7 @@ export function createMissionOrchestrator({
         fileWork: fileResult,
       });
     } catch (error) {
-      return blockThenHeal(record, error instanceof Error ? error.message : String(error));
+      return blockThenHeal(recordFromLifecycleError(record, error), error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -433,7 +651,7 @@ export function createMissionOrchestrator({
         { prerequisite: 'run-titan-build', dependent: 'verify-proof' },
       ],
       constraints: ['completion requires independently verified proof', 'model output is advisory only'],
-      permissions: [
+      permissions: withNotebookLifecyclePermissions([
         { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
         { actor: 'nyx', actions: ['observe_repository'] },
         { actor: 'rune', actions: ['execute_titan_build'] },
@@ -446,7 +664,7 @@ export function createMissionOrchestrator({
           'rollback_to_checkpoint',
           'retry_from_checkpoint',
         ] },
-      ],
+      ]),
       currentPlan: { id: 'titan-build-plan', version: 1, steps: ['inspect-repository', 'run-titan-build', 'verify-proof'] },
       environmentObservations: [{ source: 'titan', key: 'repository_root', value: repositoryRoot, observedAt: clock() }],
     });
@@ -457,10 +675,13 @@ export function createMissionOrchestrator({
   async function executeBuild({ text }) {
     let record = await createBuildMission({ id: missionId(idFactory), objective: text });
     record = await persistTransition(record, `${record.mission.id}-supervision`, {
-      type: 'running', agent: 'miss-vale-prime', detail: 'mission supervision started',
+      type: 'running', agent: 'miss-vale-prime', detail: 'Vale Prime mission supervision started',
     }, { activeAgents: ['miss-vale-prime'] });
 
     try {
+      const pre = await runNotebookPreLifecycle(record, { domain: 'build' });
+      record = pre.record;
+
       const inspectStarted = Date.now();
       const inspection = parseRepositoryInspectionResult(await testExecutor.inspect({
         repositoryRoot: workerRepositoryRoot,
@@ -530,16 +751,26 @@ export function createMissionOrchestrator({
         Object.freeze({ agent: 'nyx', ...nyxEvidence }),
         Object.freeze({ agent: 'rune', ...runeEvidence }),
       ]);
+      const post = await runNotebookPostLifecycle(record, {
+        screenText: JSON.stringify({ build: buildResult, inspection, agentEvidence }),
+      });
+      record = post.record;
+      const lifecycle = buildLifecycleResult({
+        preStages: pre.stages,
+        workAgents: ['nyx', 'rune'],
+        postStages: post.stages,
+      });
       record = await certifyWithProof({
         record,
         payload: {
           build: buildResult,
           inspection,
           agentEvidence,
+          lifecycle,
         },
         agentEvidence,
         completedWork: ['inspect-repository', 'run-titan-build', 'verify-proof'],
-        resultExtras: { build: buildResult },
+        resultExtras: { build: buildResult, lifecycle },
       });
       return Object.freeze({
         revision: record.revision,
@@ -547,7 +778,7 @@ export function createMissionOrchestrator({
         build: buildResult,
       });
     } catch (error) {
-      return blockThenHeal(record, error instanceof Error ? error.message : String(error));
+      return blockThenHeal(recordFromLifecycleError(record, error), error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -577,6 +808,13 @@ export function createMissionOrchestrator({
         taskId: `checkpoint-${label}`,
       }),
     });
+  }
+
+  function recordFromLifecycleError(record, error) {
+    if (error && typeof error === 'object' && error.lastRecord && typeof error.lastRecord.revision === 'number') {
+      return error.lastRecord;
+    }
+    return record;
   }
 
   async function blockThenHeal(record, detail) {
@@ -645,10 +883,13 @@ export function createMissionOrchestrator({
 
       let record = await createAuthoritativeMission({ id: missionId(idFactory), objective: text });
       record = await persistTransition(record, `${record.mission.id}-supervision`, {
-        type: 'running', agent: 'miss-vale-prime', detail: 'mission supervision started',
+        type: 'running', agent: 'miss-vale-prime', detail: 'Vale Prime mission supervision started',
       }, { activeAgents: ['miss-vale-prime'] });
 
       try {
+        const pre = await runNotebookPreLifecycle(record, { domain: 'code' });
+        record = pre.record;
+
         const inspectStarted = Date.now();
         const inspection = parseRepositoryInspectionResult(await testExecutor.inspect({
           repositoryRoot: workerRepositoryRoot,
@@ -727,6 +968,20 @@ export function createMissionOrchestrator({
           Object.freeze({ agent: 'nyx', ...nyxEvidence }),
           Object.freeze({ agent: 'rune', ...runeEvidence }),
         ]);
+        const post = await runNotebookPostLifecycle(record, {
+          screenText: JSON.stringify({
+            command: result.command,
+            exitCode: result.exitCode,
+            tests: validatedCounts,
+            agentEvidence,
+          }),
+        });
+        record = post.record;
+        const lifecycle = buildLifecycleResult({
+          preStages: pre.stages,
+          workAgents: ['nyx', 'rune'],
+          postStages: post.stages,
+        });
         record = await certifyWithProof({
           record,
           payload: {
@@ -737,14 +992,15 @@ export function createMissionOrchestrator({
             stderr: result.stderr,
             inspection,
             agentEvidence,
+            lifecycle,
           },
           agentEvidence,
           completedWork: ['inspect-repository', 'run-node-tests', 'verify-proof'],
-          resultExtras: { tests: validatedCounts },
+          resultExtras: { tests: validatedCounts, lifecycle },
         });
         return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });
       } catch (error) {
-        return blockThenHeal(record, error instanceof Error ? error.message : String(error));
+        return blockThenHeal(recordFromLifecycleError(record, error), error instanceof Error ? error.message : String(error));
       }
     },
 

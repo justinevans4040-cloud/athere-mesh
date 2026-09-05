@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "statusCode": 200,
+  "status": "completed",
+  "missionId": "mission-be67a03d-4821-4e8d-8f38-1e88c4c2faae",
+  "agents": [
+    "titan",
+    "miss-vale-prime",
+    "caretaker",
+    "qra_emerge_orchestration",
+    "qra_route_controller",
+    "loom",
+    "the-britt",
+    "nyx",
+    "the-britt",
+    "echo",
+    "qra_sentinel",
+    "qra_emerge_audit"
+  ],
+  "lifecycle": {
+    "design": "keep-mesh-add-agents",
+    "vale": "Vale Prime",
+    "apexCoder": "nyx",
+    "stages": [
+      "caretaker",
+      "qra_emerge_orchestration",
+      "qra_route_controller",
+      "nyx",
+      "loom",
+      "the-britt",
+      "nyx",
+      "the-britt",
+      "echo",
+      "qra_sentinel"
+    ]
+  },
+  "evidenceAgents": [
+    "nyx"
+  ]
+}

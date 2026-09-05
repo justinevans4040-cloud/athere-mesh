@@ -1,6 +1,6 @@
 /**
  * Founder authority chain for Athere Mesh.
- * Justin Evans (founder) > Miss Vale Prime > The Britt 4.0 for dangerous keys.
+ * Justin Evans (founder) > Vale Prime (sole Miss Vale) > The Britt 4.0 for dangerous keys.
  * QRA Sentinel makes the output-screen / blast-radius call; it does not outrank Vale/Britt.
  */
 
@@ -112,7 +112,7 @@ export function authorizeDangerousAction({ actorId } = {}) {
     granted: false,
     actor,
     rank: null,
-    reason: 'actor lacks dangerous-authority keys; only founder, Miss Vale Prime, or The Britt may authorize',
+    reason: 'actor lacks dangerous-authority keys; only founder, Vale Prime, or The Britt may authorize',
   });
 }
 

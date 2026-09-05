@@ -5,9 +5,22 @@ import { createTitanApi } from '../../packages/api/src/titan-api.js';
 
 const OWNER_TOKEN = 'test-owner-token-0123456789abcdef0123456789';
 
+const PUBLIC_CHAT_TEAM = Object.freeze({
+  version: 1,
+  agents: Object.freeze([
+    Object.freeze({
+      id: 'agent-vale',
+      name: 'Public Chat Specialist',
+      distribution: 'public',
+      enabled: true,
+      executorId: 'public-chat',
+    }),
+  ]),
+});
+
 test('chat API accepts normal text without requiring JSON', async () => {
   const runtime = createAgentRuntime({ complete: async () => ({ content: 'A live Titan response.' }) });
-  const api = createTitanApi({ runtime, authToken: OWNER_TOKEN });
+  const api = createTitanApi({ runtime, authToken: OWNER_TOKEN, team: PUBLIC_CHAT_TEAM });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
     const response = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
@@ -24,7 +37,7 @@ test('chat API accepts normal text without requiring JSON', async () => {
 
 test('chat API rejects oversized text before model execution', async () => {
   const runtime = createAgentRuntime({ complete: async () => ({ content: 'should not run' }) });
-  const api = createTitanApi({ runtime, authToken: OWNER_TOKEN, maxRequestBytes: 32 });
+  const api = createTitanApi({ runtime, authToken: OWNER_TOKEN, maxRequestBytes: 32, team: PUBLIC_CHAT_TEAM });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
     const response = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
@@ -44,7 +57,7 @@ test('chat API directs recognized execution requests to the command endpoint', a
       return { content: 'should not run' };
     },
   });
-  const api = createTitanApi({ runtime, authToken: OWNER_TOKEN });
+  const api = createTitanApi({ runtime, authToken: OWNER_TOKEN, team: PUBLIC_CHAT_TEAM });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
     const postChat = async (text) => {
@@ -68,7 +81,7 @@ test('chat API never sends denied recognized execution requests to the advisory 
       return { content: 'should not run' };
     },
   });
-  const api = createTitanApi({ runtime, profile: 'public' });
+  const api = createTitanApi({ runtime, profile: 'public', team: PUBLIC_CHAT_TEAM });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
     const response = await fetch(`${api.url}/api/chat?agent=agent-vale`, {

@@ -43,6 +43,7 @@ async function startFunctionalApi({
   logger,
   authToken = OWNER_TOKEN,
   recovery = { recovered: ['mission-recovered'], blocked: [], corrupt: [] },
+  hostLabel,
 } = {}) {
   const runtime = createAgentRuntime({ complete: async () => ({ content: 'advisory only' }) });
   const api = createTitanApi({
@@ -54,6 +55,7 @@ async function startFunctionalApi({
     recovery,
     ...(maxRequestBytes === undefined ? {} : { maxRequestBytes }),
     ...(logger === undefined ? {} : { logger }),
+    ...(hostLabel === undefined ? {} : { hostLabel }),
   });
   await api.listen({ host: '127.0.0.1', port: 0 });
   return api;
@@ -186,25 +188,86 @@ test('command admission is single-flight and releases after blocked results and 
 
 test('advisory client errors use stable non-500 public responses', async () => {
   const runtime = createAgentRuntime({ complete: async () => ({ content: 'must not run' }) });
-  const api = createTitanApi({ runtime, profile: 'owner', authToken: OWNER_TOKEN });
+  const api = createTitanApi({
+    runtime,
+    profile: 'owner',
+    authToken: OWNER_TOKEN,
+    team: fleetRegistry,
+    orchestrator: createOrchestrator(),
+    recovery: { recovered: [], blocked: [], corrupt: [] },
+  });
   await api.listen({ host: '127.0.0.1', port: 0 });
   try {
     const empty = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
       method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: '   ',
     });
-    const disabled = await fetch(`${api.url}/api/chat?agent=loom`, {
+    const unknown = await fetch(`${api.url}/api/chat?agent=not-a-real-agent`, {
       method: 'POST', headers: { authorization: `Bearer ${OWNER_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' }, body: 'hello',
     });
     assert.deepEqual(
       [
         { status: empty.status, body: await empty.json() },
-        { status: disabled.status, body: await disabled.json() },
+        { status: unknown.status, body: await unknown.json() },
       ],
       [
         { status: 400, body: { error: 'text must be non-empty' } },
-        { status: 409, body: { error: 'agent is not operational' } },
+        { status: 400, body: { error: 'unknown agent' } },
       ],
     );
+  } finally {
+    await api.close();
+  }
+});
+
+test('command deck UI is served on loopback; owner token only on same-origin bootstrap', async () => {
+  const api = await startFunctionalApi({ hostLabel: 'test-deck-host' });
+  try {
+    const home = await fetch(`${api.url}/`);
+    assert.equal(home.status, 200);
+    assert.match(home.headers.get('content-type') || '', /text\/html/);
+    const html = await home.text();
+    assert.match(html, /COMMAND DECK/);
+    assert.match(html, /There is a/);
+
+    const css = await fetch(`${api.url}/deck.css`);
+    assert.equal(css.status, 200);
+    const js = await fetch(`${api.url}/deck.js`);
+    assert.equal(js.status, 200);
+
+    const anonymous = await fetch(`${api.url}/api/deck/bootstrap`);
+    assert.equal(anonymous.status, 200);
+    const anonymousBody = await anonymous.json();
+    assert.equal(anonymousBody.hostLabel, 'test-deck-host');
+    assert.equal(anonymousBody.ownerToken, null);
+    assert.equal(anonymousBody.tokenPolicy, 'same-origin-only');
+    assert.equal(anonymousBody.ui, '/');
+
+    const origin = new URL(api.url).origin;
+    const boot = await fetch(`${api.url}/api/deck/bootstrap`, {
+      headers: { origin, 'sec-fetch-site': 'same-origin' },
+    });
+    assert.equal(boot.status, 200);
+    const body = await boot.json();
+    assert.equal(body.ownerToken, OWNER_TOKEN);
+    assert.equal(body.tokenPolicy, 'same-origin-only');
+  } finally {
+    await api.close();
+  }
+});
+
+test('advisory chat blocks owner-only and Vale Prime; allows public specialist only', async () => {
+  const api = await startFunctionalApi();
+  try {
+    const blocked = await request(api, '/api/chat?agent=miss-vale-prime', { method: 'POST', body: 'hello Titan' });
+    assert.equal(blocked.status, 403);
+    assert.deepEqual(blocked.body, { error: 'agent not available for advisory chat' });
+
+    const nyxBlocked = await request(api, '/api/chat?agent=nyx', { method: 'POST', body: 'hello Titan' });
+    assert.equal(nyxBlocked.status, 403);
+
+    const allowed = await request(api, '/api/chat?agent=agent-vale', { method: 'POST', body: 'hello Titan' });
+    assert.equal(allowed.status, 200);
+    assert.equal(allowed.body.agentId, 'agent-vale');
   } finally {
     await api.close();
   }
@@ -217,25 +280,20 @@ test('functional API exposes health, operational team, durable command result, a
     assert.equal(health.status, 200);
     assert.deepEqual(health.body, {
       ready: true,
-      enabledAgents: 6,
+      enabledAgents: 28,
       recovery: { recovered: 1, blocked: 0, corrupt: 0, healed: 0 },
     });
 
     const team = await request(api, '/api/team');
     assert.equal(team.status, 200);
-    assert.equal(team.body.enabledAgents, 6);
+    assert.equal(team.body.enabledAgents, 28);
     assert.equal(team.body.agents.length, 28);
-    assert.deepEqual(
-      team.body.agents.filter(({ enabled }) => enabled).map(({ id, executorId, operational }) => ({ id, executorId, operational })),
-      [
-        { id: 'miss-vale-prime', executorId: 'mission-supervisor', operational: true },
-        { id: 'agent-vale', executorId: 'ollama-chat', operational: true },
-        { id: 'nyx', executorId: 'repository-inspector', operational: true },
-        { id: 'rune', executorId: 'node-test-runner', operational: true },
-        { id: 'qra_emerge_audit', executorId: 'proof-verifier', operational: true },
-        { id: 'qra_recovery_driver', executorId: 'recovery-coordinator', operational: true },
-      ],
-    );
+    assert.ok(team.body.agents.every(({ enabled, operational, executorId }) => enabled && operational && typeof executorId === 'string'));
+    const byId = Object.fromEntries(team.body.agents.map((a) => [a.id, a.executorId]));
+    assert.equal(byId.loom, 'resource-commander');
+    assert.equal(byId.echo, 'resonance-signal-monitor');
+    assert.equal(byId.caretaker, 'fleet-health-runner');
+    assert.equal(byId.qra_sentinel, 'output-governor');
 
     const command = await request(api, '/api/commands', { method: 'POST', body: 'test all of Titan' });
     assert.equal(command.status, 200);
@@ -247,8 +305,12 @@ test('functional API exposes health, operational team, durable command result, a
     assert.equal(mission.body.mission.id, command.body.mission.id);
 
     const advisoryExecution = await request(api, '/api/chat?agent=nyx', { method: 'POST', body: 'test Titan' });
-    assert.equal(advisoryExecution.status, 409);
-    assert.deepEqual(advisoryExecution.body, { error: 'execution request must use /api/commands' });
+    assert.equal(advisoryExecution.status, 403);
+    assert.deepEqual(advisoryExecution.body, { error: 'agent not available for advisory chat' });
+
+    const publicExecutionViaChat = await request(api, '/api/chat?agent=agent-vale', { method: 'POST', body: 'test Titan' });
+    assert.equal(publicExecutionViaChat.status, 409);
+    assert.deepEqual(publicExecutionViaChat.body, { error: 'execution request must use /api/commands' });
   } finally {
     await api.close();
   }

@@ -16,11 +16,19 @@ import {
 test('operational agents map onto manager, executor, auditor, and recovery roles', () => {
   const roles = executionRoles();
   assert.deepEqual(roleForAgent('miss-vale-prime'), roles.manager);
+  assert.deepEqual(roleForAgent('caretaker'), roles.manager);
+  assert.deepEqual(roleForAgent('the-britt'), roles.manager);
   assert.deepEqual(roleForAgent('nyx'), roles.executor);
+  assert.deepEqual(roleForAgent('loom'), roles.executor);
+  assert.deepEqual(roleForAgent('echo'), roles.executor);
   assert.deepEqual(roleForAgent('rune'), roles.executor);
   assert.deepEqual(roleForAgent('qra_emerge_audit'), roles.auditor);
   assert.deepEqual(roleForAgent('qra_recovery_driver'), roles.recovery);
-  assert.deepEqual(agentsForRole(roles.executor), ['nyx', 'rune']);
+  assert.ok(agentsForRole(roles.executor).includes('nyx'));
+  assert.ok(agentsForRole(roles.executor).includes('loom'));
+  assert.ok(agentsForRole(roles.executor).includes('echo'));
+  assert.ok(agentsForRole(roles.executor).includes('rune'));
+  assert.equal(agentsForRole(roles.auditor).length, 1);
   assert.throws(() => roleForAgent('unknown-agent'), /unknown operational agent/);
 });
 

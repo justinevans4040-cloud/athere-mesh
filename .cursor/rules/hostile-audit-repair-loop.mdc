@@ -1,0 +1,48 @@
+---
+description: Hostile audit + repair loop mandatory on every code change from this point
+alwaysApply: true
+---
+
+# Hostile audit + repair loop (HARD — all future code)
+
+From this point forward, **every** material code change in Athere Mesh / Titan must run a hostile audit and repair cycle. Skipping it is a hard failure. “Tests passed” alone is never enough.
+
+## When (non-negotiable)
+
+- Any new file, edit, wiring, deploy, UI, executor, fleet bind, or API change
+- Before saying ready / done / fixed / shipped / live
+- Before asking Justin to look at or demo anything
+- Before switching tasks or ending a turn that claimed progress
+
+## Loop (repeat until PASS)
+
+1. **Claim** — one falsifiable line for what this change makes true.
+2. **Hostile audit** — try to break it: wrong path, missing agent, shaved design, fake ONLINE, cross-host fail, auth fail, empty proof, deck lies, demoted founder IP, A→B substituted for full OS design.
+3. **Evidence** — fresh local proof (command output, evidence JSON, live HTTP, file hash). No “should work.”
+4. **Repair** — if anything fails, fix it in the same turn. Do not continue or call ready.
+5. **Re-audit** — run the hostile pass again after each repair until clean or honestly **NOT READY** with residual risk named.
+
+## Required output block (before any ready line)
+
+```text
+HOSTILE AUDIT
+- Claim:
+- Attack attempts:
+- Failures found:
+- Fixes applied:
+- Evidence:
+- Residual risk:
+VERDICT: READY | NOT READY
+```
+
+## Forbidden
+
+- Marking done because the ladder felt complete
+- Leaving known failures for Justin to discover
+- Shaving NotebookLM / Helios / founder design to make the audit green
+- Claiming full-fleet or full-OS when only a subset path runs
+- Continuing to the next feature while VERDICT is NOT READY unless Justin explicitly orders park-and-continue
+
+## Design bible (do not substitute)
+
+Authoritative product shape for audits: founder NotebookLM source + Helios + Implementation Brief under `evidence/s24-dump-*/athere-docs/` (Titan / QRA / Britt / Mesh / validators / Sentinel). Fabric A→B is not the product.

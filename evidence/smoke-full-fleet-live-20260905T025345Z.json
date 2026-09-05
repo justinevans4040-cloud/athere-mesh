@@ -1,0 +1,10 @@
+{
+    "enabledAgents":  28,
+    "claim":  "Live API reports full 28-agent operational fleet",
+    "sentinelOnline":  true,
+    "ok":  true,
+    "loomOnline":  true,
+    "caretakerOnline":  true,
+    "stamp":  "20260905T025345Z",
+    "echoOnline":  true
+}

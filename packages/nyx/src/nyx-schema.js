@@ -23,7 +23,7 @@ export const NYX_TOOL_IDS = Object.freeze([
 export const NYX_PEERS = Object.freeze({
   integrity: 'rune',
   resources: 'loom',
-  mission: 'miss-vale-prime',
+  mission: 'miss-vale-prime', // Vale Prime — sole Miss Vale
 });
 
 export const NYX_OUTPUT_STATUSES = Object.freeze([

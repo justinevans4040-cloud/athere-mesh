@@ -30,3 +30,10 @@ workspace/
 
 # Demo screen recordings (keep locally; do not re-track)
 evidence/demos/*.mp4
+
+# Phone/device dumps and Redis snapshots — secret/bloat risk; keep local only
+evidence/s24-dump-*/
+evidence/**/*.rdb
+evidence/**/termux-home.tgz
+evidence/**/*dump*.rdb
+evidence/s24-py-json-*/

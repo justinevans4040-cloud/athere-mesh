@@ -220,7 +220,12 @@ test('orchestrator happy path completes with auditor-gated completedWork only', 
     bus: createMemoryResonanceBus(),
     clock: (() => {
       let index = 0;
-      return () => `2026-09-03T21:00:0${index++}.000Z`;
+      return () => {
+        const n = index++;
+        const mm = String(Math.floor(n / 60)).padStart(2, '0');
+        const ss = String(n % 60).padStart(2, '0');
+        return `2026-09-03T21:${mm}:${ss}.000Z`;
+      };
     })(),
     idFactory: () => 'mea-orchestrator-1111',
     executor: {

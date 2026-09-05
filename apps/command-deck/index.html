@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ATHERE · Command Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/deck.css" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+  <div class="scanline" aria-hidden="true"></div>
+
+  <aside class="rail" id="rail">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"></div>
+      <div>
+        <strong>ATHERE</strong>
+        <span>COMMAND DECK</span>
+      </div>
+    </div>
+    <div class="live-chip" id="liveChip"><i></i><b>MESH</b> · connecting</div>
+    <nav>
+      <button type="button" class="nav-item nav-active" data-view="command">Command</button>
+      <button type="button" class="nav-item" data-view="fleet">Fleet</button>
+      <button type="button" class="nav-item" data-view="river">Causal river</button>
+      <button type="button" class="nav-item" data-view="proof">Proof vault</button>
+    </nav>
+    <div class="rail-foot">
+      <span class="eyebrow">HOST</span>
+      <strong id="hostLabel">—</strong>
+      <small id="hostMeta">loopback · owner</small>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <header class="topbar">
+      <div class="crumb"><span>OPERATOR</span><strong id="viewTitle">Command</strong></div>
+      <div class="top-actions">
+        <button type="button" class="ghost" id="refreshBtn">Refresh</button>
+        <div class="pulse-dot" id="pulseDot" title="API link"></div>
+      </div>
+    </header>
+
+    <section class="view view-active" data-view-panel="command">
+      <div class="hero">
+        <p class="brand-line">There is a <em>there</em>. It’s called <strong>Athere</strong>.</p>
+        <h1>Run the mesh.<br /><span class="outline">Watch it prove.</span></h1>
+        <p class="lede">Plain language in. Live A→B on this machine. COMS DONE only with proof.</p>
+      </div>
+
+      <div class="command-grid">
+        <div class="panel intent-panel">
+          <div class="panel-head">
+            <span class="eyebrow">INTENT</span>
+            <h2>Start mission</h2>
+          </div>
+          <textarea id="intent" rows="3" placeholder="Inventory my scratch folder" spellcheck="false"></textarea>
+          <div class="chips" id="chips">
+            <button type="button" data-intent="Inventory my scratch folder">Inventory scratch</button>
+            <button type="button" data-intent="Organize my scratch folder by type">Organize scratch</button>
+            <button type="button" data-intent="Build Titan now">Build Titan</button>
+            <button type="button" data-intent="test all of Titan">Test Titan</button>
+          </div>
+          <div class="intent-actions">
+            <button type="button" class="primary" id="runBtn">Start mission</button>
+            <span class="hint" id="runHint">Owner API · same machine</span>
+          </div>
+        </div>
+
+        <div class="panel status-panel">
+          <div class="panel-head">
+            <span class="eyebrow">READINESS</span>
+            <h2>Live state</h2>
+          </div>
+          <div class="readiness">
+            <div class="ring" id="readyRing" style="--score: 0deg">
+              <div><strong id="readyScore">—</strong><span>READY</span></div>
+            </div>
+            <div class="stat-stack">
+              <div><span>Agents online</span><strong id="statAgents">—</strong></div>
+              <div><span>Recovery blocked</span><strong id="statBlocked">—</strong></div>
+              <div><span>Last mission</span><strong id="statMission">idle</strong></div>
+              <div><span>COMS</span><strong id="statComs" class="coms">—</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel river-preview">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow">CAUSAL RIVER</span>
+            <h2>This run</h2>
+          </div>
+          <span class="mono" id="missionIdLabel">no mission</span>
+        </div>
+        <ol class="river" id="riverPreview"></ol>
+      </div>
+    </section>
+
+    <section class="view" data-view-panel="fleet">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow">FLEET</span>
+            <h2>Full roster</h2>
+          </div>
+          <span class="mono" id="fleetCount">0 online</span>
+        </div>
+        <p class="fleet-legend">ONLINE = enabled + executor bound. REGISTERED = in doctrine roster, not yet wired for live work.</p>
+        <div class="agent-grid" id="agentGrid"></div>
+      </div>
+      <div class="panel fleet-note">
+        <span class="eyebrow">MESH NODES</span>
+        <p>Lenovo · Ichabod · S24 primary. This deck shows the owner API on <strong id="fleetHost">this host</strong>. Founder agents stay on the roster even when unbound — they are not demoted.</p>
+      </div>
+    </section>
+
+    <section class="view" data-view-panel="river">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow">FULL RIVER</span>
+            <h2>Signal stream</h2>
+          </div>
+        </div>
+        <ol class="river river-full" id="riverFull"></ol>
+      </div>
+    </section>
+
+    <section class="view" data-view-panel="proof">
+      <div class="panel proof-hero" id="proofHero">
+        <span class="eyebrow">PROOF</span>
+        <h2 id="proofTitle">No proof yet</h2>
+        <p id="proofBody">Run a mission. When the auditor certifies, SHA and path land here — not chat “done.”</p>
+        <div class="proof-meta">
+          <div><span>SHA-256</span><code id="proofSha">—</code></div>
+          <div><span>Path</span><code id="proofPath">—</code></div>
+          <div><span>Status</span><code id="proofStatus">—</code></div>
+        </div>
+      </div>
+      <div class="panel" id="resultDumpWrap">
+        <div class="panel-head">
+          <span class="eyebrow">RAW RESULT</span>
+          <h2>Last payload</h2>
+        </div>
+        <pre id="resultDump" class="mono-block">Awaiting first mission.</pre>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="/deck.js" type="module"></script>
+</body>
+</html>

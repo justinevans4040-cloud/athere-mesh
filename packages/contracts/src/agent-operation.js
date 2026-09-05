@@ -8,6 +8,10 @@ import {
 
 const OPERATIONS = Object.freeze({
   'miss-vale-prime': Object.freeze({ capabilityId: 'mission-supervisor', action: 'supervise_mission', signalType: 'running' }),
+  'the-britt': Object.freeze({ capabilityId: 'dangerous-authority-coholder', action: 'cohold_dangerous_authority', signalType: 'running' }),
+  caretaker: Object.freeze({ capabilityId: 'fleet-health-runner', action: 'fleet_health_check', signalType: 'running' }),
+  'agent-vale': Object.freeze({ capabilityId: 'ollama-chat', action: 'advisory_chat', signalType: 'running' }),
+  qra_sentinel: Object.freeze({ capabilityId: 'output-governor', action: 'screen_agent_output', signalType: 'running' }),
   nyx: Object.freeze({
     capabilityId: 'repository-inspector',
     action: 'observe_repository',
@@ -18,6 +22,7 @@ const OPERATIONS = Object.freeze({
       mutate_workspace_files: 'workspace-file-worker',
     }),
   }),
+  loom: Object.freeze({ capabilityId: 'resource-commander', action: 'resource_clearance', signalType: 'running' }),
   rune: Object.freeze({
     capabilityId: 'node-test-runner',
     action: 'execute_node_tests',
@@ -28,8 +33,26 @@ const OPERATIONS = Object.freeze({
       execute_titan_build: 'titan-build-runner',
     }),
   }),
+  echo: Object.freeze({ capabilityId: 'resonance-signal-monitor', action: 'analyze_resonance_signals', signalType: 'running' }),
+  wake_operator: Object.freeze({ capabilityId: 'configuration-engine', action: 'configure_wake', signalType: 'running' }),
+  aether_wlm: Object.freeze({ capabilityId: 'execution-kernel', action: 'execute_wlm_kernel', signalType: 'running' }),
+  qra_emerge_orchestration: Object.freeze({ capabilityId: 'system-integration-runner', action: 'run_system_integration', signalType: 'running' }),
+  qra_emerge_ai_secops: Object.freeze({ capabilityId: 'prompt-injection-defense', action: 'screen_prompt_injection', signalType: 'running' }),
   qra_emerge_audit: Object.freeze({ capabilityId: 'proof-verifier', action: 'verify_proof', signalType: 'completed' }),
+  qra_emerge_context: Object.freeze({ capabilityId: 'context-memory-lock', action: 'lock_context_memory', signalType: 'running' }),
+  qra_emerge_ethics_liaison: Object.freeze({ capabilityId: 'compliance-liaison', action: 'liaise_compliance', signalType: 'running' }),
+  qra_emerge_mlops_data: Object.freeze({ capabilityId: 'data-pipeline-validator', action: 'validate_data_pipeline', signalType: 'running' }),
+  qra_emerge_governance: Object.freeze({ capabilityId: 'policy-gatekeeper', action: 'gate_policy', signalType: 'running' }),
   qra_recovery_driver: Object.freeze({ capabilityId: 'recovery-coordinator', action: 'block_interrupted_mission', signalType: 'blocked' }),
+  qra_route_controller: Object.freeze({ capabilityId: 'task-cluster-router', action: 'route_cluster_task', signalType: 'running' }),
+  qra_signal_watch: Object.freeze({ capabilityId: 'port-watcher', action: 'watch_ports', signalType: 'running' }),
+  sales_hunter: Object.freeze({ capabilityId: 'outbound-acquisition', action: 'hunt_outbound', signalType: 'running' }),
+  cluster_core_loop_captain: Object.freeze({ capabilityId: 'sprint-supervisor', action: 'supervise_sprint', signalType: 'running' }),
+  cluster_core_ship_lead: Object.freeze({ capabilityId: 'hotfix-shipper', action: 'ship_hotfix', signalType: 'running' }),
+  cluster_core_qc_sentinel: Object.freeze({ capabilityId: 'output-reviewer', action: 'review_outbound_output', signalType: 'running' }),
+  cluster_core_metrics: Object.freeze({ capabilityId: 'metrics-logger', action: 'log_metrics', signalType: 'running' }),
+  cluster_core_comms: Object.freeze({ capabilityId: 'stakeholder-comms', action: 'communicate_stakeholders', signalType: 'running' }),
+  ronan_v01: Object.freeze({ capabilityId: 'forensic-investigator', action: 'investigate_forensics', signalType: 'running' }),
 });
 
 function operationFor(agentId) {

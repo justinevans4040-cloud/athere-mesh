@@ -10,7 +10,12 @@ import { saveMission } from '../../packages/mission/src/mission-store.js';
 
 function clock() {
   let index = 0;
-  return () => `2026-08-23T12:00:0${index++}.000Z`;
+  return () => {
+    const n = index++;
+    const mm = String(Math.floor(n / 60)).padStart(2, '0');
+    const ss = String(n % 60).padStart(2, '0');
+    return `2026-08-23T12:${mm}:${ss}.000Z`;
+  };
 }
 
 function passingExecutor() {
@@ -49,20 +54,32 @@ test('restart retrieval preserves NYX and RUNE evidence plus proof-bound validat
   const stored = await fresh.getMission({ missionId: immediate.mission.id });
 
   assert.deepEqual(stored.mission.signals.map(({ agent }) => agent), [
-    'titan', 'miss-vale-prime', 'nyx', 'rune', 'qra_emerge_audit',
+    'titan',
+    'miss-vale-prime',
+    'caretaker',
+    'qra_emerge_orchestration',
+    'qra_route_controller',
+    'loom',
+    'the-britt',
+    'nyx',
+    'rune',
+    'the-britt',
+    'echo',
+    'qra_sentinel',
+    'qra_emerge_audit',
   ]);
-  assert.deepEqual(stored.mission.signals[2].evidence, {
+  assert.deepEqual(stored.mission.signals[7].evidence, {
     executor: 'repository-inspector',
     result: { package: { name: 'athere-titan', version: '0.1.0' }, sourceFilesOnDisk: 12, testFilesOnDisk: 60 },
   });
-  assert.deepEqual(stored.mission.signals[3].evidence, {
+  assert.deepEqual(stored.mission.signals[8].evidence, {
     executor: 'node-test-runner',
     result: { command: 'node --test', exitCode: 0, tests: 60, passed: 60, failed: 0, skipped: 0 },
   });
   assert.deepEqual(stored.mission.result.tests, { tests: 60, passed: 60, failed: 0, skipped: 0 });
   assert.deepEqual(stored.mission.result.agentEvidence, [
-    { agent: 'nyx', executor: 'repository-inspector', result: stored.mission.signals[2].evidence.result },
-    { agent: 'rune', executor: 'node-test-runner', result: stored.mission.signals[3].evidence.result },
+    { agent: 'nyx', executor: 'repository-inspector', result: stored.mission.signals[7].evidence.result },
+    { agent: 'rune', executor: 'node-test-runner', result: stored.mission.signals[8].evidence.result },
   ]);
   assert.equal(stored.mission.result.proofSha256, stored.mission.proof.sha256);
   assert.equal(stored.mission.artifactReferences.length, 1);
@@ -72,7 +89,7 @@ test('restart retrieval preserves NYX and RUNE evidence plus proof-bound validat
   // Item 6: artifact lineage keeps producer action and verifier decision.
   assert.equal(stored.mission.artifactReferences[0].agent, 'qra_emerge_audit');
   assert.equal(stored.mission.artifactReferences[0].action, 'verified_mission_proof');
-  assert.equal(stored.mission.artifactReferences[0].missionStateVersion, 6);
+  assert.equal(stored.mission.artifactReferences[0].missionStateVersion, 14);
   assert.deepEqual(stored.mission.artifactReferences[0].verifierResult, {
     verifier: 'qra_emerge_audit', verified: true, proofSha256: stored.mission.proof.sha256,
   });
@@ -126,7 +143,7 @@ test('orchestrator dispatches NYX and RUNE through complete state-bound agent en
       operation_id: 'mission-envelope-dispatch-1111-inspect-execution',
       agent_id: 'nyx',
       capability_id: 'repository-inspector',
-      state_version: 2,
+      state_version: 7,
       allowed_actions: ['observe_repository'],
       required_input_name: 'repository_root',
       input_binding_valid: true,
@@ -140,7 +157,7 @@ test('orchestrator dispatches NYX and RUNE through complete state-bound agent en
       operation_id: 'mission-envelope-dispatch-1111-test-execution',
       agent_id: 'rune',
       capability_id: 'node-test-runner',
-      state_version: 4,
+      state_version: 9,
       allowed_actions: ['execute_node_tests'],
       required_input_name: 'repository_root',
       input_binding_valid: true,
@@ -237,10 +254,13 @@ test('golden Titan test mission persists accepted running and completed states w
 
   const result = await orchestrator.execute({ profile: 'owner', text: 'Run every Titan test.' });
 
-  assert.equal(result.revision, 7);
+  assert.equal(result.revision, 15);
   assert.equal(result.mission.id, 'mission-11111111-1111-4111-8111-111111111111');
   assert.equal(result.mission.status, 'completed');
-  assert.deepEqual(result.mission.signals.map(({ type }) => type), ['accepted', 'running', 'running', 'running', 'completed']);
+  assert.deepEqual(
+    result.mission.signals.map(({ type }) => type),
+    ['accepted', 'running', 'running', 'running', 'running', 'running', 'running', 'running', 'running', 'running', 'running', 'running', 'completed'],
+  );
   assert.deepEqual(result.tests, { tests: 60, passed: 60, failed: 0, skipped: 0 });
   assert.equal(result.mission.proof.verified, true);
   assert.match(result.mission.proof.sha256, /^[a-f0-9]{64}$/);
@@ -249,17 +269,39 @@ test('golden Titan test mission persists accepted running and completed states w
     result.mission.transitionHistory.slice(1).map(({ actor, action }) => ({ actor, action })),
     [
       { actor: 'miss-vale-prime', action: 'supervise_mission' },
+      { actor: 'caretaker', action: 'fleet_health_check' },
+      { actor: 'qra_emerge_orchestration', action: 'run_system_integration' },
+      { actor: 'qra_route_controller', action: 'route_cluster_task' },
+      { actor: 'loom', action: 'resource_clearance' },
+      { actor: 'the-britt', action: 'cohold_dangerous_authority' },
       { actor: 'nyx', action: 'observe_repository' },
       { actor: 'qra_recovery_driver', action: 'create_checkpoint' },
       { actor: 'rune', action: 'execute_node_tests' },
       { actor: 'qra_recovery_driver', action: 'create_checkpoint' },
+      { actor: 'the-britt', action: 'cohold_dangerous_authority' },
+      { actor: 'echo', action: 'analyze_resonance_signals' },
+      { actor: 'qra_sentinel', action: 'screen_agent_output' },
       { actor: 'qra_emerge_audit', action: 'verify_proof' },
     ],
   );
-  assert.equal((await orchestrator.getMission({ missionId: result.mission.id })).revision, 7);
+  assert.equal((await orchestrator.getMission({ missionId: result.mission.id })).revision, 15);
   assert.deepEqual(
     (await bus.read({ missionId: result.mission.id })).map(({ agent }) => agent),
-    ['titan', 'miss-vale-prime', 'nyx', 'rune', 'qra_emerge_audit'],
+    [
+      'titan',
+      'miss-vale-prime',
+      'caretaker',
+      'qra_emerge_orchestration',
+      'qra_route_controller',
+      'loom',
+      'the-britt',
+      'nyx',
+      'rune',
+      'the-britt',
+      'echo',
+      'qra_sentinel',
+      'qra_emerge_audit',
+    ],
   );
   const freshOrchestrator = createMissionOrchestrator({
     root,
@@ -327,7 +369,7 @@ test('orchestrator records the complete mission in the authoritative state servi
   assert.equal(stored.mission.environmentObservations[0].key, 'repository_root');
   assert.deepEqual(
     await orchestrator.selectMissionState({ missionId: result.mission.id, fields: ['objective', 'pendingWork', 'currentPlan'] }),
-    { missionId: result.mission.id, stateVersion: 7, objective: 'test all of Titan', pendingWork: [], currentPlan: stored.mission.currentPlan },
+    { missionId: result.mission.id, stateVersion: 15, objective: 'test all of Titan', pendingWork: [], currentPlan: stored.mission.currentPlan },
   );
 });
 
@@ -420,7 +462,7 @@ test('telemetry publishing failures cannot overturn a durably completed mission'
 
   const result = await orchestrator.execute({ profile: 'owner', text: 'Run every Titan test.' });
 
-  assert.equal(result.revision, 7);
+  assert.equal(result.revision, 15);
   assert.equal(result.mission.status, 'completed');
   const freshOrchestrator = createMissionOrchestrator({
     root,

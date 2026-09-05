@@ -82,7 +82,15 @@ export async function createTitanService({
     timeoutMs: Number.parseInt(environment.OLLAMA_TIMEOUT_MS ?? '120000', 10),
   });
   const runtime = createAgentRuntime({ complete });
-  const api = createTitanApi({ runtime, profile: 'owner', authToken, orchestrator, team: fleetRegistry, recovery });
+  const api = createTitanApi({
+    runtime,
+    profile: 'owner',
+    authToken,
+    orchestrator,
+    team: fleetRegistry,
+    recovery,
+    hostLabel: environment.TITAN_DECK_HOST_LABEL?.trim() || undefined,
+  });
   // createTitanApi freezes its surface; wrap rather than mutate.
   return Object.freeze({
     get url() {
@@ -109,6 +117,7 @@ export async function startTitanService({ environment = process.env, repositoryR
 if (import.meta.main) {
   const api = await startTitanService();
   process.stdout.write(`Titan agent API listening at ${api.url}\n`);
+  process.stdout.write(`Command deck: ${api.url}/\n`);
   if (api.meshWiring) {
     process.stdout.write(`mesh wiring: ${JSON.stringify(api.meshWiring)}\n`);
   }

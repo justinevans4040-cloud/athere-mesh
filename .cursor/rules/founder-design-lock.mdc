@@ -1,0 +1,28 @@
+---
+description: Founder designs are not editable without Justin's express permission
+alwaysApply: true
+---
+
+# Founder design lock (HARD)
+
+Justin Evans owns Athere Mesh / Titan vision and architecture. **Designs are not editable without his express permission in the current message.**
+
+## Forbidden without explicit permission
+
+- Shaving, shrinking, or “simplifying” the intended design so work can be marked done
+- Treating incomplete wiring as a redesign (e.g. leaving LOOM/ECHO/Caretaker/Sentinel/clusters unbound and calling that settled)
+- Demoting founder agents into `jobs` or dropping them from the usable fleet
+- Replacing hot-swappable / full-fleet intent with a thinner static subset
+- Renaming established components, inventing parallel architectures, or reinterpreting doctrine to match what is easy to ship
+- Claiming READY / done / complete when the deliverable is a reduced version of what he asked for
+
+## Required instead
+
+- Implement toward **his** stated design (full agents, clusters, MEA, proof, mesh loop, hot-swap binding)
+- If blocked, say **blocked** with the exact gap — do not redefine success downward
+- Ask before changing architecture, roster scope, authority chain, or product thesis
+- Prefer unfinished honest state over a shaved “green” story
+
+## Permission test
+
+Only edit design/scope when Justin’s **current** message clearly authorizes that specific change (exact names / exact cut). Prior chats, urgency, or “GET TO WORK” do not grant design edit rights.

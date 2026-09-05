@@ -1,0 +1,25 @@
+{
+    "ok":  true,
+    "lenovo":  {
+                   "url":  "http://127.0.0.1:5050/",
+                   "health":  {
+                                  "ready":  true,
+                                  "enabledAgents":  6,
+                                  "recovery":  {
+                                                   "recovered":  0,
+                                                   "healed":  0,
+                                                   "blocked":  0,
+                                                   "corrupt":  0
+                                               }
+                              },
+                   "teamOnline":  6,
+                   "hostLabel":  "JustinLenovo"
+               },
+    "ichabod":  {
+                    "url":  "http://127.0.0.1:15050/ (ssh tunnel to ichabod :5050)",
+                    "tunnelLocal":  15050,
+                    "service":  "athere-titan on ~/athere-mesh"
+                },
+    "claim":  "Command deck served on Lenovo and Ichabod owner APIs; same visual face wired to live /api/commands",
+    "stamp":  "20260905T022724Z"
+}

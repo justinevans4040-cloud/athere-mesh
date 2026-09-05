@@ -1,17 +1,11 @@
+import { fleetRegistry, operationalAgents } from '../packages/fleet/src/registry.js';
 import { requireBearerCredential } from '../packages/api/src/bearer-token.js';
 
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const DEFAULT_QUICK_TIMEOUT_MS = 10_000;
 const DEFAULT_COMMAND_TIMEOUT_MS = 310_000;
-const OPERATIONAL_AGENT_IDS = Object.freeze([
-  'miss-vale-prime',
-  'agent-vale',
-  'nyx',
-  'rune',
-  'qra_emerge_audit',
-  'qra_recovery_driver',
-]);
+const OPERATIONAL_AGENT_IDS = Object.freeze(operationalAgents().map((agent) => agent.id));
 
 function requireObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be an object`);

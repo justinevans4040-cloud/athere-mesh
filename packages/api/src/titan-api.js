@@ -1,11 +1,33 @@
 import http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { AgentRuntimeError } from '../../agent/src/agent-runtime.js';
 import { planCommand } from '../../command/src/command-planner.js';
 import { isValidBearerCredential, requireBearerCredential } from './bearer-token.js';
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+const DEFAULT_DECK_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../apps/command-deck');
+const DECK_ASSETS = new Map([
+  ['/', { file: 'index.html', type: 'text/html; charset=utf-8' }],
+  ['/index.html', { file: 'index.html', type: 'text/html; charset=utf-8' }],
+  ['/deck.css', { file: 'deck.css', type: 'text/css; charset=utf-8' }],
+  ['/deck.js', { file: 'deck.js', type: 'text/javascript; charset=utf-8' }],
+]);
+
+function resolveDeckAsset(pathname, deckRoot) {
+  const asset = DECK_ASSETS.get(pathname);
+  if (!asset) return undefined;
+  const resolvedRoot = path.resolve(deckRoot);
+  const resolvedFile = path.resolve(resolvedRoot, asset.file);
+  if (resolvedFile !== resolvedRoot && !resolvedFile.startsWith(`${resolvedRoot}${path.sep}`)) {
+    return undefined;
+  }
+  return { ...asset, absolutePath: resolvedFile };
+}
 
 function publicError(statusCode, message, headers) {
   const error = new Error(message);
@@ -41,6 +63,29 @@ function requireTrustedOwnerRequest(request, authToken) {
       throw publicError(403, 'cross-site request forbidden');
     }
     if (origin !== expectedOrigin) throw publicError(403, 'cross-site request forbidden');
+  }
+}
+
+/** Owner token leaves bootstrap only for same-origin deck fetches — not anonymous curl/tunnel scrapers. */
+function deckBootstrapMayDiscloseOwnerToken(request) {
+  const fetchSite = request.headers['sec-fetch-site'];
+  if (fetchSite !== 'same-origin') return false;
+  const origin = request.headers.origin;
+  if (typeof origin !== 'string' || origin.length === 0) return false;
+  try {
+    const expectedOrigin = new URL(`http://${request.headers.host}`).origin;
+    return origin === expectedOrigin;
+  } catch {
+    return false;
+  }
+}
+
+function assertAdvisoryChatAgentAllowed(team, agentId) {
+  if (!team || !Array.isArray(team.agents)) throw publicError(503, 'service unavailable');
+  const agent = team.agents.find((entry) => entry.id === agentId);
+  if (!agent) throw publicError(400, 'unknown agent');
+  if (agent.soleMissVale === true || agent.dangerousAuthority === true || agent.distribution !== 'public') {
+    throw publicError(403, 'agent not available for advisory chat');
   }
 }
 
@@ -148,7 +193,18 @@ function publicErrorResponse(error) {
   return { statusCode: 500, payload: { error: 'internal server error' }, log: true };
 }
 
-export function createTitanApi({ runtime, profile = 'owner', authToken, maxRequestBytes = 16_384, orchestrator, team, recovery, logger = console } = {}) {
+export function createTitanApi({
+  runtime,
+  profile = 'owner',
+  authToken,
+  maxRequestBytes = 16_384,
+  orchestrator,
+  team,
+  recovery,
+  logger = console,
+  deckRoot = DEFAULT_DECK_ROOT,
+  hostLabel,
+} = {}) {
   if (!runtime || typeof runtime.respond !== 'function') throw new TypeError('agent runtime is required');
   let apiAuthToken;
   if (profile === 'owner') {
@@ -160,8 +216,14 @@ export function createTitanApi({ runtime, profile = 'owner', authToken, maxReque
   }
   if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes < 1) throw new TypeError('maxRequestBytes must be positive');
   if (!logger || typeof logger.error !== 'function') throw new TypeError('logger must provide error');
+  if (typeof deckRoot !== 'string' || deckRoot.trim().length === 0) throw new TypeError('deckRoot must be a non-empty string');
+  const resolvedDeckRoot = path.resolve(deckRoot);
+  const resolvedHostLabel = typeof hostLabel === 'string' && hostLabel.trim().length > 0
+    ? hostLabel.trim()
+    : (process.env.TITAN_DECK_HOST_LABEL?.trim() || os.hostname() || 'local');
   let server;
   let baseUrl;
+  let bindHost;
   let commandInFlight = false;
 
   function requireAuth(request) {
@@ -171,14 +233,51 @@ export function createTitanApi({ runtime, profile = 'owner', authToken, maxReque
     requireTrustedOwnerRequest(request, apiAuthToken);
   }
 
+  async function sendDeckAsset(response, pathname) {
+    const asset = resolveDeckAsset(pathname, resolvedDeckRoot);
+    if (!asset) return false;
+    let body;
+    try {
+      body = await readFile(asset.absolutePath);
+    } catch {
+      return false;
+    }
+    response.writeHead(200, {
+      'content-type': asset.type,
+      'content-length': body.length,
+      'cache-control': 'no-store',
+    });
+    response.end(body);
+    return true;
+  }
+
   return Object.freeze({
     get url() { return baseUrl; },
     async listen({ host = '127.0.0.1', port = 3000 } = {}) {
       if (server) throw new Error('Titan API is already listening');
       if (!LOOPBACK.has(host)) throw new Error('Titan API must bind to loopback');
+      bindHost = host;
       server = http.createServer(async (request, response) => {
         try {
           const url = new URL(request.url, 'http://titan.local');
+          if (request.method === 'GET' && (url.pathname === '/' || DECK_ASSETS.has(url.pathname))) {
+            if (await sendDeckAsset(response, url.pathname)) return;
+          }
+          if (request.method === 'GET' && url.pathname === '/api/deck/bootstrap') {
+            // Same-origin deck fetch may receive ownerToken. Anonymous scrapers get null (prompt/fallback).
+            const discloseToken = Boolean(apiAuthToken) && deckBootstrapMayDiscloseOwnerToken(request);
+            json(response, 200, {
+              product: 'athere-mesh',
+              brand: 'There is a there. It is called Athere.',
+              profile,
+              bind: bindHost,
+              hostLabel: resolvedHostLabel,
+              ownerToken: discloseToken ? apiAuthToken : null,
+              tokenPolicy: 'same-origin-only',
+              ui: '/',
+            });
+            return;
+          }
           if (request.method === 'GET' && url.pathname === '/health') {
             requireAuth(request);
             operationalDependencies(orchestrator, team, recovery);
@@ -215,6 +314,7 @@ export function createTitanApi({ runtime, profile = 'owner', authToken, maxReque
             // Owner always has a token. Public advisory chat may omit one, but only on loopback.
             if (apiAuthToken) requireTrustedOwnerRequest(request, apiAuthToken);
             const agentId = url.searchParams.get('agent') || 'agent-vale';
+            assertAdvisoryChatAgentAllowed(team, agentId);
             const text = await readText(request, maxRequestBytes);
             const plan = planCommand({ profile, text });
             if (plan.status === 'ready' || plan.status === 'needs_approval' || plan.status === 'denied') {
@@ -243,6 +343,7 @@ export function createTitanApi({ runtime, profile = 'owner', authToken, maxReque
       await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
       server = undefined;
       baseUrl = undefined;
+      bindHost = undefined;
     },
   });
 }
