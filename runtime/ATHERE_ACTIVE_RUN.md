@@ -29,20 +29,70 @@ Designs are not editable without express permission. Search everywhere before bu
 
 **Live:** `solar-command.service` still runs the same package path (name of systemd unit unchanged this pass — product brand is ForgeFront).
 
+## ONE COPY EACH APP (ckpt 120) — Justin 2026-09-05
+
+**Order:** One copy of each app; delete the rest.
+
+| App | Sole live file | URL |
+|---|---|---|
+| Solar | `~/forgefront/solar-command/DCE_Command_Center_V3.html` | `http://127.0.0.1:18787/` |
+| PM | `~/forgefront/solar-command/ForgeFront_PM.html` | `http://127.0.0.1:18787/pm` |
+
+Deleted on Ichabod: V3 twin, SolarCommand_V3_LIVE, all `.bak*`, meta pre-wipe/pre-rebrand snapshots, vault DO_NOT_USE package trees, job-archive UI snapshots, wakecodex artifact copy. Drive DO_NOT_USE packages purged. Lenovo evidence app extracts deleted. Phone CrossDevice copies **blocked** (cloud placeholder access denied — delete on S24 Downloads manually if still listed).
+
+## SOLAR + PM SPLIT RESTORED (ckpt 119) — Justin 2026-09-05
+
+**Order:** Put the two apps back the way they were (separate). No merge.
+
+| App | URL (Lenovo tunnel) | File |
+|---|---|---|
+| **Solar / call** (default) | `http://127.0.0.1:18787/` | `DCE_Command_Center_V3.html` restored from `.bak-forgefront-systems` (+ `/solar` → `SolarCommand_V3_LIVE.html`) |
+| **Project Management** (standalone) | `http://127.0.0.1:18787/pm` | `ForgeFront_PM.html` (PM UI separate; empty seed, no Nova demo) |
+
+Evidence: `evidence/forgefront-split-restore-20260905.json` (`home_is_solar` + `pm_is_pm`, `nova_in_pm: false`).
+
+## LIVE VS DO_NOT_USE — ALL PROJECTS (ckpt 118) — Justin 2026-09-05
+
+**Order:** Every project must split LIVE / ARCHIVE_ONLY / ZZ_DO_NOT_USE so agents cannot pull dirty packages forward.
+
+| Layer | Location |
+|---|---|
+| User Cursor rule (always) | `~/.cursor/rules/live-vs-do-not-use.mdc` |
+| Mesh Cursor rule | `.cursor/rules/forgefront-do-not-use-dirty-packages.mdc` |
+| Vault doctrine | `/mnt/storage/forgefront-vault/01_CANONICAL/LIVE_VS_DO_NOT_USE.md` |
+| Global quarantine | vault `02_PROJECTS/ZZ_DO_NOT_USE__DIRTY_OR_DUPLICATE_PACKAGES__NEVER_SERVE_AS_LIVE/` |
+| Drive banner | `gdrive:00_LIVE_VS_DO_NOT_USE__READ_ME_FIRST.md` |
+| Evidence | `evidence/live-vs-do-not-use-rollout-20260905.json` |
+
+Applied: home loose zips quarantined; `solar-command-latest` quarantined; ODIN security-backup dirs labeled DO_NOT_USE; athere-titan* labeled not-live; vault projects labeled.
+
+## FORGEFRONT SYSTEMS + DO_NOT_USE QUARANTINE (ckpt 117) — Justin 2026-09-05
+
+**Order:** Dirty DCE/Audited packages must not be pullable as live. Rename product to **ForgeFront Systems**. Empty seed — no fake demo projects.
+
+| Rule | Path |
+|---|---|
+| **LIVE ONLY** | Ichabod `~/forgefront/solar-command/` → title/health **ForgeFront Systems**; storage `forgefront-systems-v1`; empty projects |
+| **DO NOT USE (vault)** | `/mnt/storage/forgefront-vault/02_PROJECTS/ZZ_DO_NOT_USE__DIRTY_DCE_PACKAGES__NEVER_SERVE_AS_LIVE/` |
+| **DO NOT USE (Drive)** | `DCE_Command_Center_V3_Package/ZZ_DO_NOT_USE__DIRTY_DCE_PACKAGES__NEVER_SERVE_AS_LIVE/` (Solar_V1 zips moved here) |
+| Job archive (history only) | vault + Drive `ARCHIVES/...` — banners say DO NOT SERVE AS LIVE |
+| Meta pointer | `~/forgefront/forgefront-meta/LIVE_PRODUCT.md` |
+
+**Evidence:** live home shows Control Room + empty Portfolio (no Nova/Helix); health `product`/`brand` = ForgeFront Systems; residual scan clean. Agents must never serve Audited zips on alternate ports.
+
+
 ## SARA / IL SHINES ARCHIVE LABELED (ckpt 116) — Justin 2026-09-05
 
-**Order:** Do not lose disposed job materials; label in git + Google Drive where other DCE/Solar versions already live (no Desktop dump).
+Superseded for *usage* by ckpt 117 quarantine. Archive retained; not live.
 
 | Location | Path |
 |---|---|
 | Canonical vault (Ichabod) | `/mnt/storage/forgefront-vault/02_PROJECTS/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_20260905/` |
 | Meta symlink | `~/forgefront/forgefront-meta/ARCHIVE__SARA_IL_SHINES_JOB_FELL_THROUGH__20260905` |
-| Google Drive (next to Solar_V1 packages) | `DCE_Command_Center_V3_Package/ARCHIVES/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_20260905/` |
-| Drive tarball | `DCE_Command_Center_V3_Package/ARCHIVES/DCE_SOLAR_SARA_IL_SHINES_ARCHIVED_20260905.tgz` |
-| Git pointer | `evidence/archives/README_SARA_IL_SHINES_JOB_ARCHIVE_2026-09-05.md` + tgz (SHA-256 `8a29634829ab7a9f8b5258016a091846a8c86deaee93a67c4d59b002f5b352d0`) |
-| Milestone | `MS-20260905-001` (forgefront-meta) |
+| Google Drive | `DCE_Command_Center_V3_Package/ARCHIVES/...` |
+| Git pointer | `evidence/archives/README_SARA_IL_SHINES_JOB_ARCHIVE_2026-09-05.md` |
 
-Portal token stays local-only on Ichabod (`forgefront-meta/secrets-local-only/`) — not in Drive/git archive.
+Portal token stays local-only — not in Drive/git archive.
 
 ## OLD SOLAR JOB COPY WIPE (ckpt 115) — Justin 2026-09-05
 

@@ -1,0 +1,9 @@
+{
+  "has_sanitizer": true,
+  "has_data_guard": true,
+  "engine_banned_guard": true,
+  "repId_32_default_gone": true,
+  "storage_v2": true,
+  "static_html_clean": false,
+  "ok": false
+}

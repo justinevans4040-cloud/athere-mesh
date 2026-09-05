@@ -2,6 +2,17 @@
 
 This is the durable handoff for future work on Titan. Treat it as operational context, not proof that unfinished work is complete.
 
+## Public identity (outreach / email / vendor contact — HARD)
+
+Do not invent or substitute. Load this before any external email, sample request, partnership ask, or company-facing copy.
+
+- **Company:** ForgeFront Systems
+- **Founder:** Justin Evans
+- **Email:** justin.evans4040@gmail.com
+- **Public site:** https://forgefront-systems.vercel.app
+- **Products under ForgeFront (not company names):** Athere Mesh, Titan, Edge Nodes, ForgeFront Command
+- **Forbidden in signatures:** wakeforged.com as the company site; signing as “Athere Mesh / Titan” instead of ForgeFront Systems
+
 ## Canonical locations
 
 - Local repository: `C:\Users\justi\Titan`

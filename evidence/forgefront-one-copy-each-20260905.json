@@ -1,0 +1,32 @@
+{
+  "stamp": "20260905T121257Z",
+  "kept": [
+    "/home/the_founder/forgefront/solar-command/DCE_Command_Center_V3.html",
+    "/home/the_founder/forgefront/solar-command/ForgeFront_PM.html"
+  ],
+  "deleted_count": 13,
+  "deleted": [
+    "/home/the_founder/forgefront/solar-command/V3.html",
+    "/home/the_founder/forgefront/solar-command/SolarCommand_V3_LIVE.html",
+    "/home/the_founder/forgefront/solar-command/.bak-forgefront-systems",
+    "/home/the_founder/forgefront/solar-command/ZZ_DO_NOT_USE_AS_DEFAULT_ENTRY",
+    "/home/the_founder/forgefront/solar-command/.bak-before-split-restore-20260905T120117Z",
+    "/home/the_founder/forgefront/solar-command/.bak-before-solar-wipe-20260905T120502Z",
+    "/home/the_founder/forgefront/solar-command-latest",
+    "/home/the_founder/forgefront/forgefront-meta/pre-wipe-copy-20260905",
+    "/home/the_founder/forgefront/forgefront-meta/pre-rebrand-20260905",
+    "/mnt/storage/forgefront-vault/02_PROJECTS/ZZ_DO_NOT_USE__DIRTY_DCE_PACKAGES__NEVER_SERVE_AS_LIVE",
+    "/mnt/storage/forgefront-vault/02_PROJECTS/ZZ_DO_NOT_USE__DIRTY_OR_DUPLICATE_PACKAGES__NEVER_SERVE_AS_LIVE",
+    "/mnt/storage/forgefront-vault/02_PROJECTS/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_20260905/02_PRE_WIPE_UI_AND_ENGINE_SNAPSHOT",
+    "/mnt/storage/forgefront-vault/02_PROJECTS/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_20260905/03_PRE_REBRAND_SNAPSHOT"
+  ],
+  "remaining_app_html": [
+    "/home/the_founder/forgefront/solar-command/DCE_Command_Center_V3.html",
+    "/home/the_founder/forgefront/solar-command/ForgeFront_PM.html",
+    "/home/the_founder/forgefront/wakecodex/artifacts/DCE_Command_Center_V3/V3.html"
+  ],
+  "home_live_call": true,
+  "home_control_room": false,
+  "pm_control_room": true,
+  "ok": false
+}

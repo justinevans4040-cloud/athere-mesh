@@ -1,0 +1,29 @@
+{
+  "stamp": "20260905T120502Z",
+  "changed": [
+    "DCE_Command_Center_V3.html",
+    "V3.html"
+  ],
+  "scan_before": {
+    "DCE_Command_Center_V3.html": [],
+    "V3.html": [],
+    "SolarCommand_V3_LIVE.html": [],
+    "solar_call_engine.js": [],
+    "solar_copilot.js": [],
+    "solar_copilot_ui.js": [],
+    "solar_operator_runtime.js": [],
+    "EDGE_MIRROR.html": []
+  },
+  "scan_after": {},
+  "home_residuals_banned": [],
+  "home_chrome": {
+    "SOLAR COMMAND": false,
+    "FORGEFRONT SOLAR": true,
+    "LIVE CALL": true,
+    "Control Room": false,
+    "Illinois Shines": false,
+    "LightReach": false,
+    "Nova": false
+  },
+  "ok": true
+}

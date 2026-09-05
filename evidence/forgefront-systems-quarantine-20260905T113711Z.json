@@ -1,0 +1,14 @@
+{
+  "stamp": "20260905T113711Z",
+  "do_not_use": "/mnt/storage/forgefront-vault/02_PROJECTS/ZZ_DO_NOT_USE__DIRTY_DCE_PACKAGES__NEVER_SERVE_AS_LIVE",
+  "live": "/home/the_founder/forgefront/solar-command",
+  "residual_scan": {
+    "DCE_Command_Center_V3.html": [],
+    "V3.html": [],
+    "SolarCommand_V3_LIVE.html": [],
+    "solar_call_engine.js": [],
+    "solar_copilot.js": [],
+    "DCE_V3_server.js": []
+  },
+  "ok": true
+}

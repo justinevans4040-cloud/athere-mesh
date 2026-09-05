@@ -1,14 +1,13 @@
 ﻿# Archived: Sara / IL Shines job materials (2026-09-05)
 
-**Do not delete.** Job fell through; live ForgeFront wiped of campaign copy; materials preserved.
+**ARCHIVE ONLY — DO NOT SERVE AS LIVE. DO NOT OPEN AS THE PRODUCT.**
 
 | Location | Path |
 |----------|------|
-| Canonical vault (Ichabod) | `/mnt/storage/forgefront-vault/02_PROJECTS/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_20260905/` |
-| Google Drive | `DCE_Command_Center_V3_Package/ARCHIVES/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_20260905/` |
-| Drive tarball | `DCE_Command_Center_V3_Package/ARCHIVES/DCE_SOLAR_SARA_IL_SHINES_ARCHIVED_20260905.tgz` |
-| ForgeFront meta milestone | `MS-20260905-001` |
-| Local evidence tarball | `evidence/archives/DCE_SOLAR_SARA_IL_SHINES_ARCHIVED_20260905.tgz` |
-| SHA-256 (tgz) | `8a29634829ab7a9f8b5258016a091846a8c86deaee93a67c4d59b002f5b352d0` |
+| Live product | Ichabod `~/forgefront/solar-command/` → **ForgeFront Systems** (`http://127.0.0.1:18787/`) |
+| Job archive (vault) | `/mnt/storage/forgefront-vault/02_PROJECTS/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_20260905/` |
+| Dirty DCE packages (quarantine) | `/mnt/storage/forgefront-vault/02_PROJECTS/ZZ_DO_NOT_USE__DIRTY_DCE_PACKAGES__NEVER_SERVE_AS_LIVE/` |
+| Google Drive quarantine | `DCE_Command_Center_V3_Package/ZZ_DO_NOT_USE__DIRTY_DCE_PACKAGES__NEVER_SERVE_AS_LIVE/` |
+| Drive job archive | `DCE_Command_Center_V3_Package/ARCHIVES/...` |
 
-Existing Drive package versions remain under `DCE_Command_Center_V3_Package/DCE_Command_Center_V3_Package/` (`Solar_V1` zips). This archive is labeled separately under `ARCHIVES/`.
+Agents: never `rclone` / unzip Audited Solar_V1 packages into live. Never serve `:18788` from those zips.

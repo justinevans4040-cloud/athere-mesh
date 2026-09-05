@@ -28,6 +28,13 @@ Authoritative truth (read first, in order):
 2. research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md
 3. docs/current/ATHERE_DISTRIBUTED_STATE.md (Item 24)
 4. docs/current/ATHERE_THREAD_TIE_IN.md (this file)
+5. docs/current/TITAN_OPERATING_MEMORY.md — includes public identity (ForgeFront Systems / justin.evans4040@gmail.com / https://forgefront-systems.vercel.app)
+
+Public outreach identity (HARD — do not substitute):
+- Company: ForgeFront Systems
+- Founder email: justin.evans4040@gmail.com
+- Site: https://forgefront-systems.vercel.app
+- Not wakeforged.com. Not “Athere Mesh / Titan” as the company name.
 
 Current state (do not reopen as unfinished):
 - Items 2–23 pushed through f9775f2 (Item 23 + HARDEN 22–23).
