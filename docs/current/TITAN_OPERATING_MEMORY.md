@@ -13,6 +13,14 @@ Do not invent or substitute. Load this before any external email, sample request
 - **Products under ForgeFront (not company names):** Athere Mesh, Titan, Edge Nodes, ForgeFront Command
 - **Forbidden in signatures:** wakeforged.com as the company site; signing as “Athere Mesh / Titan” instead of ForgeFront Systems
 
+## Live operator faces (2026-09-05)
+
+- Command Deck (Lenovo): `http://127.0.0.1:5050/` — start with Titan/Ollama tokens only; do not import Ichabod `DATABASE_URL` on Lenovo.
+- Command Deck (Ichabod tunnel): `http://127.0.0.1:15050/`
+- ForgeFront Solar/PM (tunnel → Ichabod `:8787`): `http://127.0.0.1:18787/` and `/pm`
+- Sales Hunter Tier Zero may merge qualified pipeline into ForgeFront `/api/state` when ingest is explicitly enabled.
+- Next capability under Zero: `outreach_send` with `humanApproved:true` (one lead) → local outbox + CRM follow-up. `phone_call` still denied.
+
 ## Canonical locations
 
 - Local repository: `C:\Users\justi\Titan`

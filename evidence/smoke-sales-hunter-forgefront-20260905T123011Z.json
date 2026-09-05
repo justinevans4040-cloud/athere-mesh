@@ -1,0 +1,19 @@
+{
+  "stamp": "20260905T123011Z",
+  "ok": true,
+  "forgeFrontIngest": {
+    "ok": true,
+    "baseUrl": "http://127.0.0.1:18787",
+    "mergedLeads": 1,
+    "revision": 1,
+    "sendAuthorized": false
+  },
+  "hit": {
+    "id": "sh_lead-1",
+    "source": "sales_hunter",
+    "sendAuthorized": false
+  },
+  "gate": "explicit forgeFrontBaseUrl",
+  "deck": "http://127.0.0.1:5050/",
+  "ffTunnel": "http://127.0.0.1:18787"
+}

@@ -1,0 +1,29 @@
+﻿{
+    "stamp":  "20260905T122712Z",
+    "ichabodTunnel":  {
+                          "url":  "http://127.0.0.1:15050/",
+                          "healthReady":  true
+                      },
+    "claim":  "Command Deck live Lenovo :5050 + Ichabod tunnel :15050; ForgeFront tunnel :18787",
+    "ok":  true,
+    "lenovo":  {
+                   "deckHtmlBytes":  6695,
+                   "url":  "http://127.0.0.1:5050/",
+                   "health":  {
+                                  "ready":  true,
+                                  "enabledAgents":  28,
+                                  "recovery":  {
+                                                   "recovered":  0,
+                                                   "healed":  0,
+                                                   "blocked":  0,
+                                                   "corrupt":  0
+                                               }
+                              },
+                   "bootstrapHasOwnerToken":  false
+               },
+    "forgeFrontTunnel":  {
+                             "status":  200,
+                             "url":  "http://127.0.0.1:18787/",
+                             "note":  "maps to Ichabod 8787"
+                         }
+}

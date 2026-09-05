@@ -4,6 +4,31 @@
 
 **Archive (ckpts 1–91):** `archive/runs/ATHERE_ACTIVE_RUN_ckpts_1-91_2026-09-04.md`
 
+## COMMAND DECK UP + SALES HUNTER → FORGEFRONT (ckpt 121) — Justin 2026-09-05
+
+**Order:** Bring Command Deck up first, then wire Sales Hunter to ForgeFront.
+
+| Surface | URL | Evidence |
+|---|---|---|
+| Lenovo Command Deck | `http://127.0.0.1:5050/` | `evidence/smoke-command-deck-up-20260905T122712Z.json` — health ready, 28 agents |
+| Ichabod Deck (tunnel) | `http://127.0.0.1:15050/` → Ichabod `:5050` | same dual-tunnel session |
+| ForgeFront (tunnel) | `http://127.0.0.1:18787/` → Ichabod `:8787` | Solar + `/pm` |
+| Sales Hunter T0 → CRM | merges non-DQ pipeline into ForgeFront `/api/state` `solarSales.leads` | `evidence/smoke-sales-hunter-forgefront-20260905T123011Z.json` |
+
+**Wire:** `packages/execution/src/sales-hunter-executor.js` optional `forgeFrontBaseUrl`; role path needs `FORGEFRONT_SALES_HUNTER_INGEST=1` + `FORGEFRONT_API_URL` (prevents test/env CRM leaks).
+
+## SALES HUNTER TIER ZERO — NEXT CAPABILITY (ckpt 122) — Justin 2026-09-05
+
+**Correction:** Tier Zero = highest roster class (not a starter rung). “Next tier” = next *capability under Zero*: past drafts-only.
+
+| Capability | Behavior | Evidence |
+|---|---|---|
+| `hunt_outbound` | pipeline + drafts + CRM ingest | prior T0 smokes |
+| `outreach_send` | requires `humanApproved:true` + **exactly one** `leadId`; local outbox + CRM `FOLLOW_UP` | `evidence/smoke-sales-hunter-approved-send-20260905T125158Z.json` |
+| `phone_call` | still **denied** | same evidence `phoneStillDenied: true` |
+
+Transport is **local_outbox** (offline-first). Does not claim external SMTP/API send.
+
 ## Justin order (2026-09-05)
 
 Designs are not editable without express permission. Search everywhere before building. Full fleet functional — nothing left unbound. Hostile audit + repair on every material change.

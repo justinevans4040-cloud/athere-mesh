@@ -250,6 +250,13 @@ test('command deck UI is served on loopback; owner token only on same-origin boo
     const body = await boot.json();
     assert.equal(body.ownerToken, OWNER_TOKEN);
     assert.equal(body.tokenPolicy, 'same-origin-only');
+
+    // Chrome often omits Origin on same-origin GET — still disclose.
+    const chromeLike = await fetch(`${api.url}/api/deck/bootstrap`, {
+      headers: { 'sec-fetch-site': 'same-origin' },
+    });
+    assert.equal(chromeLike.status, 200);
+    assert.equal((await chromeLike.json()).ownerToken, OWNER_TOKEN);
   } finally {
     await api.close();
   }

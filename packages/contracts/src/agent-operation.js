@@ -46,7 +46,16 @@ const OPERATIONS = Object.freeze({
   qra_recovery_driver: Object.freeze({ capabilityId: 'recovery-coordinator', action: 'block_interrupted_mission', signalType: 'blocked' }),
   qra_route_controller: Object.freeze({ capabilityId: 'task-cluster-router', action: 'route_cluster_task', signalType: 'running' }),
   qra_signal_watch: Object.freeze({ capabilityId: 'port-watcher', action: 'watch_ports', signalType: 'running' }),
-  sales_hunter: Object.freeze({ capabilityId: 'outbound-acquisition', action: 'hunt_outbound', signalType: 'running' }),
+  sales_hunter: Object.freeze({
+    capabilityId: 'outbound-acquisition',
+    action: 'hunt_outbound',
+    signalType: 'running',
+    allowedActions: Object.freeze(['hunt_outbound', 'outreach_send']),
+    capabilityFor: Object.freeze({
+      hunt_outbound: 'outbound-acquisition',
+      outreach_send: 'outbound-acquisition',
+    }),
+  }),
   cluster_core_loop_captain: Object.freeze({ capabilityId: 'sprint-supervisor', action: 'supervise_sprint', signalType: 'running' }),
   cluster_core_ship_lead: Object.freeze({ capabilityId: 'hotfix-shipper', action: 'ship_hotfix', signalType: 'running' }),
   cluster_core_qc_sentinel: Object.freeze({ capabilityId: 'output-reviewer', action: 'review_outbound_output', signalType: 'running' }),

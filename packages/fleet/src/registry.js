@@ -80,7 +80,7 @@ const agents = Object.freeze([
     tierZero: true,
     aliases: ['sales_hunter_super'],
     distribution: 'owner-only',
-    notes: 'Tier Zero. Pipeline + high-signal outreach drafts only. Never send without human approval. No spray-and-pray.',
+    notes: 'Tier Zero (highest). Pipeline + drafts; human-approved outreach_send one lead at a time; phone_call denied. No spray-and-pray.',
   }),
   agent('cluster_core_loop_captain', 'Cluster Loop Captain', 'sprint_supervisor', 76, 'titan', { enabled: true, executorId: 'sprint-supervisor' }),
   agent('cluster_core_ship_lead', 'Cluster Ship Lead', 'hotfix_shipper', 76, 'titan', { enabled: true, executorId: 'hotfix-shipper' }),

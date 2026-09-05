@@ -69,15 +69,17 @@ function requireTrustedOwnerRequest(request, authToken) {
 /** Owner token leaves bootstrap only for same-origin deck fetches — not anonymous curl/tunnel scrapers. */
 function deckBootstrapMayDiscloseOwnerToken(request) {
   const fetchSite = request.headers['sec-fetch-site'];
+  // Chrome same-origin GET often omits Origin; require Sec-Fetch-Site instead.
   if (fetchSite !== 'same-origin') return false;
-  const origin = request.headers.origin;
-  if (typeof origin !== 'string' || origin.length === 0) return false;
+  let expectedOrigin;
   try {
-    const expectedOrigin = new URL(`http://${request.headers.host}`).origin;
-    return origin === expectedOrigin;
+    expectedOrigin = new URL(`http://${request.headers.host}`).origin;
   } catch {
     return false;
   }
+  const origin = request.headers.origin;
+  if (typeof origin === 'string' && origin.length > 0 && origin !== expectedOrigin) return false;
+  return true;
 }
 
 function assertAdvisoryChatAgentAllowed(team, agentId) {

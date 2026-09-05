@@ -23,13 +23,21 @@ async function pathExists(target) {
   }
 }
 
-export function createRoleCapabilityExecutor({ repositoryRoot, workspaceRoot } = {}) {
+export function createRoleCapabilityExecutor({ repositoryRoot, workspaceRoot, forgeFrontBaseUrl, environment = process.env } = {}) {
   if (typeof repositoryRoot !== 'string' || repositoryRoot.trim().length === 0) {
     throw new TypeError('repositoryRoot is required');
   }
   const root = path.resolve(repositoryRoot);
   const workRoot = path.resolve(workspaceRoot || root);
-  const salesHunter = createSalesHunterExecutor({ workspaceRoot: workRoot });
+  const ingestEnabled = String(environment?.FORGEFRONT_SALES_HUNTER_INGEST || '').trim() === '1';
+  const envUrl = typeof environment?.FORGEFRONT_API_URL === 'string' ? environment.FORGEFRONT_API_URL.trim() : '';
+  const configuredForgeFront = (typeof forgeFrontBaseUrl === 'string' && forgeFrontBaseUrl.trim())
+    ? forgeFrontBaseUrl.trim()
+    : (ingestEnabled && envUrl ? envUrl : null);
+  const salesHunter = createSalesHunterExecutor({
+    workspaceRoot: workRoot,
+    forgeFrontBaseUrl: configuredForgeFront,
+  });
 
   async function loomResourceSnapshot() {
     const disk = await stat(workRoot).catch(() => null);
@@ -172,7 +180,13 @@ export function createRoleCapabilityExecutor({ repositoryRoot, workspaceRoot } =
     if (capabilityId === 'resonance-signal-monitor') return echoAnalyze(input);
     if (capabilityId === 'fleet-health-runner') return caretakerFleetHealth(input);
     if (capabilityId === 'output-governor') return sentinelScreen(input);
-    if (capabilityId === 'outbound-acquisition') return salesHunter.huntOutbound(input);
+    if (capabilityId === 'outbound-acquisition') {
+      const action = input.action || CAPABILITY_ACTIONS[capabilityId];
+      if (action === 'outreach_send' || input.outreachSend === true) {
+        return salesHunter.executeApprovedOutreach(input);
+      }
+      return salesHunter.huntOutbound(input);
+    }
 
     const listing = await readdir(root).catch(() => []);
     const result = {
@@ -212,6 +226,7 @@ export function createRoleCapabilityExecutor({ repositoryRoot, workspaceRoot } =
     sentinelScreen,
     runClusterWave,
     huntOutbound: salesHunter.huntOutbound,
+    executeApprovedOutreach: salesHunter.executeApprovedOutreach,
     execute: genericCapability,
   });
 }
