@@ -1,0 +1,181 @@
+{
+  "stamp": "20260905T003452Z",
+  "ok": true,
+  "activeCount": 6,
+  "offlineCount": 2,
+  "fleetMembers": [
+    "ichabodcrane",
+    "justin-s-a15",
+    "justin-s-s24",
+    "justinlenovo",
+    "kftrwi",
+    "localhost"
+  ],
+  "registered": [
+    {
+      "id": "justinlenovo",
+      "host": "100.125.245.10",
+      "hostname": "JustinLenovo",
+      "os": "windows",
+      "online": true,
+      "self": true,
+      "role": "self",
+      "ok": true,
+      "key": "athere:device:justinlenovo:last-seen",
+      "ports": {
+        "redis": {
+          "ok": false,
+          "reason": "connect ECONNREFUSED 100.125.245.10:6379"
+        },
+        "ssh22": {
+          "ok": true
+        },
+        "ssh8022": {
+          "ok": false,
+          "reason": "connect ECONNREFUSED 100.125.245.10:8022"
+        }
+      }
+    },
+    {
+      "id": "justin-s-s24",
+      "host": "100.83.225.17",
+      "hostname": "Justin's S24+",
+      "os": "android",
+      "online": true,
+      "self": false,
+      "role": "phone",
+      "ok": true,
+      "key": "athere:device:justin-s-s24:last-seen",
+      "legacyPhoneKey": "athere:phone:justin-s-s24:last-seen",
+      "ports": {
+        "redis": {
+          "ok": true
+        },
+        "ssh22": {
+          "ok": false,
+          "reason": "connect ECONNREFUSED 100.83.225.17:22"
+        },
+        "ssh8022": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "kftrwi",
+      "host": "100.68.194.71",
+      "hostname": "KFTRWI",
+      "os": "android",
+      "online": true,
+      "self": false,
+      "role": "phone",
+      "ok": true,
+      "key": "athere:device:kftrwi:last-seen",
+      "legacyPhoneKey": "athere:phone:kftrwi:last-seen",
+      "ports": {
+        "redis": {
+          "ok": false,
+          "reason": "timeout"
+        },
+        "ssh22": {
+          "ok": false,
+          "reason": "timeout"
+        },
+        "ssh8022": {
+          "ok": false,
+          "reason": "timeout"
+        }
+      }
+    },
+    {
+      "id": "localhost",
+      "host": "100.81.17.74",
+      "hostname": "localhost",
+      "os": "iOS",
+      "online": true,
+      "self": false,
+      "role": "phone",
+      "ok": true,
+      "key": "athere:device:localhost:last-seen",
+      "legacyPhoneKey": "athere:phone:localhost:last-seen",
+      "ports": {
+        "redis": {
+          "ok": false,
+          "reason": "connect ECONNREFUSED 100.81.17.74:6379"
+        },
+        "ssh22": {
+          "ok": false,
+          "reason": "connect ECONNREFUSED 100.81.17.74:22"
+        },
+        "ssh8022": {
+          "ok": false,
+          "reason": "connect ECONNREFUSED 100.81.17.74:8022"
+        }
+      }
+    },
+    {
+      "id": "ichabodcrane",
+      "host": "100.77.131.28",
+      "hostname": "ichabodcrane",
+      "os": "linux",
+      "online": true,
+      "self": false,
+      "role": "worker",
+      "ok": true,
+      "key": "athere:device:ichabodcrane:last-seen",
+      "ports": {
+        "redis": {
+          "ok": true
+        },
+        "ssh22": {
+          "ok": true
+        },
+        "ssh8022": {
+          "ok": false,
+          "reason": "connect ECONNREFUSED 100.77.131.28:8022"
+        }
+      }
+    },
+    {
+      "id": "justin-s-a15",
+      "host": "100.111.24.85",
+      "hostname": "Justin's A15",
+      "os": "android",
+      "online": true,
+      "self": false,
+      "role": "phone",
+      "ok": true,
+      "key": "athere:device:justin-s-a15:last-seen",
+      "legacyPhoneKey": "athere:phone:justin-s-a15:last-seen",
+      "ports": {
+        "redis": {
+          "ok": false,
+          "reason": "timeout"
+        },
+        "ssh22": {
+          "ok": false,
+          "reason": "timeout"
+        },
+        "ssh8022": {
+          "ok": false,
+          "reason": "timeout"
+        }
+      }
+    }
+  ],
+  "offline": [
+    {
+      "hostname": "Larry's S23",
+      "host": "100.88.77.110",
+      "os": "android",
+      "online": false,
+      "lastSeen": "2026-06-20T10:06:27.1Z"
+    },
+    {
+      "hostname": "iphone 11",
+      "host": "100.102.146.81",
+      "os": "iOS",
+      "online": false,
+      "lastSeen": "2026-07-05T06:34:03.1Z"
+    }
+  ]
+}

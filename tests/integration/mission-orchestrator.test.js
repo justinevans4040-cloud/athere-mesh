@@ -375,8 +375,8 @@ test('non-execution plans do not create missions or invoke deterministic executo
   assert.equal((await orchestrator.execute({ profile: 'public', text: 'Inspect Titan logs on Ubuntu through SSH' })).status, 'denied');
   assert.equal((await orchestrator.execute({ profile: 'owner', text: 'Deploy Vale Prime to the QRA forces and every fleet cluster' })).status, 'needs_approval');
   assert.deepEqual(
-    await orchestrator.execute({ profile: 'owner', text: 'Build Titan now' }),
-    { status: 'blocked', reason: 'no operational executor for build' },
+    await orchestrator.execute({ profile: 'owner', text: 'Inspect the Titan logs on Ubuntu through SSH' }),
+    { status: 'blocked', reason: 'no operational executor for ssh_read' },
   );
   assert.equal(calls, 0);
 });

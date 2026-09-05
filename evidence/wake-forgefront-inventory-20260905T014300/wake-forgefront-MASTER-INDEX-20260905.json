@@ -1,0 +1,439 @@
+{
+  "host": "ichabodcrane",
+  "roots": [
+    {
+      "path": "/mnt/storage/WAKE",
+      "files": 31256,
+      "bytes": 16934338891,
+      "gb": 15.771,
+      "top20": [
+        {
+          "bytes": 368859842,
+          "gb": 0.344,
+          "path": "/mnt/storage/WAKE/VAULT/IP/Git-Commit-Hub/WAKE_ENTERPRISE_FILE_CONTROL/reports/WAKE_C_DRIVE_TOTAL_FILE_INVENTORY_NO_EXCLUSIONS_20260717_033221.csv"
+        },
+        {
+          "bytes": 232641127,
+          "gb": 0.217,
+          "path": "/mnt/storage/WAKE/VAULT/ONEDRIVE/Videos/first recording  Dec 19 2025.mp4"
+        },
+        {
+          "bytes": 215634367,
+          "gb": 0.201,
+          "path": "/mnt/storage/WAKE/VAULT/ONEDRIVE/Videos/2025-12-19 06-33-18.mp4"
+        },
+        {
+          "bytes": 161843746,
+          "gb": 0.151,
+          "path": "/mnt/storage/WAKE/VAULT/IP/Wake_Repository/discovery/source-hits.json"
+        },
+        {
+          "bytes": 157526620,
+          "gb": 0.147,
+          "path": "/mnt/storage/WAKE/VAULT/ONEDRIVE/Pictures/Samsung Gallery/Pictures/DCIM/Camera/20260514_032914.mp4"
+        },
+        {
+          "bytes": 149247944,
+          "gb": 0.139,
+          "path": "/mnt/storage/WAKE/VAULT/IP/Wake_Repository/discovery/inventory.json"
+        },
+        {
+          "bytes": 132299924,
+          "gb": 0.123,
+          "path": "/mnt/storage/WAKE/VAULT/ONEDRIVE/Videos/2025-12-19 07-12-58.mp4"
+        },
+        {
+          "bytes": 131258166,
+          "gb": 0.122,
+          "path": "/mnt/storage/WAKE/VAULT/IP/Wake_Repository/discovery/source-hits.csv"
+        },
+        {
+          "bytes": 121729111,
+          "gb": 0.113,
+          "path": "/mnt/storage/WAKE/VAULT/IP/Wake_Repository/discovery/inventory.csv"
+        },
+        {
+          "bytes": 113504967,
+          "gb": 0.106,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/2000/2000plays.csv"
+        },
+        {
+          "bytes": 113459688,
+          "gb": 0.106,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/1999/1999plays.csv"
+        },
+        {
+          "bytes": 112492822,
+          "gb": 0.105,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/2004/2004plays.csv"
+        },
+        {
+          "bytes": 112466875,
+          "gb": 0.105,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/2007/2007plays.csv"
+        },
+        {
+          "bytes": 112310566,
+          "gb": 0.105,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/1998/1998plays.csv"
+        },
+        {
+          "bytes": 112052973,
+          "gb": 0.104,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/2008/2008plays.csv"
+        },
+        {
+          "bytes": 111973185,
+          "gb": 0.104,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/2006/2006plays.csv"
+        },
+        {
+          "bytes": 111959823,
+          "gb": 0.104,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/2003/2003plays.csv"
+        },
+        {
+          "bytes": 111732168,
+          "gb": 0.104,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/2009/2009plays.csv"
+        },
+        {
+          "bytes": 111649601,
+          "gb": 0.104,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/2001/2001plays.csv"
+        },
+        {
+          "bytes": 111261791,
+          "gb": 0.104,
+          "path": "/mnt/storage/WAKE/VAULT/ARCHIVES/from_old_hdd_root/storage/archive/lenovo/2026-07-05-pre-delete-copy/Desktop_ODIN_LINEFORGE_WAR_ROOM/training/mlb_history_35y/retrosheet_csv/2002/2002plays.csv"
+        }
+      ]
+    },
+    {
+      "path": "/mnt/storage/forgefront-vault",
+      "files": 425502,
+      "bytes": 51417814375,
+      "gb": 47.887,
+      "top20": [
+        {
+          "bytes": 4294967296,
+          "gb": 4.0,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/swap.img"
+        },
+        {
+          "bytes": 1719201792,
+          "gb": 1.601,
+          "path": "/mnt/storage/forgefront-vault/10_DATABASE/ichabod_search_index_20260827.sqlite"
+        },
+        {
+          "bytes": 1280319488,
+          "gb": 1.192,
+          "path": "/mnt/storage/forgefront-vault/10_DATABASE/dell_current_20260820-092349.sqlite"
+        },
+        {
+          "bytes": 1047011328,
+          "gb": 0.975,
+          "path": "/mnt/storage/forgefront-vault/10_DATABASE/dell_forensic_catalog_20260807.sqlite"
+        },
+        {
+          "bytes": 826982400,
+          "gb": 0.77,
+          "path": "/mnt/storage/forgefront-vault/10_DATABASE/forgefront_unified_current_20260820-113550.sqlite"
+        },
+        {
+          "bytes": 751775824,
+          "gb": 0.7,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/usr/local/lib/ollama/cuda_v12/libcublasLt.so.12.8.5.5"
+        },
+        {
+          "bytes": 751775824,
+          "gb": 0.7,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/usr/local/lib/ollama/cuda_v12/libcublasLt.so.12"
+        },
+        {
+          "bytes": 644382720,
+          "gb": 0.6,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/var/lib/snapd/snaps/gnome-46-2404_164.snap"
+        },
+        {
+          "bytes": 635518976,
+          "gb": 0.592,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/var/lib/snapd/snaps/gnome-46-2404_153.snap"
+        },
+        {
+          "bytes": 566378496,
+          "gb": 0.527,
+          "path": "/mnt/storage/forgefront-vault/10_DATABASE/forgefront_unique_search_recovered_20260820-123924.sqlite"
+        },
+        {
+          "bytes": 563286016,
+          "gb": 0.525,
+          "path": "/mnt/storage/forgefront-vault/10_DATABASE/forgefront_unique_search_20260820-120721.sqlite.partial"
+        },
+        {
+          "bytes": 541607888,
+          "gb": 0.504,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/usr/local/lib/ollama/cuda_v13/libcublasLt.so.13.1.1.3"
+        },
+        {
+          "bytes": 541607888,
+          "gb": 0.504,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/usr/local/lib/ollama/cuda_v13/libcublasLt.so.13"
+        },
+        {
+          "bytes": 421507072,
+          "gb": 0.393,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/var/lib/snapd/snaps/mesa-2404_1839.snap"
+        },
+        {
+          "bytes": 414167040,
+          "gb": 0.386,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/var/lib/snapd/snaps/mesa-2404_1165.snap"
+        },
+        {
+          "bytes": 376856552,
+          "gb": 0.351,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/usr/local/lib/ollama/cuda_v12/libggml-cuda.so"
+        },
+        {
+          "bytes": 364380160,
+          "gb": 0.339,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/var/lib/snapd/snaps/darktable_394.snap"
+        },
+        {
+          "bytes": 336699392,
+          "gb": 0.314,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/var/lib/snapd/snaps/vlc_3777.snap"
+        },
+        {
+          "bytes": 325909260,
+          "gb": 0.304,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/var/lib/kdump/initrd.img-7.0.0-29-generic"
+        },
+        {
+          "bytes": 325909095,
+          "gb": 0.304,
+          "path": "/mnt/storage/forgefront-vault/12_BACKUPS/ichabodcrane-ssd-20260807-175748/root/var/lib/kdump/initrd.img-7.0.0-28-generic"
+        }
+      ]
+    },
+    {
+      "path": "/mnt/storage/WAKE_OFFLOAD",
+      "files": 124,
+      "bytes": 879838349,
+      "gb": 0.819,
+      "top20": [
+        {
+          "bytes": 232641127,
+          "gb": 0.217,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/first recording  Dec 19 2025.mp4"
+        },
+        {
+          "bytes": 215634367,
+          "gb": 0.201,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2025-12-19 06-33-18.mp4"
+        },
+        {
+          "bytes": 132299924,
+          "gb": 0.123,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2025-12-19 07-12-58.mp4"
+        },
+        {
+          "bytes": 74711040,
+          "gb": 0.07,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Music/iTunes/iTunes Media/Podcasts/On Purpose with Jay Shetty/Alex O_Connor_ #1 Shift That Stops E.mp3.31b92ade.partial"
+        },
+        {
+          "bytes": 67397929,
+          "gb": 0.063,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Music/iTunes/iTunes Media/Podcasts/On Purpose with Jay Shetty/Matthew Hussey_ The #1 Dating Mistak.mp3.2ac7b258.partial"
+        },
+        {
+          "bytes": 33494108,
+          "gb": 0.031,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Music/iTunes/iTunes Media/Podcasts/On Purpose with Jay Shetty/7 Mindset Shifts That ACTUALLY Work.mp3"
+        },
+        {
+          "bytes": 14965472,
+          "gb": 0.014,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-07-09.mp4"
+        },
+        {
+          "bytes": 10557839,
+          "gb": 0.01,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-10-13.mp4"
+        },
+        {
+          "bytes": 10240309,
+          "gb": 0.01,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2025-12-10 15-17-17.mp4"
+        },
+        {
+          "bytes": 9146056,
+          "gb": 0.009,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-10-39.mp4"
+        },
+        {
+          "bytes": 8610178,
+          "gb": 0.008,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-08-38.mp4"
+        },
+        {
+          "bytes": 8520441,
+          "gb": 0.008,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-11-00.mp4"
+        },
+        {
+          "bytes": 8423545,
+          "gb": 0.008,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-07-57.mp4"
+        },
+        {
+          "bytes": 8258115,
+          "gb": 0.008,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-08-17.mp4"
+        },
+        {
+          "bytes": 6835120,
+          "gb": 0.006,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-11-18.mp4"
+        },
+        {
+          "bytes": 6791338,
+          "gb": 0.006,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-09-03.mp4"
+        },
+        {
+          "bytes": 6785083,
+          "gb": 0.006,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-09-29.mp4"
+        },
+        {
+          "bytes": 3742083,
+          "gb": 0.003,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Documents/Respawn Power point.pptx"
+        },
+        {
+          "bytes": 3440140,
+          "gb": 0.003,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Videos/2026-01-14 16-01-35.mp4"
+        },
+        {
+          "bytes": 3035711,
+          "gb": 0.003,
+          "path": "/mnt/storage/WAKE_OFFLOAD/ONEDRIVE_PULL_FROM_20250701/Pictures/20260531_OHR.EvergladesWetlands_EN-US8572465847_UHD_bing.jpg"
+        }
+      ]
+    },
+    {
+      "path": "/mnt/storage/archive",
+      "files": 198155,
+      "bytes": 48889175091,
+      "gb": 45.532,
+      "top20": [
+        {
+          "bytes": 4306501632,
+          "gb": 4.011,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/AndroidSDK/system-images/android-34/google_apis/x86_64/system.img"
+        },
+        {
+          "bytes": 368859842,
+          "gb": 0.344,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/WAKE_IP_ALL_OFFLOAD_20260717/Git-Commit-Hub/WAKE_ENTERPRISE_FILE_CONTROL/reports/WAKE_C_DRIVE_TOTAL_FILE_INVENTORY_NO_EXCLUSIONS_20260717_033221.csv"
+        },
+        {
+          "bytes": 368859842,
+          "gb": 0.344,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/Git-Commit-Hub/WAKE_ENTERPRISE_FILE_CONTROL/reports/WAKE_C_DRIVE_TOTAL_FILE_INVENTORY_NO_EXCLUSIONS_20260717_033221.csv"
+        },
+        {
+          "bytes": 337444127,
+          "gb": 0.314,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/LENOVO_C_OFFLOAD/FROM_C/scoop/cache/postgresql#18.4#d542d6a.zip"
+        },
+        {
+          "bytes": 250534816,
+          "gb": 0.233,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/Documents/antigravity/keen-hubble/wake-engine-v6/.git/objects/pack/pack-85848c21ef9a6fac34b1b733dbebb4476a704dd1.pack"
+        },
+        {
+          "bytes": 227712776,
+          "gb": 0.212,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/LENOVO_C_OFFLOAD/FROM_C/Downloads/Antigravity IDE.exe"
+        },
+        {
+          "bytes": 227712776,
+          "gb": 0.212,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/LENOVO_C_OFFLOAD/C_TO_D_20260816-005924/Downloads/Antigravity IDE.exe"
+        },
+        {
+          "bytes": 227712776,
+          "gb": 0.212,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/LENOVO_C_OFFLOAD/ARCHIVE_TO_GDRIVE_20260816/01_DOWNLOADS_COLD/Downloads/Antigravity IDE.exe"
+        },
+        {
+          "bytes": 225712640,
+          "gb": 0.21,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/GITHUB_APPS_OFFLOAD_20260807-050047/store-builds/Speakeasy-build-tilefix/win-unpacked/SpeakEasy by ForgeFront.exe"
+        },
+        {
+          "bytes": 225712640,
+          "gb": 0.21,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/GITHUB_APPS_OFFLOAD_20260807-050047/store-builds/Speakeasy-build-130/win-unpacked/SpeakEasy by ForgeFront.exe"
+        },
+        {
+          "bytes": 225699840,
+          "gb": 0.21,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/Documents/antigravity/keen-hubble/speakeasy/electron/build/win-unpacked/SpeakEasy by ForgeFront.exe"
+        },
+        {
+          "bytes": 225617920,
+          "gb": 0.21,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/Documents/repos/wake-engine/release/win-unpacked/WAKE Engine V6.exe"
+        },
+        {
+          "bytes": 225613824,
+          "gb": 0.21,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/Documents/antigravity/keen-hubble/wake-engine-v6/electron/build/win-unpacked/wake-engine-v6.exe"
+        },
+        {
+          "bytes": 225613824,
+          "gb": 0.21,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/Documents/antigravity/keen-hubble/python-pal/electron/build/win-unpacked/python-pal.exe"
+        },
+        {
+          "bytes": 225613824,
+          "gb": 0.21,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/Documents/antigravity/keen-hubble/Toms-Internet-Guide/toms-internet-guide/electron/build/win-unpacked/Tom's Internet Guide.exe"
+        },
+        {
+          "bytes": 225453056,
+          "gb": 0.21,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/WORKSPACE/Active_Projects/wake-engine-v6/release/win-unpacked/WAKE Engine Omega.exe"
+        },
+        {
+          "bytes": 219702264,
+          "gb": 0.205,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/offload-review/Odin v6/Codex/2026-07-06/my/work/lenovo-audio/n37a208w.exe"
+        },
+        {
+          "bytes": 200623104,
+          "gb": 0.187,
+          "path": "/mnt/storage/archive/lenovo/FROM_D/LENOVO_C_OFFLOAD/FROM_C/scoop/apps/postgresql/18.4/pgAdmin 4/runtime/pgAdmin4.exe"
+        },
+        {
+          "bytes": 198111184,
+          "gb": 0.185,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/WORKSPACE/Unsorted/CursorUserSetup-x64-3.12.30.exe"
+        },
+        {
+          "bytes": 198005928,
+          "gb": 0.184,
+          "path": "/mnt/storage/archive/lenovo/FROM_C/WORKSPACE/Unsorted/CursorUserSetup-x64-3.12.17.exe"
+        }
+      ]
+    }
+  ],
+  "totalBytes": 118121166706,
+  "totalGB": 110.009
+}

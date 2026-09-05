@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "smoke": "soak-owner-api-commands-http",
+  "claim": "5 consecutive Lenovo HTTP POST /api/commands A→B missions complete with shared Postgres + shared proofs.",
+  "at": "2026-09-05T00:01:38.395Z",
+  "requestedRuns": 5,
+  "completedRuns": 5,
+  "runs": [
+    {
+      "index": 1,
+      "startedAt": "2026-09-05T00:00:01.492Z",
+      "finishedAt": "2026-09-05T00:00:19.627Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-commands-http-crosshost-20260905T000001.json",
+      "error": null
+    },
+    {
+      "index": 2,
+      "startedAt": "2026-09-05T00:00:19.628Z",
+      "finishedAt": "2026-09-05T00:00:38.997Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-commands-http-crosshost-20260905T000019.json",
+      "error": null
+    },
+    {
+      "index": 3,
+      "startedAt": "2026-09-05T00:00:38.997Z",
+      "finishedAt": "2026-09-05T00:00:58.622Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-commands-http-crosshost-20260905T000039.json",
+      "error": null
+    },
+    {
+      "index": 4,
+      "startedAt": "2026-09-05T00:00:58.622Z",
+      "finishedAt": "2026-09-05T00:01:18.676Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-commands-http-crosshost-20260905T000058.json",
+      "error": null
+    },
+    {
+      "index": 5,
+      "startedAt": "2026-09-05T00:01:18.676Z",
+      "finishedAt": "2026-09-05T00:01:38.395Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-commands-http-crosshost-20260905T000118.json",
+      "error": null
+    }
+  ]
+}

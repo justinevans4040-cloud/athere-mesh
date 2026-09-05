@@ -1,0 +1,95 @@
+{
+    "names":  [
+                  {
+                      "bytes":  650254,
+                      "name":  "downloads-inventory.txt"
+                  },
+                  {
+                      "bytes":  29069,
+                      "name":  "downloads-ls.txt"
+                  },
+                  {
+                      "bytes":  2662,
+                      "name":  "home-dump.rdb"
+                  },
+                  {
+                      "bytes":  2,
+                      "name":  "redis-dbsize.txt"
+                  },
+                  {
+                      "bytes":  12,
+                      "name":  "redis-keyspace.txt"
+                  },
+                  {
+                      "bytes":  751242257,
+                      "name":  "termux-home.tgz"
+                  },
+                  {
+                      "bytes":  6046,
+                      "name":  "athere-mesh-titan-handoff (1).md"
+                  },
+                  {
+                      "bytes":  6046,
+                      "name":  "athere-mesh-titan-handoff (2).md"
+                  },
+                  {
+                      "bytes":  6046,
+                      "name":  "athere-mesh-titan-handoff.md"
+                  },
+                  {
+                      "bytes":  127949,
+                      "name":  "athere-victory-control-v2-source-1.zip"
+                  },
+                  {
+                      "bytes":  127949,
+                      "name":  "athere-victory-control-v2-source.zip"
+                  },
+                  {
+                      "bytes":  15989,
+                      "name":  "ATHERE_ANDROID_RAM_POOL_IMPLEMENTATION-1.md"
+                  },
+                  {
+                      "bytes":  15989,
+                      "name":  "ATHERE_ANDROID_RAM_POOL_IMPLEMENTATION.md"
+                  },
+                  {
+                      "bytes":  647420,
+                      "name":  "Athere_Mesh_Editorial_Infographic.png"
+                  },
+                  {
+                      "bytes":  20947,
+                      "name":  "ATHERE_MESH_HELIOS_ARCHITECTURE_v4_sanitized-1.docx"
+                  },
+                  {
+                      "bytes":  20947,
+                      "name":  "ATHERE_MESH_HELIOS_ARCHITECTURE_v4_sanitized-2.docx"
+                  },
+                  {
+                      "bytes":  20947,
+                      "name":  "ATHERE_MESH_HELIOS_ARCHITECTURE_v4_sanitized-3.docx"
+                  },
+                  {
+                      "bytes":  20947,
+                      "name":  "ATHERE_MESH_HELIOS_ARCHITECTURE_v4_sanitized.docx"
+                  },
+                  {
+                      "bytes":  42255,
+                      "name":  "Athere_Mesh_Implementation_Brief.docx"
+                  },
+                  {
+                      "bytes":  31437,
+                      "name":  "ATHERE_TITAN_QRA_BRITT_NOTEBOOKLM_SOURCE-1.md"
+                  },
+                  {
+                      "bytes":  31437,
+                      "name":  "ATHERE_TITAN_QRA_BRITT_NOTEBOOKLM_SOURCE-2.md"
+                  },
+                  {
+                      "bytes":  30628,
+                      "name":  "ATHERE_TITAN_QRA_BRITT_NOTEBOOKLM_SOURCE.md"
+                  }
+              ],
+    "outDir":  "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\s24-dump-20260905T014300",
+    "fileCount":  22,
+    "totalBytes":  753097235
+}

@@ -1,0 +1,34 @@
+{
+    "ichabodStorageFreeGB":  762,
+    "strategy":  "inventory-first; bulk stays on Ichabod /mnt/storage; Lenovo catalog + small pulls only",
+    "lenovoFreeGB":  37.1,
+    "ichabodPaths":  {
+                         "masterIndex":  "/mnt/storage/wake-forgefront-MASTER-INDEX-20260905.json",
+                         "wakeOffload":  "/mnt/storage/WAKE_OFFLOAD",
+                         "archive":  "/mnt/storage/archive",
+                         "WAKE":  "/mnt/storage/WAKE",
+                         "forgefrontVault":  "/mnt/storage/forgefront-vault"
+                     },
+    "measured":  {
+                     "s24_downloads_wake_name_match_GB":  0.13,
+                     "s24_termux_home_GB":  2.8,
+                     "lenovo_secure_vault_wake_sources_GB":  1,
+                     "s24_downloads_tree_GB":  2.54,
+                     "lenovo_F_AI_LOCAL_BACKUP_GB":  12.09,
+                     "s24_dump_pulled_to_lenovo_bytes":  751242257,
+                     "ichabod_du_hint_GB":  {
+                                                "approxTotal":  100.8,
+                                                "archive":  47,
+                                                "WAKE_OFFLOAD":  0.8,
+                                                "forgefront_vault":  37,
+                                                "WAKE":  16
+                                            }
+                 },
+    "stamp":  "20260905T014300",
+    "nextStep":  "Browse/organize on Ichabod under /mnt/storage (WAKE + forgefront-vault + archive). Do not copy 100GB to Lenovo.",
+    "lenovoPaths":  {
+                        "inventory":  "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\wake-forgefront-inventory-20260905T014300",
+                        "readme":  "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\wake-forgefront-inventory-20260905T014300\\README.md",
+                        "s24Dump":  "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\s24-dump-20260905T014300"
+                    }
+}

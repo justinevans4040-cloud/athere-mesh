@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "reason": "SSH 100.111.24.85:8022 never opened",
+  "onPhone": [
+    "Open Termux on A15",
+    "pkg install openssh redis",
+    "passwd   # if first time",
+    "sshd",
+    "Then re-run or wait — this waiter will finish Redis"
+  ]
+}

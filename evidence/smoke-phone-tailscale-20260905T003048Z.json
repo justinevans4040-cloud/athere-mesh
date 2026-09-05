@@ -1,0 +1,60 @@
+{
+  "stamp": "20260905T003048Z",
+  "anyPhoneOnline": true,
+  "phones": [
+    {
+      "id": "a15",
+      "host": "100.111.24.85",
+      "label": "A15 Termux",
+      "ping": {
+        "ok": true,
+        "status": 0,
+        "stdout": "\r\nPinging 100.111.24.85 with 32 bytes of data:\r\nReply from 100.111.24.85: bytes=32 time=500ms TTL=64\r\n\r\nPing statistics for 100.111.24.85:\r\n    Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),\r\nApproximate round trip times in milli-seconds:\r\n    Minimum = 500ms, Maximum = 500ms, Average = 500ms\r\n"
+      },
+      "redisPort": {
+        "ok": false,
+        "reason": "timeout"
+      }
+    },
+    {
+      "id": "kftrwi",
+      "host": "100.68.194.71",
+      "label": "kftrwi Termux",
+      "ping": {
+        "ok": true,
+        "status": 0,
+        "stdout": "\r\nPinging 100.68.194.71 with 32 bytes of data:\r\nReply from 100.68.194.71: bytes=32 time=274ms TTL=64\r\n\r\nPing statistics for 100.68.194.71:\r\n    Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),\r\nApproximate round trip times in milli-seconds:\r\n    Minimum = 274ms, Maximum = 274ms, Average = 274ms\r\n"
+      },
+      "redisPort": {
+        "ok": false,
+        "reason": "timeout"
+      }
+    },
+    {
+      "id": "s24",
+      "host": "100.83.225.17",
+      "label": "S24",
+      "ping": {
+        "ok": true,
+        "status": 0,
+        "stdout": "\r\nPinging 100.83.225.17 with 32 bytes of data:\r\nReply from 100.83.225.17: bytes=32 time=46ms TTL=64\r\n\r\nPing statistics for 100.83.225.17:\r\n    Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),\r\nApproximate round trip times in milli-seconds:\r\n    Minimum = 46ms, Maximum = 46ms, Average = 46ms\r\n"
+      },
+      "redisPort": {
+        "ok": false,
+        "reason": "connect ECONNREFUSED 100.83.225.17:6379"
+      }
+    }
+  ],
+  "meshRedis": {
+    "ok": true,
+    "pong": "PONG",
+    "host": "100.77.131.28",
+    "port": 6380
+  },
+  "termuxJoinHint": [
+    "On phone Termux: pkg install redis; start redis on 6379 or publish to Lenovo mesh Redis",
+    "tailscale up; confirm ping from Lenovo",
+    "Re-run: node scripts/smoke-phone-tailscale.js"
+  ],
+  "ok": true
+}

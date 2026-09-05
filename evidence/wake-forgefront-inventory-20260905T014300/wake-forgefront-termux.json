@@ -1,0 +1,187 @@
+{
+  "wakeForgeTermuxHitCount": 4747,
+  "wakeForgeTermuxHitBytes": 1696837470,
+  "wakeForgeTermuxHitGB": 1.58,
+  "top30": [
+    {
+      "path": "/data/data/com.termux/files/home/.ollama/models/blobs/sha256-74701a8c35f6c8d9a4b91f3f3497643001d63e0c7a84e085bed452548fa88d45",
+      "name": "sha256-74701a8c35f6c8d9a4b91f3f3497643001d63e0c7a84e085bed452548fa88d45",
+      "bytes": 1321082688,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/ignite.zip",
+      "name": "ignite.zip",
+      "bytes": 144782819,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/benchmarks/libs/ignite-core-2.16.0.jar",
+      "name": "ignite-core-2.16.0.jar",
+      "bytes": 14465237,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/ignite-core-2.16.0.jar",
+      "name": "ignite-core-2.16.0.jar",
+      "bytes": 14465237,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-calcite/calcite-core-1.34.0.jar",
+      "name": "calcite-core-1.34.0.jar",
+      "bytes": 7601577,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-compress/zstd-jni-1.5.5-5.jar",
+      "name": "zstd-jni-1.5.5-5.jar",
+      "bytes": 5915841,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/platforms/dotnet/bin/net461/EntityFramework.dll",
+      "name": "EntityFramework.dll",
+      "bytes": 5196496,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/docs/javadoc/index-all.html",
+      "name": "index-all.html",
+      "bytes": 3767204,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/benchmarks/libs/lucene-core-8.11.2.jar",
+      "name": "lucene-core-8.11.2.jar",
+      "bytes": 3611485,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/ignite-indexing/lucene-core-8.11.2.jar",
+      "name": "lucene-core-8.11.2.jar",
+      "bytes": 3611485,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/benchmarks/libs/guava-32.1.2-jre.jar",
+      "name": "guava-32.1.2-jre.jar",
+      "bytes": 3041591,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-calcite/guava-32.1.2-jre.jar",
+      "name": "guava-32.1.2-jre.jar",
+      "bytes": 3041591,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-opencensus/guava-26.0-android.jar",
+      "name": "guava-26.0-android.jar",
+      "bytes": 2597954,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/benchmarks/libs/mysql-connector-java-8.0.30.jar",
+      "name": "mysql-connector-java-8.0.30.jar",
+      "bytes": 2513563,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/platforms/dotnet/docs/xrefmap.yml",
+      "name": "xrefmap.yml",
+      "bytes": 2403098,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/platforms/dotnet/bin/net461/Apache.Ignite.Core.xml",
+      "name": "Apache.Ignite.Core.xml",
+      "bytes": 2333832,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/platforms/dotnet/bin/net6.0/Apache.Ignite.Core.xml",
+      "name": "Apache.Ignite.Core.xml",
+      "bytes": 2333832,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-calcite/commons-math3-3.6.1.jar",
+      "name": "commons-math3-3.6.1.jar",
+      "bytes": 2213560,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-compress/snappy-java-1.1.10.4.jar",
+      "name": "snappy-java-1.1.10.4.jar",
+      "bytes": 2112099,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/benchmarks/libs/h2-1.4.197.jar",
+      "name": "h2-1.4.197.jar",
+      "bytes": 1927540,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/ignite-indexing/h2-1.4.197.jar",
+      "name": "h2-1.4.197.jar",
+      "bytes": 1927540,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-calcite/ignite-calcite-2.16.0.jar",
+      "name": "ignite-calcite-2.16.0.jar",
+      "bytes": 1887339,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/benchmarks/libs/log4j-core-2.20.0.jar",
+      "name": "log4j-core-2.20.0.jar",
+      "bytes": 1847550,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-log4j2/log4j-core-2.20.0.jar",
+      "name": "log4j-core-2.20.0.jar",
+      "bytes": 1847550,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/benchmarks/libs/lucene-analyzers-common-8.11.2.jar",
+      "name": "lucene-analyzers-common-8.11.2.jar",
+      "bytes": 1785591,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/ignite-indexing/lucene-analyzers-common-8.11.2.jar",
+      "name": "lucene-analyzers-common-8.11.2.jar",
+      "bytes": 1785591,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/benchmarks/libs/protobuf-java-3.19.4.jar",
+      "name": "protobuf-java-3.19.4.jar",
+      "bytes": 1681869,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-calcite/jackson-databind-2.14.0.jar",
+      "name": "jackson-databind-2.14.0.jar",
+      "bytes": 1618273,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-kubernetes/jackson-databind-2.14.0.jar",
+      "name": "jackson-databind-2.14.0.jar",
+      "bytes": 1618273,
+      "source": "s24-termux"
+    },
+    {
+      "path": "/data/data/com.termux/files/home/ignite/apache-ignite-2.16.0-bin/libs/optional/ignite-rest-http/jackson-databind-2.14.0.jar",
+      "name": "jackson-databind-2.14.0.jar",
+      "bytes": 1618273,
+      "source": "s24-termux"
+    }
+  ]
+}

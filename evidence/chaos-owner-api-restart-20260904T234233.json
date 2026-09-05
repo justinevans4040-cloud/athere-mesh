@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "smoke": "chaos-owner-api-restart",
+  "claim": "Owner A→B completes, Ichabod worker+Tailscale Postgres proxy restart, next A→B still completes with shared proofs.",
+  "at": "2026-09-04T23:42:47.313Z",
+  "steps": [
+    {
+      "name": "baseline",
+      "startedAt": "2026-09-04T23:42:33.603Z",
+      "finishedAt": "2026-09-04T23:42:47.313Z",
+      "exitCode": 1,
+      "ok": false,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T234233.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": ""
+    }
+  ]
+}

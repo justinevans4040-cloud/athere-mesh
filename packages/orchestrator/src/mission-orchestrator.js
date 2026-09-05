@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { planCommand } from '../../command/src/command-planner.js';
 import { authorizeAgentOperation, createAgentOperationEnvelope } from '../../contracts/src/agent-operation.js';
@@ -7,8 +6,10 @@ import { parseAgentEnvelope } from '../../contracts/src/agent-envelope.js';
 import { parseNodeTestExecutionResult, parseRepositoryInspectionResult } from '../../contracts/src/execution-results.js';
 import { nodeExecutionInputBinding } from '../../execution/src/node-test-executor.js';
 import { createRemoteDispatchExecutor } from '../../execution/src/remote-dispatch-executor.js';
+import { createWorkspaceFileExecutor } from '../../execution/src/workspace-file-executor.js';
+import { createTitanBuildExecutor } from '../../execution/src/titan-build-executor.js';
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
-import { writeArtifactProof, writeProof, verifyArtifactProof, verifyProof } from '../../proof/src/proof-store.js';
+import { createSharedProofFacade } from '../../proof/src/shared-proof-facade.js';
 import { evaluateQr18Layers, assertQr18LayersVerified } from '../../proof/src/qr18-layered-verification.js';
 import { healMissionFromCheckpoint, recoverAndHealMissions } from '../../recovery/src/recovery-coordinator.js';
 import { createMemoryResonanceBus } from '../../resonance/src/resonance-bus.js';
@@ -73,8 +74,11 @@ export function createMissionOrchestrator({
   bus = createMemoryResonanceBus(),
   store,
   executor,
+  fileExecutor,
+  buildExecutor,
   remoteWorkQueue,
   remoteRepositoryRoot,
+  proofStore = createSharedProofFacade(),
   clock = () => new Date().toISOString(),
   idFactory = randomUUID,
 } = {}) {
@@ -88,6 +92,22 @@ export function createMissionOrchestrator({
     if (typeof remoteWorkQueue?.enqueue !== 'function' || typeof remoteWorkQueue?.awaitResult !== 'function') {
       throw new TypeError('remoteWorkQueue must provide enqueue and awaitResult');
     }
+  }
+  if (proofStore == null
+    || typeof proofStore.writeProof !== 'function'
+    || typeof proofStore.verifyProof !== 'function'
+    || typeof proofStore.writeArtifactProof !== 'function'
+    || typeof proofStore.verifyArtifactProof !== 'function'
+    || typeof proofStore.readProofBytes !== 'function') {
+    throw new TypeError('proofStore must provide writeProof, verifyProof, writeArtifactProof, verifyArtifactProof, and readProofBytes');
+  }
+  const workspaceFiles = fileExecutor ?? createWorkspaceFileExecutor({ repositoryRoot });
+  if (typeof workspaceFiles?.inventory !== 'function' || typeof workspaceFiles?.organizeByType !== 'function') {
+    throw new TypeError('fileExecutor must provide inventory and organizeByType');
+  }
+  const titanBuild = buildExecutor ?? createTitanBuildExecutor();
+  if (typeof titanBuild?.build !== 'function') {
+    throw new TypeError('buildExecutor must provide build');
   }
   const localExecutor = executorForTests(executor);
   // When a work queue is injected, both inspect-repository and run-node-tests
@@ -154,6 +174,7 @@ export function createMissionOrchestrator({
       objective: signal.detail ?? `${signal.type} mission transition`,
       createdAt: record.mission.updatedAt,
       taskId: `${signal.agent}-${signal.type}`,
+      ...(typeof signal.action === 'string' ? { action: signal.action } : {}),
       evidenceRequirements: signal.type === 'completed'
         ? ['independently verified proof', 'mission state version']
         : ['operation result', 'mission state version'],
@@ -206,6 +227,328 @@ export function createMissionOrchestrator({
     });
     await publish(record.mission.signals.at(-1));
     return record;
+  }
+
+  async function createFileWorkMission({ id, objective, action }) {
+    const isOrganize = action.resource === 'organize-by-type';
+    const workSubgoal = isOrganize ? 'organize-files' : 'inventory-files';
+    const workObjective = isOrganize
+      ? `Organize files by type under ${action.target}`
+      : `Inventory files under ${action.target}`;
+    const nyxAction = isOrganize ? 'mutate_workspace_files' : 'observe_repository';
+    const record = await missionState.create({
+      operationId: `${id}-create`,
+      id,
+      objective,
+      goals: [{ id: 'perform-owner-work', objective: 'Perform bounded owner file work' }],
+      subgoals: [
+        { id: workSubgoal, objective: workObjective, goalId: 'perform-owner-work' },
+        { id: 'verify-proof', objective: 'Verify proof-bound completion', goalId: 'perform-owner-work' },
+      ],
+      dependencies: [
+        { prerequisite: workSubgoal, dependent: 'verify-proof' },
+      ],
+      constraints: ['completion requires independently verified proof', 'model output is advisory only'],
+      permissions: [
+        { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
+        { actor: 'nyx', actions: [nyxAction] },
+        { actor: 'qra_emerge_audit', actions: ['verify_proof'] },
+        { actor: 'qra_recovery_driver', actions: [
+          'block_interrupted_mission',
+          'create_checkpoint',
+          'create_branch',
+          'quarantine_branch',
+          'rollback_to_checkpoint',
+          'retry_from_checkpoint',
+        ] },
+      ],
+      currentPlan: { id: 'owner-file-work-plan', version: 1, steps: [workSubgoal, 'verify-proof'] },
+      environmentObservations: [
+        { source: 'titan', key: 'file_work_target', value: action.target, observedAt: clock() },
+        { source: 'titan', key: 'file_work_resource', value: action.resource, observedAt: clock() },
+      ],
+    });
+    await publish(record.mission.signals.at(-1));
+    return record;
+  }
+
+  async function certifyWithProof({ record, payload, agentEvidence, completedWork, resultExtras = {} }) {
+    const ref = await proofStore.writeProof({
+      root: workspaceRoot,
+      missionId: record.mission.id,
+      operationId: `${record.mission.id}-proof`,
+      payload,
+    });
+    const proofOperationId = `${record.mission.id}-artifact-proof`;
+    const proofEnvelope = createAgentOperationEnvelope({
+      record,
+      operationId: proofOperationId,
+      agentId: 'qra_emerge_audit',
+      objective: 'Independently verify and provenance-bind the mission proof',
+      createdAt: record.mission.updatedAt,
+      taskId: 'verify-proof',
+      requiredInputs: ['mission_proof_reference', 'mission_proof_bytes'],
+      evidenceRequirements: ['proof hash verification', 'artifact provenance verification'],
+      expectedOutputSchema: { type: 'object', required: ['verified', 'sha256'] },
+      completionConditions: ['proof and artifact provenance both verify against immutable bytes'],
+      resourceBudget: { max_proof_reads: 2, max_state_mutations: 0 },
+    });
+    authorizeAgentOperation({
+      envelope: proofEnvelope,
+      mission: record.mission,
+      expectedRevision: record.revision,
+      operationId: proofOperationId,
+      signalType: 'completed',
+    });
+    const verification = await proofStore.verifyProof({ root: workspaceRoot, ref });
+    if (verification.verified !== true) throw new Error(`proof verification failed: ${verification.reason ?? 'unknown'}`);
+    const proofBytes = await proofStore.readProofBytes(workspaceRoot, ref);
+    const verifierResult = Object.freeze({
+      verifier: 'qra_emerge_audit',
+      verified: true,
+      proofSha256: ref.sha256,
+    });
+    const artifactRef = await proofStore.writeArtifactProof({
+      root: workspaceRoot,
+      missionId: record.mission.id,
+      artifactId: 'mission-proof',
+      artifact: proofBytes,
+      operationId: proofOperationId,
+      predecessorHash: null,
+      agent: 'qra_emerge_audit',
+      action: 'verified_mission_proof',
+      verifierResult,
+      missionStateVersion: record.revision,
+      timestamp: clock(),
+    });
+    const artifactVerification = await proofStore.verifyArtifactProof({ root: workspaceRoot, ref: artifactRef, artifact: proofBytes });
+    if (artifactVerification.verified !== true) {
+      throw new Error(`artifact provenance verification failed: ${artifactVerification.reason ?? 'unknown'}`);
+    }
+    const completionUpdate = {
+      completedWork,
+      pendingWork: [],
+      failedWork: [],
+      activeAgents: [],
+      artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
+    };
+    const qr18 = evaluateQr18Layers({
+      mission: Object.freeze({ ...record.mission, ...completionUpdate }),
+      proofVerification: verification,
+      certifierAgentId: 'qra_emerge_audit',
+      transitionHistory: record.mission.transitionHistory,
+    });
+    assertQr18LayersVerified(qr18);
+    record = await persistTransition(record, `${record.mission.id}-completion`, {
+      type: 'completed',
+      agent: 'qra_emerge_audit',
+      proof: { ...ref, verified: verification.verified },
+      result: {
+        agentEvidence,
+        proofSha256: ref.sha256,
+        auditorVerification: verification,
+        qr18,
+        ...resultExtras,
+      },
+    }, completionUpdate);
+    return record;
+  }
+
+  async function executeFileWork({ text, action }) {
+    const isOrganize = action.resource === 'organize-by-type';
+    const workSubgoal = isOrganize ? 'organize-files' : 'inventory-files';
+    const nyxAction = isOrganize ? 'mutate_workspace_files' : 'observe_repository';
+    const capabilityId = isOrganize ? 'workspace-file-worker' : 'repository-inspector';
+    let record = await createFileWorkMission({ id: missionId(idFactory), objective: text, action });
+    record = await persistTransition(record, `${record.mission.id}-supervision`, {
+      type: 'running', agent: 'miss-vale-prime', detail: 'mission supervision started',
+    }, { activeAgents: ['miss-vale-prime'] });
+
+    try {
+      const workStarted = Date.now();
+      const fileResult = isOrganize
+        ? await workspaceFiles.organizeByType({ target: action.target, dryRun: false })
+        : await workspaceFiles.inventory({ target: action.target });
+      const workLatencyMs = Date.now() - workStarted;
+      const nyxEvidence = Object.freeze({
+        executor: 'workspace-file-worker',
+        capabilityId,
+        action: nyxAction,
+        result: fileResult,
+      });
+      record = await persistTransition(record, `${record.mission.id}-file-work`, {
+        type: 'running',
+        agent: 'nyx',
+        action: nyxAction,
+        detail: isOrganize ? 'file organize completed' : 'file inventory completed',
+        evidence: nyxEvidence,
+      }, {
+        evidence: [{ agent: 'nyx', ...nyxEvidence }],
+        activeAgents: ['nyx'],
+      }, {
+        toolCalls: [{ tool: 'workspace-file-worker', agentId: 'nyx', ok: true }],
+        latencyMs: workLatencyMs,
+        models: [],
+        tokenUsage: 0,
+        costUsd: 0,
+      });
+      record = await durableCheckpoint(record, 'after-file-work');
+
+      const agentEvidence = Object.freeze([
+        Object.freeze({ agent: 'nyx', ...nyxEvidence }),
+      ]);
+      record = await certifyWithProof({
+        record,
+        payload: {
+          fileWork: fileResult,
+          agentEvidence,
+        },
+        agentEvidence,
+        completedWork: [workSubgoal, 'verify-proof'],
+        resultExtras: { fileWork: fileResult },
+      });
+      return Object.freeze({
+        revision: record.revision,
+        mission: record.mission,
+        fileWork: fileResult,
+      });
+    } catch (error) {
+      return blockThenHeal(record, error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function createBuildMission({ id, objective }) {
+    const record = await missionState.create({
+      operationId: `${id}-create`,
+      id,
+      objective,
+      goals: [{ id: 'build-titan', objective: 'Build / syntax-verify the Titan runtime tree' }],
+      subgoals: [
+        { id: 'inspect-repository', objective: 'Inspect the repository state', goalId: 'build-titan' },
+        { id: 'run-titan-build', objective: 'Execute the Titan build gate', goalId: 'build-titan' },
+        { id: 'verify-proof', objective: 'Verify proof-bound completion', goalId: 'build-titan' },
+      ],
+      dependencies: [
+        { prerequisite: 'inspect-repository', dependent: 'run-titan-build' },
+        { prerequisite: 'run-titan-build', dependent: 'verify-proof' },
+      ],
+      constraints: ['completion requires independently verified proof', 'model output is advisory only'],
+      permissions: [
+        { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
+        { actor: 'nyx', actions: ['observe_repository'] },
+        { actor: 'rune', actions: ['execute_titan_build'] },
+        { actor: 'qra_emerge_audit', actions: ['verify_proof'] },
+        { actor: 'qra_recovery_driver', actions: [
+          'block_interrupted_mission',
+          'create_checkpoint',
+          'create_branch',
+          'quarantine_branch',
+          'rollback_to_checkpoint',
+          'retry_from_checkpoint',
+        ] },
+      ],
+      currentPlan: { id: 'titan-build-plan', version: 1, steps: ['inspect-repository', 'run-titan-build', 'verify-proof'] },
+      environmentObservations: [{ source: 'titan', key: 'repository_root', value: repositoryRoot, observedAt: clock() }],
+    });
+    await publish(record.mission.signals.at(-1));
+    return record;
+  }
+
+  async function executeBuild({ text }) {
+    let record = await createBuildMission({ id: missionId(idFactory), objective: text });
+    record = await persistTransition(record, `${record.mission.id}-supervision`, {
+      type: 'running', agent: 'miss-vale-prime', detail: 'mission supervision started',
+    }, { activeAgents: ['miss-vale-prime'] });
+
+    try {
+      const inspectStarted = Date.now();
+      const inspection = parseRepositoryInspectionResult(await testExecutor.inspect({
+        repositoryRoot: workerRepositoryRoot,
+        envelope: executionEnvelope({
+          record,
+          taskId: 'inspect-repository',
+          operation: 'inspect-execution',
+          agentId: 'nyx',
+          capabilityId: 'repository-inspector',
+          action: 'observe_repository',
+          objective: 'Inspect repository metadata before Titan build',
+          timeout: 30_000,
+          budget: { max_filesystem_entries: 100_000 },
+          outputFields: ['package', 'sourceFilesOnDisk', 'testFilesOnDisk'],
+          inputBinding: nodeExecutionInputBinding({ repositoryRoot: workerRepositoryRoot, operation: 'inspect' }),
+        }),
+      }));
+      const inspectLatencyMs = Date.now() - inspectStarted;
+      const nyxEvidence = Object.freeze({ executor: 'repository-inspector', result: inspection });
+      record = await persistTransition(record, `${record.mission.id}-inspection`, {
+        type: 'running',
+        agent: 'nyx',
+        detail: 'repository inspection completed',
+        evidence: nyxEvidence,
+      }, {
+        evidence: [{ agent: 'nyx', ...nyxEvidence }],
+        activeAgents: ['nyx'],
+      }, {
+        toolCalls: [{ tool: 'repository-inspector', agentId: 'nyx', ok: true }],
+        latencyMs: inspectLatencyMs,
+        models: [],
+        tokenUsage: 0,
+        costUsd: 0,
+      });
+      record = await durableCheckpoint(record, 'after-inspect');
+
+      const buildStarted = Date.now();
+      const buildResult = await titanBuild.build({ repositoryRoot });
+      const buildLatencyMs = Date.now() - buildStarted;
+      const runeEvidence = Object.freeze({
+        executor: 'titan-build-runner',
+        action: 'execute_titan_build',
+        result: buildResult,
+      });
+      record = await persistTransition(record, `${record.mission.id}-build`, {
+        type: 'running',
+        agent: 'rune',
+        action: 'execute_titan_build',
+        detail: 'titan build gate completed',
+        evidence: runeEvidence,
+      }, {
+        evidence: [...record.mission.evidence, { agent: 'rune', ...runeEvidence }],
+        activeAgents: ['rune'],
+      }, {
+        toolCalls: [{ tool: 'titan-build-runner', agentId: 'rune', ok: buildResult.exitCode === 0 }],
+        latencyMs: buildLatencyMs,
+        models: [],
+        tokenUsage: 0,
+        costUsd: 0,
+      });
+      if (buildResult.exitCode !== 0) {
+        throw new Error(`titan build failed: ${buildResult.failedCount} file(s); ${buildResult.stderr.slice(0, 400)}`);
+      }
+      record = await durableCheckpoint(record, 'after-build');
+
+      const agentEvidence = Object.freeze([
+        Object.freeze({ agent: 'nyx', ...nyxEvidence }),
+        Object.freeze({ agent: 'rune', ...runeEvidence }),
+      ]);
+      record = await certifyWithProof({
+        record,
+        payload: {
+          build: buildResult,
+          inspection,
+          agentEvidence,
+        },
+        agentEvidence,
+        completedWork: ['inspect-repository', 'run-titan-build', 'verify-proof'],
+        resultExtras: { build: buildResult },
+      });
+      return Object.freeze({
+        revision: record.revision,
+        mission: record.mission,
+        build: buildResult,
+      });
+    } catch (error) {
+      return blockThenHeal(record, error instanceof Error ? error.message : String(error));
+    }
   }
 
   async function block(record, detail) {
@@ -288,6 +631,14 @@ export function createMissionOrchestrator({
     async execute({ profile, text }) {
       const plan = planCommand({ profile, text });
       if (plan.status !== 'ready') return plan;
+      const isFileInventory = plan.action.kind === 'read' && plan.action.resource === 'inventory';
+      const isFileOrganize = plan.action.kind === 'local_write' && plan.action.resource === 'organize-by-type';
+      if (isFileInventory || isFileOrganize) {
+        return executeFileWork({ text, action: plan.action });
+      }
+      if (plan.action.kind === 'build' && plan.action.target === 'titan') {
+        return executeBuild({ text });
+      }
       if (plan.action.kind !== 'test') {
         return Object.freeze({ status: 'blocked', reason: `no operational executor for ${plan.action.kind}` });
       }
@@ -376,10 +727,8 @@ export function createMissionOrchestrator({
           Object.freeze({ agent: 'nyx', ...nyxEvidence }),
           Object.freeze({ agent: 'rune', ...runeEvidence }),
         ]);
-        const ref = await writeProof({
-          root: workspaceRoot,
-          missionId: record.mission.id,
-          operationId: `${record.mission.id}-proof`,
+        record = await certifyWithProof({
+          record,
           payload: {
             command: result.command,
             exitCode: result.exitCode,
@@ -389,82 +738,10 @@ export function createMissionOrchestrator({
             inspection,
             agentEvidence,
           },
-        });
-        const proofOperationId = `${record.mission.id}-artifact-proof`;
-        const proofEnvelope = createAgentOperationEnvelope({
-          record,
-          operationId: proofOperationId,
-          agentId: 'qra_emerge_audit',
-          objective: 'Independently verify and provenance-bind the mission proof',
-          createdAt: record.mission.updatedAt,
-          taskId: 'verify-proof',
-          requiredInputs: ['mission_proof_reference', 'mission_proof_bytes'],
-          evidenceRequirements: ['proof hash verification', 'artifact provenance verification'],
-          expectedOutputSchema: { type: 'object', required: ['verified', 'sha256'] },
-          completionConditions: ['proof and artifact provenance both verify against immutable bytes'],
-          resourceBudget: { max_proof_reads: 2, max_state_mutations: 0 },
-        });
-        authorizeAgentOperation({
-          envelope: proofEnvelope,
-          mission: record.mission,
-          expectedRevision: record.revision,
-          operationId: proofOperationId,
-          signalType: 'completed',
-        });
-        const verification = await verifyProof({ root: workspaceRoot, ref });
-        if (verification.verified !== true) throw new Error(`proof verification failed: ${verification.reason ?? 'unknown'}`);
-        const proofBytes = await readFile(path.resolve(workspaceRoot, ...ref.path.split('/')));
-        const verifierResult = Object.freeze({
-          verifier: 'qra_emerge_audit',
-          verified: true,
-          proofSha256: ref.sha256,
-        });
-        const artifactRef = await writeArtifactProof({
-          root: workspaceRoot,
-          missionId: record.mission.id,
-          artifactId: 'mission-proof',
-          artifact: proofBytes,
-          operationId: proofOperationId,
-          predecessorHash: null,
-          agent: 'qra_emerge_audit',
-          action: 'verified_mission_proof',
-          verifierResult,
-          missionStateVersion: record.revision,
-          timestamp: clock(),
-        });
-        const artifactVerification = await verifyArtifactProof({ root: workspaceRoot, ref: artifactRef, artifact: proofBytes });
-        if (artifactVerification.verified !== true) {
-          throw new Error(`artifact provenance verification failed: ${artifactVerification.reason ?? 'unknown'}`);
-        }
-        // Item 10: layered QR18 structured evidence — every completion claim traces
-        // to per-level evidence and verifier. Evaluated here for the completion
-        // payload; mission-state-service re-evaluates independently and fails closed.
-        const completionUpdate = {
+          agentEvidence,
           completedWork: ['inspect-repository', 'run-node-tests', 'verify-proof'],
-          pendingWork: [],
-          failedWork: [],
-          activeAgents: [],
-          artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
-        };
-        const qr18 = evaluateQr18Layers({
-          mission: Object.freeze({ ...record.mission, ...completionUpdate }),
-          proofVerification: verification,
-          certifierAgentId: 'qra_emerge_audit',
-          transitionHistory: record.mission.transitionHistory,
+          resultExtras: { tests: validatedCounts },
         });
-        assertQr18LayersVerified(qr18);
-        record = await persistTransition(record, `${record.mission.id}-completion`, {
-          type: 'completed',
-          agent: 'qra_emerge_audit',
-          proof: { ...ref, verified: verification.verified },
-          result: {
-            tests: validatedCounts,
-            agentEvidence,
-            proofSha256: ref.sha256,
-            auditorVerification: verification,
-            qr18,
-          },
-        }, completionUpdate);
         return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });
       } catch (error) {
         return blockThenHeal(record, error instanceof Error ? error.message : String(error));

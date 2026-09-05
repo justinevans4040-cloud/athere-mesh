@@ -32,7 +32,7 @@ import {
   reconstructFailedMission,
   withAppendedTrace,
 } from './mission-execution-trace.js';
-import { loadMission, saveMission } from './mission-store.js';
+import { loadMission, saveMission, defaultMissionStore, isBrandedMissionStore } from './mission-store.js';
 import { projectMissionMemory, authorizeMemoryWrite } from '../../memory/src/typed-memory.js';
 import { retrieveStateAwareMemory } from '../../memory/src/state-aware-retrieval.js';
 import { decideNext, assertExecutiveActor } from '../../executive/src/executive-controller.js';
@@ -337,11 +337,11 @@ function validateUpdate(update, mission) {
     if (field === 'learnedKnowledge' || field === 'learningPipeline') {
       throw new Error('learnedKnowledge must be changed through the gated learning pipeline');
     }
-    if (field === 'skillLibrary' || field === 'skills') {
-      throw new Error('skillLibrary must be changed through the validated skill library');
+    if (field === 'skillLibrary' || field === 'skills' || field === 'validatedSkillBindings') {
+      throw new Error('skillLibrary / validatedSkillBindings must be changed through the validated skill library');
     }
-    if (field === 'selfImprovement' || field === 'improvementSandbox') {
-      throw new Error('selfImprovement must be changed through the self-improvement sandbox');
+    if (field === 'selfImprovement' || field === 'improvementSandbox' || field === 'improvementBindings') {
+      throw new Error('selfImprovement / improvementBindings must be changed through the self-improvement sandbox');
     }
     if (field === 'distributedState' || field === 'replicas' || field === 'stateEventLog') {
       throw new Error('distributedState must be changed through the distributed state layer');
@@ -391,7 +391,7 @@ function validateUpdate(update, mission) {
 export function createMissionStateService({
   root,
   clock = () => new Date().toISOString(),
-  store = { loadMission, saveMission },
+  store = defaultMissionStore,
   identities = createAgentIdentityRegistry(),
   learning = null,
   skills = null,
@@ -453,6 +453,8 @@ export function createMissionStateService({
     if (typeof distributedLayer.loadMissionReplica !== 'function' || typeof distributedLayer.topology !== 'function') {
       throw new TypeError('distributed layer must provide loadMissionReplica and topology');
     }
+  } else if (!isBrandedMissionStore(store)) {
+    throw new TypeError('store must be a branded mission store from createMissionStore, createMissionStoreBridge, or Postgres adaptors');
   }
   store = distributedLayer ?? store;
   function assertRegisteredIdentityActive(actorId) {
@@ -699,6 +701,68 @@ export function createMissionStateService({
     });
   }
 
+  async function commitBindingOperation({
+    operationId,
+    missionId,
+    expectedRevision,
+    actor,
+    action,
+    field,
+    input,
+    buildBinding,
+  }) {
+    const id = requiredId(missionId, 'mission id');
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+      throw new TypeError('revision conflict: expectedRevision must be a positive integer');
+    }
+    const operation = requiredId(operationId, 'operation id');
+    const current = await store.loadMission({ root, missionId: id });
+    const existingHistory = current.mission.transitionHistory ?? [];
+    const history = existingHistory.length > 0
+      ? existingHistory
+      : [legacyImportRecord(current.mission, current.revision, clock())];
+    const operationHashInput = { actor, action, field, input };
+    const prior = history.find((entry) => entry.operationId === operation);
+    if (prior) {
+      if (prior.operationHash !== hashValue(operationHashInput)) {
+        throw new Error(`idempotency conflict: operation id already has different content: ${operation}`);
+      }
+      return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
+    }
+    const authorization = requiredFactPermission(current.mission, actor, action);
+    assertRegisteredIdentityActive(authorization.actor);
+    const timestamp = clock();
+    const priorBindings = Array.isArray(current.mission[field]) ? current.mission[field] : [];
+    if (priorBindings.length >= 32) {
+      throw new Error(`${field} exceed cap (32)`);
+    }
+    const nextBinding = buildBinding(timestamp, authorization.actor);
+    const nextState = Object.freeze({
+      ...current.mission,
+      [field]: Object.freeze([...priorBindings, nextBinding]),
+      updatedAt: timestamp,
+    });
+    const lineage = transitionRecord({
+      stateVersion: expectedRevision + 1,
+      previousVersion: expectedRevision,
+      previousTransitionHash: history.at(-1).transitionHash,
+      operationId: operation,
+      operationHashInput,
+      actor: authorization.actor,
+      action,
+      timestamp,
+      input,
+      before: current.mission,
+      after: nextState,
+      authorization,
+    });
+    const mission = withAppendedTrace(
+      Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) }),
+      lineage,
+    );
+    return saveOperation({ mission, expectedRevision, operationId: operation, operationHash: hashValue(operationHashInput) });
+  }
+
   return Object.freeze({
     async create(input) {
       const id = requiredId(input?.id, 'mission id');
@@ -911,6 +975,41 @@ export function createMissionStateService({
     async reuseSkill(input) {
       return skillLibrary.reuse(input);
     },
+    async bindValidatedSkill({
+      operationId,
+      missionId,
+      expectedRevision,
+      actor,
+      skillId,
+      version,
+    }) {
+      const skill = await skillLibrary.get({ skillId, version });
+      const contentHash = hashValue(skill);
+      const binding = Object.freeze({
+        skillId: skill.id,
+        version: skill.version,
+        contentHash,
+        provenance: Object.freeze(structuredClone(skill.provenance ?? {})),
+        boundAt: null,
+        boundBy: null,
+      });
+      return commitBindingOperation({
+        operationId,
+        missionId,
+        expectedRevision,
+        actor,
+        action: 'observe_repository',
+        field: 'validatedSkillBindings',
+        input: { skillId: skill.id, version: skill.version, contentHash },
+        buildBinding(timestamp, authorizedActor) {
+          return Object.freeze({
+            ...binding,
+            boundAt: timestamp,
+            boundBy: authorizedActor,
+          });
+        },
+      });
+    },
     listSkills() {
       return skillLibrary.list();
     },
@@ -919,6 +1018,37 @@ export function createMissionStateService({
     },
     async deployImprovementToProduction(payload) {
       return improvement.deployToProduction(payload);
+    },
+    async bindDeployedImprovement({
+      operationId,
+      missionId,
+      expectedRevision,
+      actor,
+      proposalId,
+    }) {
+      const proposal = improvement.get(proposalId);
+      if (proposal.stage !== 'deploy' && proposal.stage !== 'monitor' && proposal.stage !== 'rollback') {
+        throw new Error(`improvement proposal is not deployed: ${proposal.stage}`);
+      }
+      const contentHash = hashValue(proposal);
+      return commitBindingOperation({
+        operationId,
+        missionId,
+        expectedRevision,
+        actor,
+        action: 'observe_repository',
+        field: 'improvementBindings',
+        input: { proposalId: proposal.id, stage: proposal.stage, contentHash },
+        buildBinding(timestamp, authorizedActor) {
+          return Object.freeze({
+            proposalId: proposal.id,
+            stage: proposal.stage,
+            contentHash,
+            boundAt: timestamp,
+            boundBy: authorizedActor,
+          });
+        },
+      });
     },
     listImprovementProposals() {
       return improvement.list();

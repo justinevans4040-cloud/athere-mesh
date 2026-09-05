@@ -14,6 +14,32 @@ function recognize(text) {
   if (/\b(build|compile)\b/.test(normalized) && /\btitan\b/.test(normalized)) {
     return { kind: 'build', target: 'titan' };
   }
+  if (/\b(organize|sort|clean up|cleanup)\b/.test(normalized)
+    && /\b(download|downloads|desktop|documents|workspace|scratch)\b/.test(normalized)) {
+    const target = /\bscratch\b/.test(normalized)
+      ? 'scratch'
+      : /\bdesktop\b/.test(normalized)
+        ? 'desktop'
+        : /\bdocuments\b/.test(normalized)
+          ? 'documents'
+          : /\bworkspace\b/.test(normalized)
+            ? 'workspace'
+            : 'downloads';
+    return { kind: 'local_write', target, resource: 'organize-by-type' };
+  }
+  if (/\b(inventory|list files|list my|what.s in|whats in|show files)\b/.test(normalized)
+    && /\b(download|downloads|desktop|documents|workspace|scratch)\b/.test(normalized)) {
+    const target = /\bscratch\b/.test(normalized)
+      ? 'scratch'
+      : /\bdesktop\b/.test(normalized)
+        ? 'desktop'
+        : /\bdocuments\b/.test(normalized)
+          ? 'documents'
+          : /\bworkspace\b/.test(normalized)
+            ? 'workspace'
+            : 'downloads';
+    return { kind: 'read', target, resource: 'inventory' };
+  }
   return undefined;
 }
 

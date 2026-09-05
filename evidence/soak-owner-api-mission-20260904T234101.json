@@ -1,0 +1,91 @@
+{
+  "ok": true,
+  "smoke": "soak-owner-api-mission",
+  "claim": "5 consecutive Lenovo→Ichabod owner-api missions complete with shared Postgres + shared proofs (Tailscale-native), zero mid-flight SSH.",
+  "at": "2026-09-04T23:42:04.899Z",
+  "requestedRuns": 5,
+  "completedRuns": 5,
+  "postgresUrlHost": "100.77.131.28:5432",
+  "runs": [
+    {
+      "index": 1,
+      "startedAt": "2026-09-04T23:41:01.984Z",
+      "finishedAt": "2026-09-04T23:41:14.626Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T234102.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 2,
+      "startedAt": "2026-09-04T23:41:14.626Z",
+      "finishedAt": "2026-09-04T23:41:27.265Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T234114.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 3,
+      "startedAt": "2026-09-04T23:41:27.265Z",
+      "finishedAt": "2026-09-04T23:41:39.690Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T234127.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 4,
+      "startedAt": "2026-09-04T23:41:39.690Z",
+      "finishedAt": "2026-09-04T23:41:52.385Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T234139.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 5,
+      "startedAt": "2026-09-04T23:41:52.385Z",
+      "finishedAt": "2026-09-04T23:42:04.899Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T234152.json",
+      "missionStatus": "completed",
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "ok": false,
+  "smoke": "soak-owner-api-mission",
+  "claim": "5 consecutive Lenovo→Ichabod owner-api missions complete with shared Postgres + shared proofs (Tailscale-native), zero mid-flight SSH.",
+  "at": "2026-09-04T23:35:57.386Z",
+  "requestedRuns": 5,
+  "completedRuns": 1,
+  "postgresUrlHost": "100.77.131.28:5432",
+  "runs": [
+    {
+      "index": 1,
+      "startedAt": "2026-09-04T23:35:44.743Z",
+      "finishedAt": "2026-09-04T23:35:57.386Z",
+      "exitCode": 0,
+      "ok": false,
+      "wiring": null,
+      "evidence": null,
+      "error": null
+    }
+  ]
+}

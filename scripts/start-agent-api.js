@@ -74,6 +74,7 @@ export async function createTitanService({
     ...(mesh.remoteWorkQueue === undefined ? {} : { remoteWorkQueue: mesh.remoteWorkQueue }),
     ...(mesh.remoteRepositoryRoot === undefined ? {} : { remoteRepositoryRoot: mesh.remoteRepositoryRoot }),
     ...(mesh.store === undefined ? {} : { store: mesh.store }),
+    ...(mesh.proofStore === undefined ? {} : { proofStore: mesh.proofStore }),
   });
   const complete = createOllamaCompletion({
     baseUrl: nonEmptyEnvironment(environment, 'OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),

@@ -1,0 +1,12 @@
+{
+  "stamp": "20260905T012844Z",
+  "ok": true,
+  "primaryPhone": "s24",
+  "a15": "parked",
+  "s24": {
+    "host": "100.83.225.17",
+    "pong": "PONG",
+    "sshStatus": 0,
+    "sshOut": "ok\nu0_a463\nPONG"
+  }
+}

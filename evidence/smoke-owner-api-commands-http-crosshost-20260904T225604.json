@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "smoke": "owner-api-commands-http-crosshost",
+  "claim": "Lenovo owner HTTP POST /api/commands with env-wired Redis bus + remote work queue completes inspect+run-node-tests on the standing Ichabod worker (zero mid-flight SSH claim).",
+  "at": "2026-09-04T22:56:19.115Z",
+  "startedAt": "2026-09-04T22:56:06.923Z",
+  "runtime": "athere-mesh",
+  "dispatcher": {
+    "hostname": "JustinLenovo",
+    "pid": 3816,
+    "node": "v24.14.1",
+    "tailnet": [
+      {
+        "interface": "Tailscale",
+        "address": "100.125.245.10"
+      }
+    ]
+  },
+  "wiring": {
+    "redisBus": true,
+    "remoteWorkQueue": true,
+    "sharedMissionStore": true
+  },
+  "baseUrl": "http://127.0.0.1:3000",
+  "remoteRepositoryRoot": "/home/the_founder/athere-mesh",
+  "workNamespace": "athere:mesh:work",
+  "seedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+  "sources": {
+    "start-agent-api.js": "9e73c407ed15d3c98ef437a5becaf839dd8e8beebbf06c6c3f299c0b7fb93e59",
+    "titan-api.js": "6da3caedeaf18003f9ebf1c6a8a1fde4cbecb46559a964c26afaffbf950f4b95",
+    "mission-orchestrator.js": "a85835e370496bf3094eca03e454a6096f271b49db2dffe9222f244ec25a335e",
+    "node-test-executor.js": "91a173386056f96e5c5da0f6006bd7ea82a35608bfb6ff596abf0fd7a9318242"
+  },
+  "result": {
+    "status": "completed",
+    "missionId": "mission-7ac26df4-3155-42dd-999c-f69b559f7c08",
+    "completedWork": [
+      "inspect-repository",
+      "run-node-tests",
+      "verify-proof"
+    ],
+    "tests": {
+      "tests": 429,
+      "passed": 428,
+      "failed": 0,
+      "skipped": 1
+    },
+    "proof": {
+      "path": "proofs/mission-7ac26df4-3155-42dd-999c-f69b559f7c08-de437b5a9c73c82b6de28988991bbc7d.json",
+      "sha256": "e84ad1617376c01c381c0d3c30a4880757f8eced94e15004a71bd7402fbe6e61",
+      "verified": true,
+      "operationId": "mission-7ac26df4-3155-42dd-999c-f69b559f7c08-proof"
+    }
+  },
+  "error": null,
+  "doesNotProve": [
+    "Postgres Tailscale-native without tunnel (only recorded if ATHERE_MESH_POSTGRES_* was set for this process)",
+    "Shared proof store across hosts (proofs remain owner-workspace FS unless closed separately)"
+  ],
+  "midFlightSshClaim": false
+}

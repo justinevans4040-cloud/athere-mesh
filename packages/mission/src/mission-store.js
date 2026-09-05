@@ -12,6 +12,25 @@ const LEGACY_LOCK_VERSION = 1;
 const LOCK_VERSION = 2;
 const DEFAULT_LEASE_MS = 30_000;
 const keyedLockTails = new Map();
+const BRANDED_MISSION_STORES = new WeakSet();
+
+export function isBrandedMissionStore(value) {
+  return value != null && BRANDED_MISSION_STORES.has(value);
+}
+
+/** Brand a load/save adapter (Postgres bridge, hermetic Map stores). Not for anonymous hostile objects. */
+export function createMissionStoreBridge({ loadMission, saveMission, listMissionIds } = {}) {
+  if (typeof loadMission !== 'function' || typeof saveMission !== 'function') {
+    throw new TypeError('mission store bridge must provide loadMission and saveMission');
+  }
+  const store = Object.freeze({
+    loadMission,
+    saveMission,
+    ...(typeof listMissionIds === 'function' ? { listMissionIds } : {}),
+  });
+  BRANDED_MISSION_STORES.add(store);
+  return store;
+}
 
 function requireMissionId(missionId) {
   if (typeof missionId !== 'string' || !MISSION_ID.test(missionId)) {
@@ -492,7 +511,9 @@ export function createMissionStore({
     return result;
   }
 
-  return Object.freeze({ loadMission: load, saveMission: save, listMissionIds: listIds });
+  const store = Object.freeze({ loadMission: load, saveMission: save, listMissionIds: listIds });
+  BRANDED_MISSION_STORES.add(store);
+  return store;
 }
 
 const defaultMissionStore = createMissionStore();
@@ -500,3 +521,5 @@ const defaultMissionStore = createMissionStore();
 export async function listMissionIds({ root }) {
   return defaultMissionStore.listMissionIds({ root });
 }
+
+export { defaultMissionStore };

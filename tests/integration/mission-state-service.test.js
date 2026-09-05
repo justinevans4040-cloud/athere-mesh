@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { createAgentOperationEnvelope } from '../../packages/contracts/src/agent-operation.js';
 import { createMissionStateService as createRawMissionStateService } from '../../packages/mission/src/mission-state-service.js';
-import { loadMission, saveMission } from '../../packages/mission/src/mission-store.js';
+import { createMissionStoreBridge, defaultMissionStore, loadMission, saveMission } from '../../packages/mission/src/mission-store.js';
 
 const clock = () => '2026-08-26T18:00:00.000Z';
 function withAgentEnvelopes(service) {
@@ -169,18 +169,17 @@ test('every authoritative mutation appends hash-bound transition lineage', async
 
 test('history verification rejects a tampered transition ledger', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'athere-state-tamper-'));
-  const baseStore = { loadMission, saveMission };
   let tamper = false;
-  const store = {
-    saveMission: baseStore.saveMission,
+  const store = createMissionStoreBridge({
+    saveMission: defaultMissionStore.saveMission,
     async loadMission(options) {
-      const record = await baseStore.loadMission(options);
+      const record = await defaultMissionStore.loadMission(options);
       if (!tamper) return record;
       const history = structuredClone(record.mission.transitionHistory);
       history[0].actor = 'intruder';
       return { ...record, mission: { ...record.mission, transitionHistory: history } };
     },
-  };
+  });
   const service = createMissionStateService({ root, clock, store });
   await service.create(createInput());
   tamper = true;
@@ -194,10 +193,10 @@ test('transition marks an explicit provenance boundary for a pre-ledger mission'
   const legacyMission = structuredClone(created.mission);
   delete legacyMission.transitionHistory;
   let saved;
-  const store = {
+  const store = createMissionStoreBridge({
     loadMission: async () => ({ mission: legacyMission, revision: created.revision }),
     saveMission: async ({ mission }) => { saved = mission; return { mission, revision: 2 }; },
-  };
+  });
   const legacyService = createMissionStateService({ root, clock, store });
 
   await legacyService.transition({
@@ -458,10 +457,10 @@ test('operation retry timeout fails without committing partial state', async () 
   const root = await mkdtemp(path.join(tmpdir(), 'athere-operation-timeout-'));
   const initial = createMissionStateService({ root, clock });
   const created = await initial.create(createInput());
-  const busyStore = {
+  const busyStore = createMissionStoreBridge({
     loadMission,
     async saveMission() { throw new Error('mission write already in progress'); },
-  };
+  });
   const service = createMissionStateService({
     root,
     clock,

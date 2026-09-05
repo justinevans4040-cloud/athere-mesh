@@ -13,7 +13,12 @@ const AGENT_ROLES = Object.freeze({
   qra_recovery_driver: ROLES.recovery,
 });
 
-const EXECUTOR_ACTIONS = Object.freeze(new Set(['observe_repository', 'execute_node_tests']));
+const EXECUTOR_ACTIONS = Object.freeze(new Set([
+  'observe_repository',
+  'execute_node_tests',
+  'mutate_workspace_files',
+  'execute_titan_build',
+]));
 const AUDITOR_ACTIONS = Object.freeze(new Set(['verify_proof']));
 const MANAGER_ACTIONS = Object.freeze(new Set(['supervise_mission']));
 const RECOVERY_ACTIONS = Object.freeze(new Set([
@@ -236,6 +241,9 @@ export function authorizeCompletedWorkClaim({
   }
   const role = roleForAgent(agentId);
   assertRoleMayAdvanceCompletedWork(role);
+  if (!Array.isArray(transitionHistory) || transitionHistory.length === 0) {
+    throw new Error('cannot certify success on a pre-ledger mission without transition history');
+  }
   if (isMissionCompletion) {
     assertCompletedSignalWorkCertified({ mission, update });
   }

@@ -1,0 +1,411 @@
+{
+  "ok": true,
+  "smoke": "soak-owner-api-mission",
+  "claim": "25 consecutive Lenovo→Ichabod owner-api missions complete with shared Postgres + shared proofs (Tailscale-native), zero mid-flight SSH.",
+  "at": "2026-09-04T23:56:42.818Z",
+  "requestedRuns": 25,
+  "completedRuns": 25,
+  "postgresUrlHost": "100.77.131.28:5432",
+  "runs": [
+    {
+      "index": 1,
+      "startedAt": "2026-09-04T23:51:23.694Z",
+      "finishedAt": "2026-09-04T23:51:35.980Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235123.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 2,
+      "startedAt": "2026-09-04T23:51:35.980Z",
+      "finishedAt": "2026-09-04T23:51:48.705Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235136.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 3,
+      "startedAt": "2026-09-04T23:51:48.705Z",
+      "finishedAt": "2026-09-04T23:52:01.532Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235148.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 4,
+      "startedAt": "2026-09-04T23:52:01.533Z",
+      "finishedAt": "2026-09-04T23:52:14.897Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235201.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 5,
+      "startedAt": "2026-09-04T23:52:14.898Z",
+      "finishedAt": "2026-09-04T23:52:27.392Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235215.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 6,
+      "startedAt": "2026-09-04T23:52:27.393Z",
+      "finishedAt": "2026-09-04T23:52:40.257Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235227.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 7,
+      "startedAt": "2026-09-04T23:52:40.258Z",
+      "finishedAt": "2026-09-04T23:52:55.391Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235240.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 8,
+      "startedAt": "2026-09-04T23:52:55.391Z",
+      "finishedAt": "2026-09-04T23:53:08.246Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235255.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 9,
+      "startedAt": "2026-09-04T23:53:08.246Z",
+      "finishedAt": "2026-09-04T23:53:21.163Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235308.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 10,
+      "startedAt": "2026-09-04T23:53:21.163Z",
+      "finishedAt": "2026-09-04T23:53:33.654Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235321.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 11,
+      "startedAt": "2026-09-04T23:53:33.654Z",
+      "finishedAt": "2026-09-04T23:53:46.380Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235333.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 12,
+      "startedAt": "2026-09-04T23:53:46.380Z",
+      "finishedAt": "2026-09-04T23:53:59.169Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235346.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 13,
+      "startedAt": "2026-09-04T23:53:59.170Z",
+      "finishedAt": "2026-09-04T23:54:12.066Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235359.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 14,
+      "startedAt": "2026-09-04T23:54:12.066Z",
+      "finishedAt": "2026-09-04T23:54:24.542Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235412.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 15,
+      "startedAt": "2026-09-04T23:54:24.542Z",
+      "finishedAt": "2026-09-04T23:54:37.100Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235424.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 16,
+      "startedAt": "2026-09-04T23:54:37.100Z",
+      "finishedAt": "2026-09-04T23:54:49.826Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235437.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 17,
+      "startedAt": "2026-09-04T23:54:49.827Z",
+      "finishedAt": "2026-09-04T23:55:02.165Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235449.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 18,
+      "startedAt": "2026-09-04T23:55:02.165Z",
+      "finishedAt": "2026-09-04T23:55:14.505Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235502.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 19,
+      "startedAt": "2026-09-04T23:55:14.505Z",
+      "finishedAt": "2026-09-04T23:55:27.011Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235514.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 20,
+      "startedAt": "2026-09-04T23:55:27.011Z",
+      "finishedAt": "2026-09-04T23:55:40.002Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235527.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 21,
+      "startedAt": "2026-09-04T23:55:40.003Z",
+      "finishedAt": "2026-09-04T23:55:52.703Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235540.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 22,
+      "startedAt": "2026-09-04T23:55:52.703Z",
+      "finishedAt": "2026-09-04T23:56:05.280Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235552.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 23,
+      "startedAt": "2026-09-04T23:56:05.280Z",
+      "finishedAt": "2026-09-04T23:56:17.794Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235605.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 24,
+      "startedAt": "2026-09-04T23:56:17.794Z",
+      "finishedAt": "2026-09-04T23:56:30.305Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235617.json",
+      "missionStatus": "completed",
+      "error": null
+    },
+    {
+      "index": 25,
+      "startedAt": "2026-09-04T23:56:30.305Z",
+      "finishedAt": "2026-09-04T23:56:42.818Z",
+      "exitCode": 0,
+      "ok": true,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235630.json",
+      "missionStatus": "completed",
+      "error": null
+    }
+  ]
+}

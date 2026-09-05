@@ -676,7 +676,7 @@ test('CLOSED: revoked deployer cannot monitor; nyx cannot decideNext; memory tra
   );
 });
 
-test('TRUSTED-COMPOSITION: custom store method-shape inject is not branded (documented residual)', async () => {
+test('CLOSED: custom store method-shape inject without brand is rejected', async () => {
   const casStrip = {
     async loadMission() {
       return { revision: 1, mission: { id: 'x' } };
@@ -685,10 +685,9 @@ test('TRUSTED-COMPOSITION: custom store method-shape inject is not branded (docu
       return { revision: 99, mission };
     },
   };
-  const service = createMissionStateService({
-    root: await tmpRoot('ckpt88-store-'),
-    clock,
-    store: casStrip,
-  });
-  assert.equal(typeof service.create, 'function');
+  const root = await tmpRoot('ckpt88-store-');
+  assert.throws(
+    () => createMissionStateService({ root, clock, store: casStrip }),
+    /branded mission store/,
+  );
 });

@@ -1,0 +1,204 @@
+{
+  "ok": true,
+  "smoke": "chaos-owner-api-restart",
+  "claim": "5 chaos cycles: owner A→B, restart worker+Tailscale Postgres proxy, owner A→B again — all green.",
+  "at": "2026-09-04T23:59:37.000Z",
+  "requestedCycles": 5,
+  "steps": [
+    {
+      "cycle": 1,
+      "name": "baseline",
+      "startedAt": "2026-09-04T23:56:57.993Z",
+      "finishedAt": "2026-09-04T23:57:10.509Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235658.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    },
+    {
+      "cycle": 1,
+      "name": "restart_services",
+      "ok": true,
+      "stdout": "active\nactive\nLISTEN 0      64                   100.77.131.28:5432       0.0.0.0:*   \nLISTEN 0      200                      127.0.0.1:5432       0.0.0.0:*",
+      "stderr": ""
+    },
+    {
+      "cycle": 1,
+      "name": "post_restart",
+      "startedAt": "2026-09-04T23:57:17.223Z",
+      "finishedAt": "2026-09-04T23:57:29.831Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235717.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    },
+    {
+      "cycle": 2,
+      "name": "baseline",
+      "startedAt": "2026-09-04T23:57:29.832Z",
+      "finishedAt": "2026-09-04T23:57:42.644Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235729.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    },
+    {
+      "cycle": 2,
+      "name": "restart_services",
+      "ok": true,
+      "stdout": "active\nactive\nLISTEN 0      64                   100.77.131.28:5432       0.0.0.0:*   \nLISTEN 0      200                      127.0.0.1:5432       0.0.0.0:*",
+      "stderr": ""
+    },
+    {
+      "cycle": 2,
+      "name": "post_restart",
+      "startedAt": "2026-09-04T23:57:48.967Z",
+      "finishedAt": "2026-09-04T23:58:01.554Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235749.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    },
+    {
+      "cycle": 3,
+      "name": "baseline",
+      "startedAt": "2026-09-04T23:58:01.554Z",
+      "finishedAt": "2026-09-04T23:58:14.117Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235801.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    },
+    {
+      "cycle": 3,
+      "name": "restart_services",
+      "ok": true,
+      "stdout": "active\nactive\nLISTEN 0      64                   100.77.131.28:5432       0.0.0.0:*   \nLISTEN 0      200                      127.0.0.1:5432       0.0.0.0:*",
+      "stderr": ""
+    },
+    {
+      "cycle": 3,
+      "name": "post_restart",
+      "startedAt": "2026-09-04T23:58:20.907Z",
+      "finishedAt": "2026-09-04T23:58:33.574Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235821.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    },
+    {
+      "cycle": 4,
+      "name": "baseline",
+      "startedAt": "2026-09-04T23:58:33.574Z",
+      "finishedAt": "2026-09-04T23:58:46.214Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235833.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    },
+    {
+      "cycle": 4,
+      "name": "restart_services",
+      "ok": true,
+      "stdout": "active\nactive\nLISTEN 0      64                   100.77.131.28:5432       0.0.0.0:*   \nLISTEN 0      200                      127.0.0.1:5432       0.0.0.0:*",
+      "stderr": ""
+    },
+    {
+      "cycle": 4,
+      "name": "post_restart",
+      "startedAt": "2026-09-04T23:58:52.688Z",
+      "finishedAt": "2026-09-04T23:59:05.214Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235852.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    },
+    {
+      "cycle": 5,
+      "name": "baseline",
+      "startedAt": "2026-09-04T23:59:05.214Z",
+      "finishedAt": "2026-09-04T23:59:17.813Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235905.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    },
+    {
+      "cycle": 5,
+      "name": "restart_services",
+      "ok": true,
+      "stdout": "active\nactive\nLISTEN 0      64                   100.77.131.28:5432       0.0.0.0:*   \nLISTEN 0      200                      127.0.0.1:5432       0.0.0.0:*",
+      "stderr": ""
+    },
+    {
+      "cycle": 5,
+      "name": "post_restart",
+      "startedAt": "2026-09-04T23:59:24.403Z",
+      "finishedAt": "2026-09-04T23:59:37.000Z",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T235924.json",
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "error": null
+    }
+  ]
+}

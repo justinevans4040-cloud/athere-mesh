@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
+import { createMissionStoreBridge } from '../../packages/mission/src/mission-store.js';
 
 const clockValues = [
   '2026-08-31T14:20:00.000Z',
@@ -13,7 +14,7 @@ function createClock() { let i = 0; return () => clockValues[Math.min(i++, clock
 
 function createStore() {
   let record;
-  return {
+  return createMissionStoreBridge({
     async loadMission() { if (!record) throw new Error('missing mission'); return structuredClone(record); },
     async saveMission({ mission, expectedRevision }) {
       if (record && expectedRevision !== record.revision) throw new Error(`revision conflict: expected ${expectedRevision}, found ${record.revision}`);
@@ -21,7 +22,7 @@ function createStore() {
       record = { mission: structuredClone(mission), revision };
       return structuredClone(record);
     },
-  };
+  });
 }
 
 function input() {

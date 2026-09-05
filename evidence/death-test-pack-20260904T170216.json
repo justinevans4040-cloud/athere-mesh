@@ -1,0 +1,10 @@
+﻿{
+  "ok": true,
+  "smoke": "death-test-pack-summary",
+  "at": "2026-09-04T17:02:16.8781315-07:00",
+  "ownerSoak25": "evidence/soak-owner-api-mission-20260904T235123.json",
+  "chaos5": "evidence/chaos-owner-api-restart-20260904T235657.json",
+  "httpSoak5": "evidence/soak-owner-api-commands-http-20260905T000001.json",
+  "hermeticTail": ["Γ£ö chat API never sends denied recognized execution requests to the advisory model (37.9871ms)","Γ£ö Item 14: mission service projects typed memory and rejects forge via transition (791.6908ms)","Γ£ö Item 14: superseded semantic fact is not current working state (819.1811ms)","Γ£ö mission create persists a workflow graph and rejects out-of-path completedWork (928.079ms)","Γ£ö in-order completedWork remains on a valid mission path (643.0959ms)","Γ£ö workflowGraph cannot be mutated after create (29.8062ms)","Γ£ö pure mission state engine processes 10000 lifecycles within 250ms (229.3442ms)","Γä╣ tests 438","Γä╣ suites 0","Γä╣ pass 421","Γä╣ fail 0","Γä╣ cancelled 0","Γä╣ skipped 17","Γä╣ todo 0","Γä╣ duration_ms 10555.9628"],
+  "liveTail": ["Γ£ö chat API never sends denied recognized execution requests to the advisory model (91.4596ms)","Γ£ö Item 14: mission service projects typed memory and rejects forge via transition (371.7328ms)","Γ£ö Item 14: superseded semantic fact is not current working state (109.5084ms)","Γ£ö mission create persists a workflow graph and rejects out-of-path completedWork (122.8852ms)","Γ£ö in-order completedWork remains on a valid mission path (81.247ms)","Γ£ö workflowGraph cannot be mutated after create (15.9986ms)","Γ£ö pure mission state engine processes 10000 lifecycles within 250ms (77.7778ms)","Γä╣ tests 438","Γä╣ suites 0","Γä╣ pass 438","Γä╣ fail 0","Γä╣ cancelled 0","Γä╣ skipped 0","Γä╣ todo 0","Γä╣ duration_ms 10226.3761"]
+}

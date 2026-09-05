@@ -1,0 +1,15 @@
+{
+  "stamp": "20260905T013400Z",
+  "host": "local",
+  "status": "completed",
+  "missionId": "mission-3fb93110-ff96-4b91-ae24-7ffa497691d9",
+  "proofSha256": "5b2d2786469a517156d066326bf8b1540b0b5bec2e804e1595892e2a9cb63f52",
+  "build": {
+    "exitCode": 0,
+    "checkedCount": 175,
+    "failedCount": 0,
+    "packageName": "athere-titan",
+    "packageVersion": "0.1.0"
+  },
+  "ok": true
+}

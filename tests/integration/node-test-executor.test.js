@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createNodeTestExecutor, nodeExecutionInputBinding } from '../../packages/execution/src/node-test-executor.js';
+import { createNodeTestExecutor, nodeExecutionInputBinding, sanitizeTestProcessEnv } from '../../packages/execution/src/node-test-executor.js';
 
 const summary = [
   'TAP version 13',
@@ -161,6 +161,20 @@ test('repository inspection aborts its active filesystem read at the envelope de
   assert.equal(observedAbort, true);
 });
 
+test('sanitizeTestProcessEnv strips mesh credentials so worker suite stays hermetic', () => {
+  const cleaned = sanitizeTestProcessEnv({
+    PATH: '/usr/bin',
+    ATHERE_MESH_REDIS_HOST: '100.77.131.28',
+    ATHERE_MESH_REDIS_PASSWORD_FILE: '/secret',
+    DATABASE_URL: 'postgres://x',
+    HOME: '/home/the_founder',
+  });
+  assert.deepEqual(cleaned, {
+    PATH: '/usr/bin',
+    HOME: '/home/the_founder',
+  });
+});
+
 test('node test executor runs Node directly with bounded non-shell options and returns real failure totals', async () => {
   const repositoryRoot = await repository();
   const calls = [];
@@ -178,17 +192,17 @@ test('node test executor runs Node directly with bounded non-shell options and r
 
   const result = await executor.runTests({ envelope: operationEnvelope(repositoryRoot) });
 
-  assert.deepEqual(calls, [{
-    file: process.execPath,
-    args: ['--test'],
-    options: {
-      cwd: repositoryRoot,
-      shell: false,
-      timeout: 300_000,
-      maxBuffer: 1_048_576,
-      windowsHide: true,
-    },
-  }]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].file, process.execPath);
+  assert.deepEqual(calls[0].args, ['--test']);
+  assert.equal(calls[0].options.cwd, repositoryRoot);
+  assert.equal(calls[0].options.shell, false);
+  assert.equal(calls[0].options.timeout, 300_000);
+  assert.equal(calls[0].options.maxBuffer, 1_048_576);
+  assert.equal(calls[0].options.windowsHide, true);
+  assert.equal(calls[0].options.env.ATHERE_MESH_REDIS_HOST, undefined);
+  assert.equal(calls[0].options.env.DATABASE_URL, undefined);
+  assert.ok(calls[0].options.env.PATH || calls[0].options.env.Path);
   assert.deepEqual(result, {
     command: 'node --test',
     exitCode: 1,

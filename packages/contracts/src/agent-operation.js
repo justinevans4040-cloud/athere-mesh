@@ -8,8 +8,26 @@ import {
 
 const OPERATIONS = Object.freeze({
   'miss-vale-prime': Object.freeze({ capabilityId: 'mission-supervisor', action: 'supervise_mission', signalType: 'running' }),
-  nyx: Object.freeze({ capabilityId: 'repository-inspector', action: 'observe_repository', signalType: 'running' }),
-  rune: Object.freeze({ capabilityId: 'node-test-runner', action: 'execute_node_tests', signalType: 'running' }),
+  nyx: Object.freeze({
+    capabilityId: 'repository-inspector',
+    action: 'observe_repository',
+    signalType: 'running',
+    allowedActions: Object.freeze(['observe_repository', 'mutate_workspace_files']),
+    capabilityFor: Object.freeze({
+      observe_repository: 'repository-inspector',
+      mutate_workspace_files: 'workspace-file-worker',
+    }),
+  }),
+  rune: Object.freeze({
+    capabilityId: 'node-test-runner',
+    action: 'execute_node_tests',
+    signalType: 'running',
+    allowedActions: Object.freeze(['execute_node_tests', 'execute_titan_build']),
+    capabilityFor: Object.freeze({
+      execute_node_tests: 'node-test-runner',
+      execute_titan_build: 'titan-build-runner',
+    }),
+  }),
   qra_emerge_audit: Object.freeze({ capabilityId: 'proof-verifier', action: 'verify_proof', signalType: 'completed' }),
   qra_recovery_driver: Object.freeze({ capabilityId: 'recovery-coordinator', action: 'block_interrupted_mission', signalType: 'blocked' }),
 });
@@ -20,11 +38,24 @@ function operationFor(agentId) {
   return operation;
 }
 
+function capabilityForAction(operation, action) {
+  if (operation.capabilityFor && Object.hasOwn(operation.capabilityFor, action)) {
+    return operation.capabilityFor[action];
+  }
+  return operation.capabilityId;
+}
+
 function resolveAction(agentId, action) {
   const operation = operationFor(agentId);
   if (action === undefined) return operation.action;
   if (agentId === 'qra_recovery_driver') {
     if (!isRecoveryAction(action)) throw new Error(`unknown recovery action: ${action}`);
+    return action;
+  }
+  if (Array.isArray(operation.allowedActions)) {
+    if (!operation.allowedActions.includes(action)) {
+      throw new Error(`agent ${agentId} cannot perform action ${action}`);
+    }
     return action;
   }
   if (action !== operation.action) {
@@ -56,7 +87,7 @@ export function createAgentOperationEnvelope({
     task_id: taskId ?? resolvedAction,
     operation_id: operationId,
     agent_id: agentId,
-    capability_id: operation.capabilityId,
+    capability_id: capabilityForAction(operation, resolvedAction),
     state_version: record.revision,
     objective,
     allowed_actions: [resolvedAction],
@@ -78,13 +109,19 @@ export function authorizeAgentOperation({ envelope, mission, expectedRevision, o
   if (parsed.mission_id !== mission.id) throw new Error('agent envelope mission binding mismatch');
   if (parsed.operation_id !== operationId) throw new Error('agent envelope operation binding mismatch');
   if (parsed.state_version !== expectedRevision) throw new Error('agent envelope state version mismatch');
-  if (parsed.capability_id !== operation.capabilityId) throw new Error(`agent ${parsed.agent_id} is not bound to capability ${parsed.capability_id}`);
   if (parsed.allowed_actions.length !== 1) {
     throw new Error('agent envelope must exclusively permit exactly one action');
   }
   const requestedAction = parsed.allowed_actions[0];
+  if (parsed.capability_id !== capabilityForAction(operation, requestedAction)) {
+    throw new Error(`agent ${parsed.agent_id} is not bound to capability ${parsed.capability_id}`);
+  }
   if (parsed.agent_id === 'qra_recovery_driver') {
     if (!isRecoveryAction(requestedAction)) throw new Error(`unknown recovery action: ${requestedAction}`);
+  } else if (Array.isArray(operation.allowedActions)) {
+    if (!operation.allowedActions.includes(requestedAction)) {
+      throw new Error(`agent envelope does not exclusively permit a known ${parsed.agent_id} action`);
+    }
   } else if (requestedAction !== operation.action) {
     throw new Error(`agent envelope does not exclusively permit ${operation.action}`);
   }

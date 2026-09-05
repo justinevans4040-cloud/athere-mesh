@@ -1,0 +1,13 @@
+[Unit]
+Description=Athere Mesh Postgres Tailscale proxy (100.x -> loopback 5432)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/athere-mesh/scripts/postgres-tailscale-proxy.py --listen-host 100.77.131.28 --listen-port 5432 --upstream-host 127.0.0.1 --upstream-port 5432
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

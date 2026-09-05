@@ -3,6 +3,8 @@ import {
   resolveRemoteWorkQueueOptions,
 } from '../../execution/src/remote-work-queue.js';
 import { openSharedMissionStateStore } from '../../postgres/src/postgres-mission-state-store.js';
+import { createPostgresProofStore } from '../../postgres/src/postgres-proof-store.js';
+import { createSharedProofFacade } from '../../proof/src/shared-proof-facade.js';
 import {
   createRedisResonanceBus,
   resolveRedisResonanceOptions,
@@ -41,12 +43,14 @@ export async function resolveMeshOrchestratorDeps(env = process.env) {
     redisBus: false,
     remoteWorkQueue: false,
     sharedMissionStore: false,
+    sharedProofStore: false,
   };
 
   let bus;
   let remoteWorkQueue;
   let remoteRepositoryRoot;
   let store;
+  let proofStore;
 
   const wantRemoteQueue = truthyEnvFlag(env.ATHERE_MESH_REMOTE_WORK_QUEUE);
   const redisOptions = resolveRedisResonanceOptions(env);
@@ -81,6 +85,9 @@ export async function resolveMeshOrchestratorDeps(env = process.env) {
     closers.push(() => shared.close());
     store = shared.store;
     wired.sharedMissionStore = true;
+    const sharedProofs = await createPostgresProofStore({ db: shared.client });
+    proofStore = createSharedProofFacade({ sharedProofStore: sharedProofs });
+    wired.sharedProofStore = true;
   }
 
   return Object.freeze({
@@ -88,6 +95,7 @@ export async function resolveMeshOrchestratorDeps(env = process.env) {
     remoteWorkQueue,
     remoteRepositoryRoot,
     store,
+    proofStore,
     wired: Object.freeze(wired),
     async close() {
       const errors = [];

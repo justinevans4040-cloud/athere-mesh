@@ -159,7 +159,7 @@ function parseSummary(stdout) {
   if (candidates.length !== 1) throw new Error('ambiguous test summary');
   const candidate = candidates[0];
   const end = candidate.index + candidate[0].length;
-  if (!/^(?:\r?\n)?$/.test(stdout.slice(end))) throw new Error('test summary must be terminal');
+  if (!/^\s*$/.test(stdout.slice(end))) throw new Error('test summary must be terminal');
 
   const [, testsText, , passedText, failedText, cancelledText, skippedText, todoText] = candidate;
   const tests = Number.parseInt(testsText, 10);
@@ -204,6 +204,23 @@ async function countFiles(directory, include, budget, signal, readdirImpl, relat
 function exitCodeFrom(error) {
   if (Number.isSafeInteger(error?.code)) return error.code;
   return 1;
+}
+
+/**
+ * Mission regression must stay hermetic. The remote worker inherits mesh Redis
+ * credentials for the queue; if those leak into `node --test`, live bus tests
+ * run mid-mission and can emit post-footer noise that fails "summary must be
+ * terminal" even when totals are green.
+ */
+export function sanitizeTestProcessEnv(env = process.env) {
+  if (!env || typeof env !== 'object') throw new TypeError('env is required');
+  const next = { ...env };
+  for (const key of Object.keys(next)) {
+    if (key.startsWith('ATHERE_MESH_') || key === 'DATABASE_URL') {
+      delete next[key];
+    }
+  }
+  return next;
 }
 
 function testArguments(testFiles) {
@@ -266,6 +283,7 @@ export function createNodeTestExecutor({
       const options = {
         cwd: root,
         shell: false,
+        env: sanitizeTestProcessEnv(process.env),
         timeout: Math.min(envelope.timeout, DEFAULT_TIMEOUT_MS),
         maxBuffer,
         windowsHide: true,

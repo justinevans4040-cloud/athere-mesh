@@ -1,0 +1,54 @@
+{
+  "stamp": "20260905T002359Z",
+  "anyPhoneOnline": true,
+  "phones": [
+    {
+      "id": "a15",
+      "host": "100.111.24.85",
+      "label": "A15 Termux",
+      "ping": {
+        "ok": true,
+        "status": 0,
+        "stdout": "\r\nPinging 100.111.24.85 with 32 bytes of data:\r\nReply from 100.111.24.85: bytes=32 time=216ms TTL=64\r\n\r\nPing statistics for 100.111.24.85:\r\n    Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),\r\nApproximate round trip times in milli-seconds:\r\n    Minimum = 216ms, Maximum = 216ms, Average = 216ms\r\n"
+      },
+      "redisPort": {
+        "ok": false,
+        "reason": "connect ECONNREFUSED 100.111.24.85:6379"
+      }
+    },
+    {
+      "id": "kftrwi",
+      "host": "100.68.194.71",
+      "label": "kftrwi Termux",
+      "ping": {
+        "ok": true,
+        "status": 0,
+        "stdout": "\r\nPinging 100.68.194.71 with 32 bytes of data:\r\nReply from 100.68.194.71: bytes=32 time=264ms TTL=64\r\n\r\nPing statistics for 100.68.194.71:\r\n    Packets: Sent = 1, Received = 1, Lost = 0 (0% loss),\r\nApproximate round trip times in milli-seconds:\r\n    Minimum = 264ms, Maximum = 264ms, Average = 264ms\r\n"
+      },
+      "redisPort": {
+        "ok": false,
+        "reason": "timeout"
+      }
+    },
+    {
+      "id": "s24",
+      "host": "",
+      "label": "S24",
+      "ping": {
+        "ok": false,
+        "reason": "offline / unset"
+      },
+      "redisPort": null
+    }
+  ],
+  "meshRedis": {
+    "ok": false,
+    "reason": "ATHERE_MESH_REDIS_* unset"
+  },
+  "termuxJoinHint": [
+    "On phone Termux: pkg install redis; start redis on 6379 or publish to Lenovo mesh Redis",
+    "tailscale up; confirm ping from Lenovo",
+    "Re-run: node scripts/smoke-phone-tailscale.js"
+  ],
+  "ok": true
+}

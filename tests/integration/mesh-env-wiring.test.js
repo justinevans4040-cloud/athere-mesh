@@ -38,6 +38,7 @@ test('offline env leaves orchestrator on memory bus + no remote queue + no share
     redisBus: false,
     remoteWorkQueue: false,
     sharedMissionStore: false,
+    sharedProofStore: false,
   });
   await deps.close();
 });

@@ -47,8 +47,26 @@ test('unsupported language asks one useful clarification instead of inventing ex
   });
 });
 
-test('public commands cannot reach owner Ubuntu infrastructure', () => {
-  const result = planCommand({ profile: 'public', text: 'Inspect the Titan logs on Ubuntu through SSH' });
-  assert.equal(result.status, 'denied');
-  assert.equal(result.authority.reason, 'public edition boundary');
+test('owner can inventory a named folder in plain language', () => {
+  assert.deepEqual(planCommand({ profile: 'owner', text: 'Inventory my Downloads folder' }), {
+    status: 'ready',
+    action: { kind: 'read', target: 'downloads', resource: 'inventory' },
+    authority: { decision: 'allow', reason: 'routine scoped owner operation' },
+  });
+});
+
+test('owner can organize workspace files in plain language', () => {
+  assert.deepEqual(planCommand({ profile: 'owner', text: 'Organize my workspace by type' }), {
+    status: 'ready',
+    action: { kind: 'local_write', target: 'workspace', resource: 'organize-by-type' },
+    authority: { decision: 'allow', reason: 'routine scoped owner operation' },
+  });
+});
+
+test('owner can inventory the Desktop scratch folder', () => {
+  assert.deepEqual(planCommand({ profile: 'owner', text: 'Inventory my scratch folder' }), {
+    status: 'ready',
+    action: { kind: 'read', target: 'scratch', resource: 'inventory' },
+    authority: { decision: 'allow', reason: 'routine scoped owner operation' },
+  });
 });

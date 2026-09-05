@@ -67,6 +67,7 @@ const orchestrator = createMissionOrchestrator({
   remoteWorkQueue: mesh.remoteWorkQueue,
   remoteRepositoryRoot: remoteRoot,
   ...(mesh.store === undefined ? {} : { store: mesh.store }),
+  ...(mesh.proofStore === undefined ? {} : { proofStore: mesh.proofStore }),
 });
 
 const startedAt = new Date().toISOString();
@@ -118,11 +119,36 @@ const evidence = {
     runeWorkerHint: result.mission?.signals?.find((signal) => signal.agent === 'rune')?.evidence?.result?.command ?? null,
   },
   error: error ?? null,
+  postgresEndpoint: (() => {
+    try {
+      const url = process.env.ATHERE_MESH_POSTGRES_URL || process.env.DATABASE_URL;
+      if (!url) return null;
+      const parsed = new URL(url);
+      return {
+        host: parsed.hostname,
+        port: parsed.port || '5432',
+        tailscaleNative: parsed.hostname.startsWith('100.'),
+        sshTunnelLocalPort: parsed.port === '15432',
+      };
+    } catch {
+      return null;
+    }
+  })(),
   doesNotProve: [
     'HTTP POST /api/commands cross-host (this smoke uses orchestrator.execute directly)',
     'multi-writer orchestrator beyond revision CAS',
-    'Postgres Tailscale-native without tunnel (only recorded if ATHERE_MESH_POSTGRES_* was set for this process)',
     'Ichabod worker checkout byte-identical to Lenovo HEAD (worker may lag; Lenovo orchestrator SHA is authoritative for owner path)',
+    ...((() => {
+      try {
+        const url = process.env.ATHERE_MESH_POSTGRES_URL || process.env.DATABASE_URL;
+        if (!url) return ['Postgres shared store (not configured for this process)'];
+        const parsed = new URL(url);
+        if (parsed.hostname.startsWith('100.') && parsed.port !== '15432') return [];
+        return ['Postgres Tailscale-native without tunnel (this run still used a non-100.x or tunnel endpoint)'];
+      } catch {
+        return ['Postgres endpoint parse failed'];
+      }
+    })()),
   ],
   midFlightSshClaim: false,
 };

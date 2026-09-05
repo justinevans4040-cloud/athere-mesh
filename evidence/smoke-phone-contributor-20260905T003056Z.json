@@ -1,0 +1,24 @@
+{
+  "stamp": "20260905T003056Z",
+  "registered": [
+    {
+      "id": "a15",
+      "host": "100.111.24.85",
+      "ok": true,
+      "key": "athere:phone:a15:last-seen"
+    },
+    {
+      "id": "kftrwi",
+      "host": "100.68.194.71",
+      "ok": true,
+      "key": "athere:phone:kftrwi:last-seen"
+    },
+    {
+      "id": "s24",
+      "host": "100.83.225.17",
+      "ok": true,
+      "key": "athere:phone:s24:last-seen"
+    }
+  ],
+  "ok": true
+}

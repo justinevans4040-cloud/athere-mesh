@@ -1,17 +1,13 @@
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createAgentOperationEnvelope } from '../../contracts/src/agent-operation.js';
-import { listMissionIds as listFilesystemMissionIds, loadMission, saveMission } from '../../mission/src/mission-store.js';
+import { defaultMissionStore, listMissionIds as listFilesystemMissionIds } from '../../mission/src/mission-store.js';
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 
 const RECOVERY_DETAIL = 'interrupted execution requires operator retry';
 const RECOVERY_ATTEMPTS = 8;
 const MAX_AUTO_HEALS = 3;
-const DEFAULT_MISSION_STORE = Object.freeze({
-  loadMission,
-  saveMission,
-  listMissionIds: listFilesystemMissionIds,
-});
+const DEFAULT_MISSION_STORE = defaultMissionStore;
 
 function requireMissionStore(missionStore) {
   if (!missionStore || typeof missionStore.loadMission !== 'function' || typeof missionStore.saveMission !== 'function') {
@@ -115,8 +111,22 @@ async function convergeInterruptedMission({ root, missionId, clock, missionStore
       });
       return true;
     } catch (error) {
-      if (!retryableRecoveryConflict(error) || attempt === RECOVERY_ATTEMPTS - 1) throw error;
-      await delay(1);
+      if (retryableRecoveryConflict(error) && attempt < RECOVERY_ATTEMPTS - 1) {
+        await delay(1);
+        continue;
+      }
+      // Permission / authorization failures on one mission must not abort boot
+      // for the whole shared store (legacy missions may omit recovery actors).
+      const message = error instanceof Error ? error.message : String(error);
+      if (/lacks required permission|not authorized/i.test(message)) return false;
+      // Stable recovery op ids collide when a prior block payload differed
+      // (e.g. heal resumed then crashed again with different pendingWork).
+      if (/idempotency conflict/i.test(message)) {
+        const again = await missionStore.loadMission({ root, missionId });
+        if (recoveryBlocked(again)) return true;
+        return false;
+      }
+      throw error;
     }
   }
   return false;

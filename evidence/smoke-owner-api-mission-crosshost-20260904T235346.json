@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "smoke": "owner-api-mission-crosshost",
+  "claim": "Lenovo owner orchestrator.execute() with env-wired Redis bus + remote work queue completes inspect+run-node-tests on the standing Ichabod worker (zero mid-flight SSH claim). Optional shared Postgres is recorded when wired.",
+  "at": "2026-09-04T23:53:59.151Z",
+  "startedAt": "2026-09-04T23:53:46.638Z",
+  "runtime": "athere-mesh",
+  "dispatcher": {
+    "hostname": "JustinLenovo",
+    "pid": 17548,
+    "node": "v24.14.1",
+    "tailnet": [
+      {
+        "interface": "Tailscale",
+        "address": "100.125.245.10"
+      }
+    ]
+  },
+  "wiring": {
+    "redisBus": true,
+    "remoteWorkQueue": true,
+    "sharedMissionStore": true,
+    "sharedProofStore": true
+  },
+  "remoteRepositoryRoot": "/home/the_founder/athere-mesh",
+  "workNamespace": "athere:mesh:work",
+  "seedId": "8a1e2c26-0769-405e-9a8f-85b4c2c9f1f1@ichabodcrane",
+  "sources": {
+    "mission-orchestrator.js": "c457ccf5afefdb17b2f8cb603b896af7786bc7b07d3ebae1de1a84739d8e17ef",
+    "remote-dispatch-executor.js": "4e1d901b6ed4acbc07357efa81cae2f748681c57cf212c358a39139b715936dc",
+    "remote-work-queue.js": "a6c44d6a107379fc82ed962d125725b0c929d800d6e67c44811e95319b753e09",
+    "node-test-executor.js": "a1f0c3c94354c79f68e84c5e8977db9a8bf478f8af1444c7fce57d0d4049784a",
+    "mesh-env-wiring.js": "30a20ee9347f2ecc43cb7abbadf44a8a07b76db8f79462248c3cbcdc9bf89ffe"
+  },
+  "result": {
+    "status": "completed",
+    "missionId": "mission-e1f357d8-1012-45fb-ab5c-6bff4f47985c",
+    "completedWork": [
+      "inspect-repository",
+      "run-node-tests",
+      "verify-proof"
+    ],
+    "tests": {
+      "tests": 438,
+      "passed": 421,
+      "failed": 0,
+      "skipped": 17
+    },
+    "healed": false,
+    "executiveNextAction": null,
+    "inspection": {
+      "package": {
+        "name": "athere-titan",
+        "version": "0.1.0"
+      },
+      "testFilesOnDisk": 88,
+      "sourceFilesOnDisk": 60
+    },
+    "runeWorkerHint": "node --test"
+  },
+  "error": null,
+  "postgresEndpoint": {
+    "host": "100.77.131.28",
+    "port": "5432",
+    "tailscaleNative": true,
+    "sshTunnelLocalPort": false
+  },
+  "doesNotProve": [
+    "HTTP POST /api/commands cross-host (this smoke uses orchestrator.execute directly)",
+    "multi-writer orchestrator beyond revision CAS",
+    "Ichabod worker checkout byte-identical to Lenovo HEAD (worker may lag; Lenovo orchestrator SHA is authoritative for owner path)"
+  ],
+  "midFlightSshClaim": false
+}

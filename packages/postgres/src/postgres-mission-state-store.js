@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createPostgresClient } from './postgres-client.js';
 import { createPostgresMissionStore } from './postgres-mission-store.js';
+import { createMissionStoreBridge } from '../../mission/src/mission-store.js';
 
 function optional(value) {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -62,7 +63,7 @@ export function adaptPostgresMissionStore(postgresStore) {
   if (!postgresStore || typeof postgresStore.load !== 'function' || typeof postgresStore.save !== 'function') {
     throw new TypeError('postgres store must provide load and save');
   }
-  return Object.freeze({
+  return createMissionStoreBridge({
     async loadMission({ missionId }) {
       return postgresStore.load({ missionId });
     },

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createMission } from '../../packages/contracts/src/mission.js';
 import { createTitanService } from '../../scripts/start-agent-api.js';
+import { createMissionStoreBridge } from '../../packages/mission/src/mission-store.js';
 
 const OWNER_TOKEN = 'test-owner-token-0123456789abcdef0123456789';
 
@@ -19,7 +20,7 @@ test('boot recovery heals interrupted missions from wired shared store (not file
   const shared = new Map([
     [mission.id, Object.freeze({ revision: 1, mission })],
   ]);
-  const store = Object.freeze({
+  const store = createMissionStoreBridge({
     async listMissionIds() {
       return Object.freeze([...shared.keys()].sort());
     },

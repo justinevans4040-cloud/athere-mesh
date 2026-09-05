@@ -1,0 +1,26 @@
+{
+  "ok": false,
+  "smoke": "soak-owner-api-mission",
+  "claim": "5 consecutive Lenovo→Ichabod owner-api missions complete with shared Postgres + shared proofs (Tailscale-native), zero mid-flight SSH.",
+  "at": "2026-09-04T23:36:38.375Z",
+  "requestedRuns": 5,
+  "completedRuns": 1,
+  "postgresUrlHost": "100.77.131.28:5432",
+  "runs": [
+    {
+      "index": 1,
+      "startedAt": "2026-09-04T23:36:25.918Z",
+      "finishedAt": "2026-09-04T23:36:38.375Z",
+      "exitCode": 1,
+      "ok": false,
+      "wiring": {
+        "redisBus": true,
+        "remoteWorkQueue": true,
+        "sharedMissionStore": true,
+        "sharedProofStore": true
+      },
+      "evidence": "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\evidence\\smoke-owner-api-mission-crosshost-20260904T233626.json",
+      "error": "exit 1; stdout_parse_failed=false"
+    }
+  ]
+}
