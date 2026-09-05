@@ -37,3 +37,6 @@ evidence/**/*.rdb
 evidence/**/termux-home.tgz
 evidence/**/*dump*.rdb
 evidence/s24-py-json-*/
+
+# Unpacked Sara/IL Shines archive tree (keep README + .tgz only in git)
+evidence/archives/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_*/

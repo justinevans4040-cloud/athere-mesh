@@ -15,6 +15,49 @@ Designs are not editable without express permission. Search everywhere before bu
 - **Houston** is a label only — agents matter (NYX, LOOM, RUNE, ECHO, Caretaker, Britt, Sentinel, …), not the Houston name.
 - NotebookLM has **many** notebooks; do not treat one dump §25 or one notebook as the whole bible.
 
+## FORGEFRONT BY WAKE INDUSTRIES (ckpt 114) — Justin 2026-09-05
+
+**Orders:** Dispose fell-through job APIs. Rebrand DCE Solar + PM engine as **ForgeFront by Wake Industries**. Do **not** erase the solar sales vertical (still marketable to local solar companies).
+
+| Action | Result |
+|---|---|
+| Job APIs disposed | Sara packet, Illinois Shines job scripts, noon pack job docs, portal packet builder → archived `~/forgefront/forgefront-meta/disposed-job-apis-20260905/` |
+| Brand | Health API: `product=ForgeFront`, `brand=ForgeFront by Wake Industries`; UI title `ForgeFront // Command` |
+| Call engine | LightReach/Illinois Shines defaults removed; company identity claim-gated |
+| API aliases | `/api/forgefront/copilot/*` → existing copilot handlers; `/api/solar/copilot/*` kept one release for compat |
+| Evidence | Ichabod live health + `evidence/forgefront-rebrand-20260905T050816Z.json`; unit tests **42/42 GREEN** |
+
+**Live:** `solar-command.service` still runs the same package path (name of systemd unit unchanged this pass — product brand is ForgeFront).
+
+## SARA / IL SHINES ARCHIVE LABELED (ckpt 116) — Justin 2026-09-05
+
+**Order:** Do not lose disposed job materials; label in git + Google Drive where other DCE/Solar versions already live (no Desktop dump).
+
+| Location | Path |
+|---|---|
+| Canonical vault (Ichabod) | `/mnt/storage/forgefront-vault/02_PROJECTS/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_20260905/` |
+| Meta symlink | `~/forgefront/forgefront-meta/ARCHIVE__SARA_IL_SHINES_JOB_FELL_THROUGH__20260905` |
+| Google Drive (next to Solar_V1 packages) | `DCE_Command_Center_V3_Package/ARCHIVES/DCE_SOLAR_COMMAND__SARA_IL_SHINES_JOB_FELL_THROUGH__ARCHIVED_20260905/` |
+| Drive tarball | `DCE_Command_Center_V3_Package/ARCHIVES/DCE_SOLAR_SARA_IL_SHINES_ARCHIVED_20260905.tgz` |
+| Git pointer | `evidence/archives/README_SARA_IL_SHINES_JOB_ARCHIVE_2026-09-05.md` + tgz (SHA-256 `8a29634829ab7a9f8b5258016a091846a8c86deaee93a67c4d59b002f5b352d0`) |
+| Milestone | `MS-20260905-001` (forgefront-meta) |
+
+Portal token stays local-only on Ichabod (`forgefront-meta/secrets-local-only/`) — not in Drive/git archive.
+
+## OLD SOLAR JOB COPY WIPE (ckpt 115) — Justin 2026-09-05
+
+| Claim | Evidence |
+|---|---|
+| Illinois Shines / LightReach / Sara campaign / Agent 32 copy wiped from ForgeFront UI + copilot | `evidence/wipe-old-solar-copy-20260905T070147Z.json` (`residuals: {}`) |
+| Seed company identity no longer auto-approves job vendor | HTML `seedTalkDefaults` → empty + `companyIdentityApproved=false` |
+| Unit tests still green | 42/42 on Ichabod after wipe |
+
+**Operator note:** If browser still shows old company name, hit **CLEAN SLATE** or clear site data for `127.0.0.1:18787` (localStorage can keep a prior lead identity).
+
+## FORGEFRONT + SOLAR (ckpt 113) — Justin 2026-09-05
+
+Superseded in branding by ckpt 114. Preserve rule: solar vertical not erased.
+
 ## ROSTER LOCK (ckpt 112) — Justin 2026-09-05
 
 | Status | Agents |
