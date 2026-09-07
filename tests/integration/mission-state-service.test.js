@@ -160,6 +160,8 @@ test('every authoritative mutation appends hash-bound transition lineage', async
   assert.deepEqual(Object.keys(history[2].changes).sort(), ['activeAgents', 'completedWork', 'pendingWork', 'signals'].sort());
   assert.deepEqual(await service.verifyHistory({ missionId: created.mission.id }), {
     valid: true,
+    integrityBound: true,
+    provenanceRoot: 'create',
     missionId: created.mission.id,
     stateVersion: 3,
     transitionCount: 3,

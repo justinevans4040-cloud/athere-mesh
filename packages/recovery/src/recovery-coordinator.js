@@ -105,7 +105,7 @@ async function convergeInterruptedMission({ root, missionId, clock, missionStore
           operationId,
           agentId: 'qra_recovery_driver',
           objective: RECOVERY_DETAIL,
-          createdAt: record.mission.updatedAt,
+          createdAt: clock(),
           taskId: 'recover-interrupted-mission',
         }),
       });
@@ -163,7 +163,7 @@ async function healOneBlockedMission({ root, missionId, clock, missionStore }) {
           agentId: 'qra_recovery_driver',
           action: 'quarantine_branch',
           objective: 'quarantine failed branch before checkpoint retry',
-          createdAt: record.mission.updatedAt,
+          createdAt: clock(),
           taskId: 'auto-heal-quarantine',
         }),
       });
@@ -182,7 +182,7 @@ async function healOneBlockedMission({ root, missionId, clock, missionStore }) {
         agentId: 'qra_recovery_driver',
         action: 'retry_from_checkpoint',
         objective: 'auto-heal retry from last verified checkpoint',
-        createdAt: record.mission.updatedAt,
+        createdAt: clock(),
         taskId: 'auto-heal-retry',
       }),
     });

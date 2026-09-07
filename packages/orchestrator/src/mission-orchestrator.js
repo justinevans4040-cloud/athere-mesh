@@ -482,7 +482,10 @@ export function createMissionOrchestrator({
       root: workspaceRoot,
       missionId: record.mission.id,
       operationId: `${record.mission.id}-proof`,
-      payload,
+      payload: {
+        ...payload,
+        completedWork,
+      },
     });
     const proofOperationId = `${record.mission.id}-artifact-proof`;
     const proofEnvelope = createAgentOperationEnvelope({
@@ -504,6 +507,7 @@ export function createMissionOrchestrator({
       expectedRevision: record.revision,
       operationId: proofOperationId,
       signalType: 'completed',
+      nowMs: Date.parse(clock()) || Date.now(),
     });
     const verification = await proofStore.verifyProof({ root: workspaceRoot, ref });
     if (verification.verified !== true) throw new Error(`proof verification failed: ${verification.reason ?? 'unknown'}`);
@@ -542,6 +546,7 @@ export function createMissionOrchestrator({
       proofVerification: verification,
       certifierAgentId: 'qra_emerge_audit',
       transitionHistory: record.mission.transitionHistory,
+      proofPayload: { completedWork },
     });
     assertQr18LayersVerified(qr18);
     record = await persistTransition(record, `${record.mission.id}-completion`, {

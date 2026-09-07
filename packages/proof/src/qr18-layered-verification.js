@@ -235,7 +235,7 @@ function evaluateWorkflow(mission) {
   });
 }
 
-function evaluateMission(mission, proofVerification) {
+function evaluateMission(mission, proofVerification, proofPayload) {
   const proofOk = plainObject(proofVerification)
     && proofVerification.verified === true
     && typeof proofVerification.sha256 === 'string'
@@ -243,7 +243,13 @@ function evaluateMission(mission, proofVerification) {
   const objective = typeof mission?.objective === 'string' && mission.objective.trim().length > 0
     ? mission.objective
     : (typeof mission?.intent === 'string' ? mission.intent : '');
-  const verified = proofOk && objective.trim().length > 0;
+  const completedWork = Array.isArray(mission?.completedWork) ? mission.completedWork : [];
+  const claimed = proofPayload?.completedWork;
+  const workBound = Array.isArray(claimed)
+    && claimed.length === completedWork.length
+    && claimed.every((item) => typeof item === 'string')
+    && [...claimed].sort().join('\0') === [...completedWork].sort().join('\0');
+  const verified = proofOk && objective.trim().length > 0 && workBound;
   return levelRecord({
     level: 6,
     id: 'mission',
@@ -253,9 +259,14 @@ function evaluateMission(mission, proofVerification) {
       proofVerified: proofOk,
       proofSha256: proofOk ? proofVerification.sha256 : null,
       objective: objective.trim().length > 0 ? objective.trim() : null,
+      completedWorkBound: workBound,
     },
     ...(verified ? {} : {
-      reason: !proofOk ? 'mission proof verification failed' : 'mission objective/intent missing',
+      reason: !proofOk
+        ? 'mission proof verification failed'
+        : objective.trim().length === 0
+          ? 'mission objective/intent missing'
+          : 'mission proof payload completedWork does not match mission',
     }),
   });
 }
@@ -274,6 +285,7 @@ export function evaluateQr18Layers({
   proofVerification,
   certifierAgentId,
   transitionHistory,
+  proofPayload,
 } = {}) {
   if (!plainObject(mission)) throw new TypeError('mission is required for QR18 layered verification');
 
@@ -283,7 +295,7 @@ export function evaluateQr18Layers({
     evaluateStateTransition(mission, certifierAgentId, transitionHistory),
     evaluateSubgoal(mission),
     evaluateWorkflow(mission),
-    evaluateMission(mission, proofVerification),
+    evaluateMission(mission, proofVerification, proofPayload),
   ]);
 
   const failed = levels.filter((entry) => entry.verified !== true).map((entry) => entry.id);

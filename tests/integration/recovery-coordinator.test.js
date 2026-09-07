@@ -11,6 +11,26 @@ import { createMissionStateService } from '../../packages/mission/src/mission-st
 
 const clock = (value) => () => value;
 
+const RECOVERY_PERMISSIONS = Object.freeze([
+  Object.freeze({ actor: 'qra_recovery_driver', actions: Object.freeze(['block_interrupted_mission']) }),
+]);
+
+/** Legacy createMission snapshots omit permissions; attach recovery grants for honest recovery tests. */
+function recoverableMission(mission) {
+  return Object.freeze({
+    ...mission,
+    permissions: RECOVERY_PERMISSIONS,
+  });
+}
+
+/** F5: empty permissions must not grant recovery block (legacy bypass removed). */
+function emptyPermissionsMission(mission) {
+  return Object.freeze({
+    ...mission,
+    permissions: Object.freeze([]),
+  });
+}
+
 function lockMetadata({ pid, token, acquiredAt = '2026-08-23T10:00:00.000Z', expiresAt = '2026-08-23T10:00:30.000Z' }) {
   return `${JSON.stringify({
     version: 1,
@@ -33,13 +53,16 @@ function deterministicMissionStore({ activePids = new Set() } = {}) {
 test('startup recovery reclaims a demonstrably dead-owner lease and blocks the interrupted mission', async () => {
   const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
   const missionId = 'mission-dead-owner-lock';
-  await saveMission({ root, mission: createMission({ id: missionId, intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
+  await saveMission({
+    root,
+    mission: recoverableMission(createMission({ id: missionId, intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') })),
+  });
   const lockPath = join(root, 'missions', `.${missionId}.lock`);
   await writeFile(lockPath, lockMetadata({ pid: 40404, token: 'dead-owner-token-0123456789abcdef' }), 'utf8');
   const missionStore = deterministicMissionStore();
 
   assert.deepEqual(
-    await recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:02:00.000Z') }),
+    await recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:00:20.000Z') }),
     { recovered: [missionId], blocked: [], corrupt: [] },
   );
   const record = await missionStore.loadMission({ root, missionId });
@@ -55,13 +78,16 @@ for (const [label, partialMetadata] of [
   test(`startup recovery repairs a crash-point ${label} lock artifact`, async () => {
     const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
     const missionId = `mission-${label}-lock`;
-    await saveMission({ root, mission: createMission({ id: missionId, intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
+    await saveMission({
+      root,
+      mission: recoverableMission(createMission({ id: missionId, intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') })),
+    });
     const lockPath = join(root, 'missions', `.${missionId}.lock`);
     await writeFile(lockPath, partialMetadata, 'utf8');
     const missionStore = deterministicMissionStore();
 
     assert.deepEqual(
-      await recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:02:00.000Z') }),
+      await recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:00:20.000Z') }),
       { recovered: [missionId], blocked: [], corrupt: [] },
     );
     assert.equal((await missionStore.loadMission({ root, missionId })).mission.status, 'blocked');
@@ -72,14 +98,17 @@ for (const [label, partialMetadata] of [
 test('startup recovery refuses to steal a genuinely active owner lease', async () => {
   const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
   const missionId = 'mission-active-owner-lock';
-  await saveMission({ root, mission: createMission({ id: missionId, intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
+  await saveMission({
+    root,
+    mission: recoverableMission(createMission({ id: missionId, intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') })),
+  });
   const lockPath = join(root, 'missions', `.${missionId}.lock`);
   const activeMetadata = lockMetadata({ pid: 50505, token: 'active-owner-token-0123456789abcdef' });
   await writeFile(lockPath, activeMetadata, 'utf8');
   const missionStore = deterministicMissionStore({ activePids: new Set([50505]) });
 
   await assert.rejects(
-    () => recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:02:00.000Z') }),
+    () => recoverInterruptedMissions({ root, missionStore, clock: clock('2026-08-23T10:00:20.000Z') }),
     /mission write already in progress|operation retry timed out/,
   );
   assert.equal((await missionStore.loadMission({ root, missionId })).mission.status, 'accepted');
@@ -129,16 +158,16 @@ test('restart recovery exposes corrupt snapshots without deleting or executing t
 
 test('startup recovery blocks accepted and running missions without changing terminal missions', async () => {
   const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
-  const accepted = createMission({ id: 'accepted-1', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') });
-  const runningBase = createMission({ id: 'running-2', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') });
-  const running = transitionMission(runningBase, { type: 'running', agent: 'rune' }, { clock: clock('2026-08-23T10:01:00.000Z') });
-  const blockedBase = createMission({ id: 'blocked-3', intent: 'Wait for host', clock: clock('2026-08-23T10:00:00.000Z') });
-  const blocked = transitionMission(blockedBase, { type: 'blocked', agent: 'qra_recovery_driver', detail: 'already blocked' }, { clock: clock('2026-08-23T10:01:00.000Z') });
-  const completedBase = createMission({ id: 'completed-4', intent: 'Finished', clock: clock('2026-08-23T10:00:00.000Z') });
-  const completedRunning = transitionMission(completedBase, { type: 'running', agent: 'rune' }, { clock: clock('2026-08-23T10:01:00.000Z') });
-  const completed = transitionMission(completedRunning, {
+  const accepted = recoverableMission(createMission({ id: 'accepted-1', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }));
+  const runningBase = recoverableMission(createMission({ id: 'running-2', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }));
+  const running = recoverableMission(transitionMission(runningBase, { type: 'running', agent: 'rune' }, { clock: clock('2026-08-23T10:00:10.000Z') }));
+  const blockedBase = recoverableMission(createMission({ id: 'blocked-3', intent: 'Wait for host', clock: clock('2026-08-23T10:00:00.000Z') }));
+  const blocked = recoverableMission(transitionMission(blockedBase, { type: 'blocked', agent: 'qra_recovery_driver', detail: 'already blocked' }, { clock: clock('2026-08-23T10:00:10.000Z') }));
+  const completedBase = recoverableMission(createMission({ id: 'completed-4', intent: 'Finished', clock: clock('2026-08-23T10:00:00.000Z') }));
+  const completedRunning = recoverableMission(transitionMission(completedBase, { type: 'running', agent: 'rune' }, { clock: clock('2026-08-23T10:00:10.000Z') }));
+  const completed = recoverableMission(transitionMission(completedRunning, {
     type: 'completed', agent: 'qra_emerge_audit', proof: { verified: true, path: 'proofs/completed-4.json', sha256: 'a'.repeat(64) },
-  }, { clock: clock('2026-08-23T10:02:00.000Z') });
+  }, { clock: clock('2026-08-23T10:00:15.000Z') }));
   await Promise.all([
     saveMission({ root, mission: accepted }),
     saveMission({ root, mission: running }),
@@ -146,7 +175,7 @@ test('startup recovery blocks accepted and running missions without changing ter
     saveMission({ root, mission: completed }),
   ]);
 
-  assert.deepEqual(await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:03:00.000Z') }), {
+  assert.deepEqual(await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:00:20.000Z') }), {
     recovered: ['accepted-1', 'running-2'],
     blocked: [{ missionId: 'blocked-3', revision: 1, detail: 'already blocked' }],
     corrupt: [],
@@ -160,7 +189,7 @@ test('startup recovery blocks accepted and running missions without changing ter
       missionId,
       type: 'blocked',
       agent: 'qra_recovery_driver',
-      at: '2026-08-23T10:03:00.000Z',
+      at: '2026-08-23T10:00:20.000Z',
       detail: 'interrupted execution requires operator retry',
     });
   }
@@ -170,9 +199,12 @@ test('startup recovery blocks accepted and running missions without changing ter
 
 test('startup recovery is idempotent after it has converged an interrupted mission', async () => {
   const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
-  await saveMission({ root, mission: createMission({ id: 'mission-repeat', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
-  const first = await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:00.000Z') });
-  const second = await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:02:00.000Z') });
+  await saveMission({
+    root,
+    mission: recoverableMission(createMission({ id: 'mission-repeat', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') })),
+  });
+  const first = await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:00:20.000Z') });
+  const second = await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:00:25.000Z') });
   assert.deepEqual(first, { recovered: ['mission-repeat'], blocked: [], corrupt: [] });
   assert.deepEqual(second, { recovered: [], blocked: [{ missionId: 'mission-repeat', revision: 2, detail: 'interrupted execution requires operator retry' }], corrupt: [] });
   assert.equal((await loadMission({ root, missionId: 'mission-repeat' })).revision, 2);
@@ -180,10 +212,13 @@ test('startup recovery is idempotent after it has converged an interrupted missi
 
 test('concurrent startup recovery callers converge on one durable recovery block', async () => {
   const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
-  await saveMission({ root, mission: createMission({ id: 'mission-concurrent', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') }) });
+  await saveMission({
+    root,
+    mission: recoverableMission(createMission({ id: 'mission-concurrent', intent: 'Run Titan tests', clock: clock('2026-08-23T10:00:00.000Z') })),
+  });
   const [left, right] = await Promise.all([
-    recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:00.000Z') }),
-    recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:01.000Z') }),
+    recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:00:20.000Z') }),
+    recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:00:21.000Z') }),
   ]);
   assert.deepEqual(left, { recovered: ['mission-concurrent'], blocked: [], corrupt: [] });
   assert.deepEqual(right, { recovered: ['mission-concurrent'], blocked: [], corrupt: [] });
@@ -210,7 +245,7 @@ test('startup recovery preserves authoritative lineage with a stable recovery op
     environmentObservations: [],
   });
 
-  assert.deepEqual(await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:00.000Z') }), {
+  assert.deepEqual(await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:00:20.000Z') }), {
     recovered: ['mission-authoritative-recovery'], blocked: [], corrupt: [],
   });
   assert.equal((await state.verifyHistory({ missionId: 'mission-authoritative-recovery' })).valid, true);
@@ -221,9 +256,12 @@ test('startup recovery preserves authoritative lineage with a stable recovery op
 test('startup recovery imports legacy snapshots into the authoritative transition ledger', async () => {
   const root = await mkdtemp(join(tmpdir(), 'athere-legacy-recovery-ledger-'));
   const missionId = 'legacy-recovery-ledger';
-  await saveMission({ root, mission: createMission({ id: missionId, intent: 'Recover legacy mission', clock: clock('2026-08-23T10:00:00.000Z') }) });
+  await saveMission({
+    root,
+    mission: recoverableMission(createMission({ id: missionId, intent: 'Recover legacy mission', clock: clock('2026-08-23T10:00:00.000Z') })),
+  });
 
-  await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:01:00.000Z') });
+  await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:00:20.000Z') });
 
   const record = await loadMission({ root, missionId });
   assert.equal(record.revision, 2);
@@ -234,4 +272,25 @@ test('startup recovery imports legacy snapshots into the authoritative transitio
   const verification = await state.verifyHistory({ missionId });
   assert.equal(verification.valid, true);
   assert.equal(verification.stateVersion, 2);
+});
+
+test('F5: empty permissions deny recovery block_interrupted_mission', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'athere-f5-empty-perm-'));
+  const missionId = 'mission-empty-perm-deny';
+  await saveMission({
+    root,
+    mission: emptyPermissionsMission(createMission({
+      id: missionId,
+      intent: 'Empty permissions must deny recovery',
+      clock: clock('2026-08-23T10:00:00.000Z'),
+    })),
+  });
+
+  assert.deepEqual(
+    await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:00:20.000Z') }),
+    { recovered: [], blocked: [], corrupt: [] },
+  );
+  const record = await loadMission({ root, missionId });
+  assert.equal(record.mission.status, 'accepted');
+  assert.equal(record.revision, 1);
 });

@@ -425,7 +425,24 @@ test('non-execution plans do not create missions or invoke deterministic executo
 
 test('recovery blocks interrupted missions without rerunning a deterministic executor', async () => {
   const root = await workspace();
-  await saveMission({ root, mission: createMission({ id: 'mission-interrupted', intent: 'Run all Titan tests', clock: clock() }) });
+  const interrupted = createMission({ id: 'mission-interrupted', intent: 'Run all Titan tests', clock: clock() });
+  await saveMission({
+    root,
+    mission: {
+      ...interrupted,
+      permissions: [{
+        actor: 'qra_recovery_driver',
+        actions: [
+          'block_interrupted_mission',
+          'create_checkpoint',
+          'create_branch',
+          'quarantine_branch',
+          'rollback_to_checkpoint',
+          'retry_from_checkpoint',
+        ],
+      }],
+    },
+  });
   let executions = 0;
   const orchestrator = createMissionOrchestrator({
     root,

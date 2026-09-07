@@ -343,6 +343,17 @@ test('CLOSED: unregistered agent cannot recordFact', async () => {
     ],
   });
 
+  assert.throws(
+    () => createAgentOperationEnvelope({
+      record: created,
+      operationId: 'op-unreg-fact',
+      agentId: 'ghost_writer',
+      action: 'record_fact',
+      objective: 'unregistered fact probe',
+      createdAt: clock(),
+    }),
+    /unknown operational agent/,
+  );
   await assert.rejects(
     () => service.recordFact({
       operationId: 'op-unreg-fact',
@@ -358,7 +369,7 @@ test('CLOSED: unregistered agent cannot recordFact', async () => {
       },
       evidence: { note: 'unregistered' },
     }),
-    /unknown agent identity/,
+    /fact operations require an agent operation envelope|unknown agent identity/,
   );
 });
 

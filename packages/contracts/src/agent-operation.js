@@ -16,10 +16,21 @@ const OPERATIONS = Object.freeze({
     capabilityId: 'repository-inspector',
     action: 'observe_repository',
     signalType: 'running',
-    allowedActions: Object.freeze(['observe_repository', 'mutate_workspace_files']),
+    allowedActions: Object.freeze([
+      'observe_repository',
+      'mutate_workspace_files',
+      'record_fact',
+      'supersede_fact',
+      'correct_fact',
+      'revoke_fact',
+    ]),
     capabilityFor: Object.freeze({
       observe_repository: 'repository-inspector',
       mutate_workspace_files: 'workspace-file-worker',
+      record_fact: 'authoritative-fact-writer',
+      supersede_fact: 'authoritative-fact-writer',
+      correct_fact: 'authoritative-fact-writer',
+      revoke_fact: 'authoritative-fact-writer',
     }),
   }),
   loom: Object.freeze({ capabilityId: 'resource-commander', action: 'resource_clearance', signalType: 'running' }),
@@ -134,7 +145,7 @@ export function createAgentOperationEnvelope({
   });
 }
 
-export function authorizeAgentOperation({ envelope, mission, expectedRevision, operationId, signalType }) {
+export function authorizeAgentOperation({ envelope, mission, expectedRevision, operationId, signalType, nowMs = Date.now() }) {
   const parsed = parseAgentEnvelope(envelope);
   const operation = operationFor(parsed.agent_id);
   const role = roleForAgent(parsed.agent_id);
@@ -166,16 +177,47 @@ export function authorizeAgentOperation({ envelope, mission, expectedRevision, o
     }
   }
   const permission = (mission.permissions ?? []).find(({ actor }) => actor === parsed.agent_id);
-  const legacyRecovery = (mission.permissions ?? []).length === 0
-    && parsed.agent_id === 'qra_recovery_driver'
-    && requestedAction === 'block_interrupted_mission';
-  if (!permission?.actions?.includes(requestedAction) && !legacyRecovery) {
+  if (!permission?.actions?.includes(requestedAction)) {
     throw new Error(`actor ${parsed.agent_id} lacks required permission: ${requestedAction}`);
   }
+  const evaluatedAt = Number.isFinite(nowMs) ? nowMs : Date.now();
+  assertEnvelopeDeadline(parsed, evaluatedAt);
+  assertEnvelopeTransitionBudget(parsed);
   return Object.freeze({
     envelope: parsed,
     action: requestedAction,
     role,
-    permission: Object.freeze(structuredClone(permission ?? { actor: parsed.agent_id, actions: [requestedAction] })),
+    permission: Object.freeze(structuredClone(permission)),
   });
+}
+
+/** F6: envelopes carry timeout — mission auth must fail closed when the deadline has passed. */
+export function assertEnvelopeDeadline(envelope, nowMs = Date.now()) {
+  const createdAt = Date.parse(envelope?.provenance?.created_at);
+  const timeout = envelope?.timeout;
+  if (!Number.isFinite(createdAt) || !Number.isSafeInteger(timeout) || timeout < 1) {
+    throw new Error('agent envelope timeout binding is invalid');
+  }
+  if (nowMs > createdAt + timeout) {
+    throw new Error('agent envelope timeout exceeded');
+  }
+  return true;
+}
+
+/**
+ * F6: resource_budget must declare at least one positive limit that the
+ * operation is accountable to (mutations, proof reads, etc.).
+ */
+export function assertEnvelopeTransitionBudget(envelope) {
+  const budget = envelope?.resource_budget;
+  if (!budget || typeof budget !== 'object') {
+    throw new Error('agent envelope resource_budget is required');
+  }
+  const positive = Object.values(budget).some(
+    (value) => typeof value === 'number' && Number.isFinite(value) && value > 0,
+  );
+  if (!positive) {
+    throw new Error('agent envelope resource_budget must declare at least one positive limit');
+  }
+  return true;
 }

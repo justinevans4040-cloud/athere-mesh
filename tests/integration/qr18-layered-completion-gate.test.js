@@ -67,11 +67,12 @@ test('completion without verified artifact lineage fails QR18 Level 2 at the sta
     },
     envelope: envelopeFor(running, 'op-qr18-gate-evidence-1', 'nyx'),
   });
+  const completedWork = ['inspect', 'verify'];
   const proof = await writeProof({
     root,
     missionId: created.mission.id,
     operationId: 'op-qr18-gate-proof-1',
-    payload: { result: 'ok' },
+    payload: { result: 'ok', completedWork },
   });
 
   await assert.rejects(
@@ -89,7 +90,7 @@ test('completion without verified artifact lineage fails QR18 Level 2 at the sta
         },
       },
       update: {
-        completedWork: ['inspect', 'verify'],
+        completedWork,
         pendingWork: [],
         failedWork: [],
         activeAgents: [],
@@ -127,11 +128,12 @@ test('honest completion stores service-evaluated QR18 levels on the mission resu
     },
     envelope: envelopeFor(running, 'op-qr18-honest-evidence-1', 'nyx'),
   });
+  const completedWork = ['inspect', 'verify'];
   const proof = await writeProof({
     root,
     missionId: created.mission.id,
     operationId: 'op-qr18-honest-proof-1',
-    payload: { result: 'ok' },
+    payload: { result: 'ok', completedWork },
   });
   const proofBytes = await readProofBytes(root, proof);
   const artifactOp = 'op-qr18-honest-artifact-1';
@@ -161,7 +163,7 @@ test('honest completion stores service-evaluated QR18 levels on the mission resu
       proof: { ...proof, verified: true },
     },
     update: {
-      completedWork: ['inspect', 'verify'],
+      completedWork,
       pendingWork: [],
       failedWork: [],
       activeAgents: [],

@@ -253,7 +253,7 @@ test('HOLE CHECK: forged qr18 bag + stripped artifact still cannot complete', as
     root,
     missionId: created.mission.id,
     operationId: 'op-hostile-qr18-proof-1',
-    payload: { ok: true },
+    payload: { ok: true, completedWork: ['a', 'b'] },
   });
 
   await assert.rejects(

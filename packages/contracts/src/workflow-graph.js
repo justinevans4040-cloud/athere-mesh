@@ -129,6 +129,9 @@ export function buildWorkflowGraph({
   }
 
   const planSteps = Array.isArray(currentPlan?.steps) ? currentPlan.steps : [];
+  const subgoalById = new Map(
+    subgoals.filter((entry) => plainObject(entry)).map((entry) => [entry.id, entry]),
+  );
   for (const step of planSteps) {
     const id = requiredId(step, 'plan step');
     if (!nodeIds.has(id)) {
@@ -138,7 +141,8 @@ export function buildWorkflowGraph({
     if (!nodeIds.has(actionId)) {
       addNode({ id: actionId, kind: 'action', subgoalId: id });
     }
-    if (/verify|proof|audit/i.test(id)) {
+    // F12: verification_gate nodes are explicit only — never invented from id regex.
+    if (subgoalById.get(id)?.verificationGate === true) {
       const gateId = `gate:${id}`;
       if (!nodeIds.has(gateId)) {
         addNode({ id: gateId, kind: 'verification_gate', subgoalId: id });
@@ -199,6 +203,7 @@ export function assessMissionPath({
   for (const node of workflowGraph.nodes) {
     if (node.kind === 'subgoal') knownWorkNodes.add(node.id);
     if (node.kind === 'action' && typeof node.subgoalId === 'string') knownWorkNodes.add(node.subgoalId);
+    if (node.kind === 'verification_gate') knownWorkNodes.add(node.id);
   }
   for (const id of completedWork) {
     if (!knownWorkNodes.has(id)) violations.push(`unknown_work_node:${id}`);
@@ -258,6 +263,14 @@ export function assessMissionPath({
       const prior = planActions[earlier];
       if (completed.has(prior)) continue;
       violations.push(`plan_order:${step}->skips:${prior}`);
+    }
+  }
+
+  // F12: explicit verification gates must be cleared when their subgoal completes.
+  for (const node of workflowGraph.nodes) {
+    if (node.kind !== 'verification_gate' || typeof node.subgoalId !== 'string') continue;
+    if (completed.has(node.subgoalId) && !completed.has(node.id)) {
+      violations.push(`verification_gate_open:${node.subgoalId}->requires:${node.id}`);
     }
   }
 

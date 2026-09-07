@@ -3,6 +3,10 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hostname as systemHostname, platform as systemPlatform } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 const MISSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const SNAPSHOT = /^([A-Za-z0-9][A-Za-z0-9_-]{0,127})\.json$/;
@@ -23,9 +27,14 @@ export function createMissionStoreBridge({ loadMission, saveMission, listMission
   if (typeof loadMission !== 'function' || typeof saveMission !== 'function') {
     throw new TypeError('mission store bridge must provide loadMission and saveMission');
   }
+  // F8: bridges must serialize saves per mission — Map/Postgres adapters otherwise race.
+  const serializedSave = async (options) => {
+    const missionId = options?.mission?.id ?? options?.missionId ?? 'unknown';
+    return withKeyedLock(`mission-bridge:${missionId}`, () => saveMission(options));
+  };
   const store = Object.freeze({
     loadMission,
-    saveMission,
+    saveMission: serializedSave,
     ...(typeof listMissionIds === 'function' ? { listMissionIds } : {}),
   });
   BRANDED_MISSION_STORES.add(store);
@@ -223,7 +232,36 @@ function processStartTicks(content) {
   return typeof value === 'string' && /^\d+$/.test(value) ? value : undefined;
 }
 
+async function windowsProcessStartTicks(pid) {
+  if (!Number.isSafeInteger(pid) || pid < 1) return undefined;
+  try {
+    const { stdout } = await execFileAsync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToUniversalTime().Ticks`,
+      ],
+      { timeout: 2_000, windowsHide: true },
+    );
+    const ticks = String(stdout ?? '').trim();
+    return /^\d+$/.test(ticks) ? ticks : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function defaultReadProcessIdentity(pid) {
+  if (systemPlatform() === 'win32') {
+    const alive = await defaultIsProcessAlive(pid);
+    if (!alive) return Object.freeze({ alive: false });
+    const processStartTicks = await windowsProcessStartTicks(pid);
+    // F9: without start ticks, refuse identity enrichment so reclaim cannot
+    // treat a reused PID as the original lock owner.
+    if (!processStartTicks) return Object.freeze({ alive: true });
+    return Object.freeze({ alive: true, bootId: 'windows', processStartTicks });
+  }
   if (systemPlatform() !== 'linux') return Object.freeze({ alive: await defaultIsProcessAlive(pid) });
   let bootId;
   try {

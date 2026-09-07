@@ -111,6 +111,14 @@ test('Item 14: superseded semantic fact is not current working state', async () 
     factId: 'fact-ip-1',
     successor: { id: 'fact-ip-2', value: '10.0.0.2' },
     reason: 'rotated address',
+    envelope: createAgentOperationEnvelope({
+      record: created,
+      operationId: 'op-mem-supersede',
+      agentId: 'nyx',
+      action: 'supersede_fact',
+      objective: 'rotated address',
+      createdAt: clock(),
+    }),
   });
   const memory = await service.memory({ missionId: created.mission.id, reader: 'auditor' });
   const currentSemantic = memory.semantic.filter((entry) => entry.validationState === 'current');

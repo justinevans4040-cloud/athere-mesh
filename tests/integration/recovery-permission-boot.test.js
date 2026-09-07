@@ -56,6 +56,47 @@ test('recoverAndHeal does not abort boot when a shared mission lacks recovery pe
   assert.equal(shared.get(mission.id).mission.status, 'accepted');
 });
 
+test('F5: empty permissions deny recovery block_interrupted_mission on shared store', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'athere-recovery-empty-perm-'));
+  const base = createMission({
+    id: 'mission-empty-perm',
+    intent: 'empty permissions deny recovery',
+    clock: () => '2026-09-05T21:00:00.000Z',
+  });
+  const mission = Object.freeze({
+    ...base,
+    permissions: Object.freeze([]),
+  });
+  const shared = new Map([
+    [mission.id, Object.freeze({ revision: 1, mission })],
+  ]);
+  const store = createMissionStoreBridge({
+    async listMissionIds() {
+      return Object.freeze([...shared.keys()].sort());
+    },
+    async loadMission({ missionId }) {
+      const record = shared.get(missionId);
+      if (!record) throw new Error('mission snapshot not found');
+      return record;
+    },
+    async saveMission({ mission: next, expectedRevision }) {
+      const current = shared.get(next.id);
+      const currentRevision = current?.revision ?? 0;
+      if (expectedRevision !== undefined && expectedRevision !== currentRevision) {
+        throw new Error(`revision conflict: expected ${expectedRevision}, found ${currentRevision}`);
+      }
+      const record = Object.freeze({ revision: currentRevision + 1, mission: next });
+      shared.set(next.id, record);
+      return record;
+    },
+  });
+
+  const result = await recoverAndHealMissions({ root, missionStore: store });
+  assert.deepEqual(result.recovered, []);
+  assert.equal(shared.get(mission.id).mission.status, 'accepted');
+  assert.equal(shared.get(mission.id).revision, 1);
+});
+
 test('recoverAndHeal does not abort boot on recovery idempotency conflict', async () => {
   const root = await mkdtemp(join(tmpdir(), 'athere-recovery-idem-'));
   const service = createMissionStateService({ root, clock });
@@ -82,7 +123,7 @@ test('recoverAndHeal does not abort boot on recovery idempotency conflict', asyn
     missionId: created.mission.id,
     expectedRevision: created.revision,
     signal: { type: 'running', agent: 'nyx', detail: 'start' },
-    update: { activeAgents: ['nyx'] },
+    update: { activeAgents: ['nyx'], pendingWork: ['inspect-repository'] },
     envelope: createAgentOperationEnvelope({
       record: created,
       operationId: 'op-recovery-idem-run',
@@ -92,38 +133,8 @@ test('recoverAndHeal does not abort boot on recovery idempotency conflict', asyn
     }),
   });
 
-  // Plant a prior recovery-block operation id with different content hash so
-  // the stable recovery op id conflicts on the next converge attempt.
-  const planted = Object.freeze({
-    revision: running.revision,
-    mission: Object.freeze({
-      ...running.mission,
-      transitionHistory: Object.freeze([
-        ...(running.mission.transitionHistory ?? []),
-        Object.freeze({
-          transitionId: `${running.mission.id}-transition-planted`,
-          stateVersion: running.revision + 1,
-          previousVersion: running.revision,
-          previousTransitionHash: 'c'.repeat(64),
-          transitionHash: 'd'.repeat(64),
-          operationId: `${running.mission.id}-recovery-block`,
-          actor: 'qra_recovery_driver',
-          action: 'block_interrupted_mission',
-          timestamp: clock(),
-          input: { planted: true, differentPayload: true },
-          authorization: Object.freeze({ allowed: true }),
-          evidence: null,
-          stateHash: 'e'.repeat(64),
-          previousStateHash: 'f'.repeat(64),
-          changes: Object.freeze({}),
-        }),
-      ]),
-    }),
-  });
-  await service.store?.saveMission?.({ mission: planted.mission, expectedRevision: running.revision }).catch(() => {});
-
-  // Direct filesystem/default store write via reconstructing service store:
-  const shared = new Map([[planted.mission.id, planted]]);
+  // First recovery consumes the stable recovery-block operation id.
+  const shared = new Map([[running.mission.id, running]]);
   const store = createMissionStoreBridge({
     async listMissionIds() {
       return Object.freeze([...shared.keys()]);
@@ -143,7 +154,30 @@ test('recoverAndHeal does not abort boot on recovery idempotency conflict', asyn
     },
   });
 
-  const result = await recoverAndHealMissions({ root, missionStore: store });
+  const first = await recoverAndHealMissions({ root, missionStore: store, clock });
+  assert.deepEqual(first.recovered, [running.mission.id]);
+  assert.equal(shared.get(running.mission.id).mission.status, 'blocked');
+
+  // Resume to running with different pendingWork, then recover again. Stable
+  // recovery op id collides with the prior block payload → soft-fail, no boot abort.
+  const blocked = shared.get(running.mission.id);
+  const resumed = await createMissionStateService({ root, clock, store }).transition({
+    operationId: 'op-recovery-idem-resume',
+    missionId: blocked.mission.id,
+    expectedRevision: blocked.revision,
+    signal: { type: 'running', agent: 'miss-vale-prime', detail: 'resume after interrupt' },
+    update: { activeAgents: ['miss-vale-prime'], pendingWork: ['inspect-repository'], failedWork: [] },
+    envelope: createAgentOperationEnvelope({
+      record: blocked,
+      operationId: 'op-recovery-idem-resume',
+      agentId: 'miss-vale-prime',
+      objective: 'resume',
+      createdAt: clock(),
+    }),
+  });
+  shared.set(resumed.mission.id, resumed);
+
+  const result = await recoverAndHealMissions({ root, missionStore: store, clock });
   assert.ok(Array.isArray(result.recovered));
-  assert.equal(typeof shared.get(planted.mission.id).mission.status, 'string');
+  assert.equal(typeof shared.get(resumed.mission.id).mission.status, 'string');
 });

@@ -1,8 +1,43 @@
 # Athere Active Run
 
-**Status:** Active — Command Deck live; Items 3–11 Phase 1–3 gates under hostile audit ckpt 126. **Do not read “FULL FLEET ONLINE” as Phases 1–3 complete without residual risk** — see ckpt 126 residuals. Vale Prime sole Miss Vale. Local-only.
+**Status:** Active — Command Deck live; Items 3–11 Phase 1–3 hostile **OPEN_COUNT 0** through ckpt 128 (F1–F14 closed). Vale Prime sole Miss Vale. Local-only.
 
 **Archive (ckpts 1–91):** `archive/runs/ATHERE_ACTIVE_RUN_ckpts_1-91_2026-09-04.md`
+
+## F5–F14 CLOSE — NO PARKING LOT (ckpt 128) — Justin 2026-09-06
+
+**Order:** Close every residual. Leave nothing behind. OPEN_COUNT must be zero.
+
+| ID | Hole | Result |
+|---|---|---|
+| F5 | Empty-permissions recovery bypass | CLOSED — explicit recovery permission required |
+| F6 | Envelope timeout / budget unused | CLOSED — enforced on `authorizeAgentOperation` (service clock) |
+| F7 | Fact ops without envelope | CLOSED — envelope required on all fact mutations |
+| F8 | Bridge store no FS serialization | CLOSED — keyed lock on bridge `saveMission` |
+| F9 | Windows lock PID-reuse | CLOSED — Windows start-ticks identity on locks |
+| F10 | Pre-ledger import integrity theater | CLOSED — cannot certify import-rooted ledger; `integrityBound` on verify |
+| F11 | Proof payload ≠ completedWork | CLOSED — complete path + QR18 L6 bind payload work |
+| F12 | verification_gate id-regex | CLOSED — explicit `verificationGate` only; open gate fails path |
+| F13 | Item 12+ surfaces “bloat” | CLOSED — surfaces retained; recovery cannot emit `completed` |
+| F14 | select facts leak lineage | CLOSED — `select(currentFacts)` strips supersession fields |
+
+**Evidence:** `evidence/f5-f14-close-20260906T234500Z.json` · `scratch/break-f5-f14.mjs` **OPEN_COUNT 0** · F1–F4 rebreak still **OPEN_COUNT 0** · focused suite **50/50 GREEN**
+
+**Residual OPEN:** none from the Phase 1–3 hostile list.
+
+## F1–F2–F4 SIBLING CLOSE (ckpt 127) — Justin 2026-09-05
+
+**Order:** Leave nothing behind on F1/F2/F4. Repair and try to break it.
+
+| Sibling | Result | Evidence |
+|---|---|---|
+| F1 forged / wrong-byte artifacts | REJECT; honest complete ACCEPT_OK | `evidence/f1-f2-f4-sibling-close-20260905T180500Z.json` |
+| F2 empty `{}` / boolean-only / whitespace evidence as performers | REJECT_OK | same + `evidenceEntryHasSubstance` |
+| F4 tamper on get/recovery/fact/select/history/reconstruct/memory/authorityFor | REJECT on all | `assertLoadedLedgerIntact` on every load path |
+| Break script | **OPEN_COUNT 0** (16 attacks) | same evidence |
+| Focused suite | **49/49 GREEN** | reaudit + item12 + MEA/orchestrator/state/QR18 |
+
+**Superseded by ckpt 128:** F5–F14 closed (no parking lot).
 
 ## PHASES 1–3 HOSTILE AUDIT — CRITICAL/HIGH CLOSES (ckpt 126) — Justin 2026-09-05
 
@@ -14,7 +49,7 @@
 | F2 noop executor heartbeat = performer | HIGH | CLOSED — evidence-write-only `recordedWorkPerformers` | same |
 | F4 tampered ledger loads until opt-in verify | HIGH | CLOSED — verify on `transition` load + `get()` | `mea-hostile-phase1-3-ledger-tamper.test.js` |
 
-**Residual OPEN (MEDIUM/LOW — not claimed closed):** F5 recovery empty-permissions bypass; F6 envelope timeout unused on mission path; F7 fact ops without envelope; F8 bridge CAS; F9 Windows lock PID reuse; F10 pre-ledger import boundary; F11 proof payload ≠ work semantics; F12 verification_gate regex heuristic; F13 service bloat (Item 12+ surfaces); F14 historical facts via `select`.
+**Residual OPEN (MEDIUM/LOW — closed in ckpt 128):** F5–F14 — see ckpt 128. No parking lot.
 
 ## ITEM 11 WORKFLOW GRAPHS — FAILED-SKIP CLOSED (ckpt 125) — Justin 2026-09-05
 

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createAgentOperationEnvelope } from '../../packages/contracts/src/agent-operation.js';
 import { recordedWorkPerformers } from '../../packages/contracts/src/execution-roles.js';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
+import { createMissionStoreBridge, defaultMissionStore } from '../../packages/mission/src/mission-store.js';
 import { writeProof } from '../../packages/proof/src/proof-store.js';
 
 const clock = () => '2026-09-05T21:00:00.000Z';
@@ -54,7 +55,7 @@ test('HOLE: forged artifactReferences cannot complete a mission', async () => {
     root,
     missionId: created.mission.id,
     operationId: 'op-forged-art-proof',
-    payload: { result: 'ok' },
+    payload: { result: 'ok', completedWork: ['inspect'] },
   });
   await assert.rejects(
     () => service.transition({
@@ -127,7 +128,7 @@ test('HOLE: executor noop heartbeat cannot satisfy recorded performers for compl
     root,
     missionId: created.mission.id,
     operationId: 'op-noop-proof',
-    payload: { result: 'ok' },
+    payload: { result: 'ok', completedWork: ['inspect'] },
   });
   await assert.rejects(
     () => service.transition({
@@ -157,5 +158,123 @@ test('HOLE: executor noop heartbeat cannot satisfy recorded performers for compl
       envelope: envelope(heartbeat, 'op-noop-complete', 'qra_emerge_audit'),
     }),
     /cannot certify success without recorded work performers/,
+  );
+});
+
+test('HOLE: empty-object evidence must not count as recorded performance', () => {
+  assert.deepEqual(
+    [...recordedWorkPerformers([
+      {
+        actor: 'nyx',
+        action: 'observe_repository',
+        changes: { evidence: { before: [], after: [{}] } },
+      },
+    ])],
+    [],
+  );
+  assert.deepEqual(
+    [...recordedWorkPerformers([
+      {
+        actor: 'nyx',
+        action: 'observe_repository',
+        changes: { evidence: { before: [], after: [{ verified: true }] } },
+      },
+    ])],
+    [],
+  );
+  assert.deepEqual(
+    [...recordedWorkPerformers([
+      {
+        actor: 'nyx',
+        action: 'observe_repository',
+        changes: { evidence: { before: [], after: [{ note: '   ' }] } },
+      },
+    ])],
+    [],
+  );
+  assert.deepEqual(
+    [...recordedWorkPerformers([
+      {
+        actor: 'nyx',
+        action: 'observe_repository',
+        changes: { evidence: { before: [], after: [{ agent: 'nyx', note: 'real' }] } },
+      },
+    ])],
+    ['nyx'],
+  );
+});
+
+test('HOLE: recovery and fact mutations must reject a tampered ledger', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-p123-f4-bypass-'));
+  let tamper = false;
+  const store = createMissionStoreBridge({
+    saveMission: defaultMissionStore.saveMission,
+    async loadMission(options) {
+      const record = await defaultMissionStore.loadMission(options);
+      if (!tamper) return record;
+      const history = structuredClone(record.mission.transitionHistory);
+      history[0].actor = 'intruder';
+      return { ...record, mission: { ...record.mission, transitionHistory: history } };
+    },
+  });
+  const service = createMissionStateService({ root, clock, store });
+  const created = await service.create({
+    operationId: 'op-f4-bypass-create',
+    id: 'mission-f4-bypass-1',
+    objective: 'f4 bypass',
+    goals: [{ id: 'g1', objective: 'g' }],
+    subgoals: [{ id: 'inspect', goalId: 'g1', objective: 'i' }],
+    dependencies: [],
+    constraints: [],
+    permissions: [
+      { actor: 'nyx', actions: ['observe_repository', 'record_fact'] },
+      { actor: 'qra_recovery_driver', actions: ['create_checkpoint', 'block_interrupted_mission'] },
+    ],
+    currentPlan: { id: 'p1', version: 1, steps: ['inspect'] },
+    environmentObservations: [],
+  });
+  const performed = await service.transition({
+    operationId: 'op-f4-bypass-nyx',
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    signal: { type: 'running', agent: 'nyx' },
+    update: { evidence: [{ agent: 'nyx', note: 'real' }], activeAgents: ['nyx'] },
+    envelope: envelope(created, 'op-f4-bypass-nyx', 'nyx'),
+  });
+  tamper = true;
+  await assert.rejects(
+    () => service.createCheckpoint({
+      operationId: 'op-f4-bypass-ckpt',
+      missionId: created.mission.id,
+      expectedRevision: performed.revision,
+      label: 'hostile',
+      envelope: createAgentOperationEnvelope({
+        record: performed,
+        operationId: 'op-f4-bypass-ckpt',
+        agentId: 'qra_recovery_driver',
+        objective: 'ckpt',
+        createdAt: clock(),
+        action: 'create_checkpoint',
+      }),
+    }),
+    /transition hash mismatch/,
+  );
+  await assert.rejects(
+    () => service.recordFact({
+      operationId: 'op-f4-bypass-fact',
+      missionId: created.mission.id,
+      expectedRevision: performed.revision,
+      actor: 'nyx',
+      fact: { id: 'fact-1', key: 'k', value: true, status: 'current' },
+      envelope: createAgentOperationEnvelope({
+        record: performed,
+        operationId: 'op-f4-bypass-fact',
+        agentId: 'nyx',
+        action: 'record_fact',
+        objective: 'fact',
+        createdAt: clock(),
+      }),
+    }),
+    /transition hash mismatch/,
   );
 });

@@ -68,10 +68,12 @@ test('QR18 exposes exactly six named levels', () => {
 });
 
 test('honest completion claim returns structured verified evidence at every QR18 level', () => {
+  const mission = honestMission();
   const qr18 = evaluateQr18Layers({
-    mission: honestMission(),
+    mission,
     proofVerification: proofOk,
     certifierAgentId: 'qra_emerge_audit',
+    proofPayload: { completedWork: mission.completedWork },
   });
   assert.equal(qr18.verifier, 'qr18');
   assert.equal(qr18.verified, true);

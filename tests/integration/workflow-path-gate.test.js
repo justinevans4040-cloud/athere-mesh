@@ -18,7 +18,7 @@ function createInput(overrides = {}) {
     goals: [{ id: 'validate-titan', objective: 'Verify Titan' }],
     subgoals: [
       { id: 'inspect', goalId: 'validate-titan', objective: 'Inspect' },
-      { id: 'verify', goalId: 'validate-titan', objective: 'Verify' },
+      { id: 'verify', goalId: 'validate-titan', objective: 'Verify', verificationGate: true },
     ],
     dependencies: [{ prerequisite: 'inspect', dependent: 'verify' }],
     currentPlan: { id: 'plan-1', version: 1, steps: ['inspect', 'verify'] },

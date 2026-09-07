@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createAgentOperationEnvelope } from '../../packages/contracts/src/agent-operation.js';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 import { loadMission, saveMission } from '../../packages/mission/src/mission-store.js';
+import { readProofBytes, verifyArtifactProof, writeArtifactProof, writeProof } from '../../packages/proof/src/proof-store.js';
 
 function clock() {
   return '2026-09-04T09:00:00.000Z';
@@ -133,16 +134,21 @@ test('Item 12 hostile: store-tampered checkpoint hash fails closed on rollback',
     mission: { ...loaded.mission, checkpoints: tamperedCheckpoints },
   });
 
-  const afterTamper = await service.get({ missionId: created.mission.id });
+  // F4: out-of-band store mutation breaks the hash-chained ledger — reads and
+  // recovery must fail closed before any checkpoint-hash check runs.
+  await assert.rejects(
+    () => service.get({ missionId: created.mission.id }),
+    /transition history does not match|state hash/,
+  );
   await assert.rejects(
     () => service.rollbackToCheckpoint({
       operationId: 'op-h12-tamper-roll',
       missionId: created.mission.id,
-      expectedRevision: afterTamper.revision,
+      expectedRevision: blocked.revision,
       checkpointId,
-      envelope: envelopeFor(afterTamper, 'op-h12-tamper-roll', 'qra_recovery_driver', 'rollback_to_checkpoint'),
+      envelope: envelopeFor(blocked, 'op-h12-tamper-roll', 'qra_recovery_driver', 'rollback_to_checkpoint'),
     }),
-    /checkpoint integrity failed/,
+    /transition history does not match|state hash|checkpoint integrity failed/,
   );
   assert.equal(blocked.mission.status, 'blocked');
 });
@@ -177,20 +183,44 @@ test('Item 12 hostile: executor cannot create_branch even with forged recovery a
       objective: 'steal branch',
       createdAt: clock(),
     }),
-    /cannot override action/,
+    /cannot override action|cannot perform action create_branch/,
   );
 });
 
 test('Item 12 hostile: rollback/retry on completed mission fails closed', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'athere-h12-done-'));
   const service = createMissionStateService({ root, clock });
+
+  // Sibling: out-of-band status=completed must not be readable (F4).
+  const forged = await service.create(createInput({ id: 'mission-hostile12-forged', operationId: 'op-h12-forge-create' }));
+  const forgedRun = await service.transition({
+    operationId: 'op-h12-forge-run',
+    missionId: forged.mission.id,
+    expectedRevision: forged.revision,
+    signal: { type: 'running', agent: 'nyx' },
+    update: { evidence: [{ agent: 'nyx', note: 'real' }], activeAgents: ['nyx'] },
+    envelope: envelopeFor(forged, 'op-h12-forge-run', 'nyx'),
+  });
+  const forgedLoaded = await loadMission({ root, missionId: forged.mission.id });
+  await saveMission({
+    root,
+    expectedRevision: forgedLoaded.revision,
+    mission: { ...forgedLoaded.mission, status: 'completed', coms: 'DONE' },
+  });
+  await assert.rejects(
+    () => service.get({ missionId: forged.mission.id }),
+    /transition history does not match|state hash/,
+  );
+  assert.equal(forgedRun.mission.status, 'running');
+
+  // Honest completion path: rollback/retry must refuse terminal missions.
   const created = await service.create(createInput({ id: 'mission-hostile12-done', operationId: 'op-h12-done-create' }));
   const running = await service.transition({
     operationId: 'op-h12-done-run',
     missionId: created.mission.id,
     expectedRevision: created.revision,
     signal: { type: 'running', agent: 'nyx' },
-    update: { evidence: [{ agent: 'nyx' }], activeAgents: ['nyx'] },
+    update: { evidence: [{ agent: 'nyx', note: 'real' }], activeAgents: ['nyx'] },
     envelope: envelopeFor(created, 'op-h12-done-run', 'nyx'),
   });
   const checkpointed = await service.createCheckpoint({
@@ -210,15 +240,48 @@ test('Item 12 hostile: rollback/retry on completed mission fails closed', async 
     }),
     /can only rollback or retry from a blocked mission/,
   );
-  // Force terminal status via store write (completion path needs proof; we only need status=completed).
-  const loaded = await loadMission({ root, missionId: created.mission.id });
-  await saveMission({
+
+  const proof = await writeProof({
     root,
-    expectedRevision: loaded.revision,
-    mission: { ...loaded.mission, status: 'completed', coms: 'DONE' },
+    missionId: created.mission.id,
+    operationId: 'op-h12-done-proof',
+    payload: { result: 'ok', completedWork: ['a', 'b'] },
   });
-  const done = await service.get({ missionId: created.mission.id });
+  const proofBytes = await readProofBytes(root, proof);
+  const artifactRef = await writeArtifactProof({
+    root,
+    missionId: created.mission.id,
+    artifactId: 'mission-proof',
+    artifact: proofBytes,
+    operationId: 'op-h12-done-artifact',
+    predecessorHash: null,
+    agent: 'qra_emerge_audit',
+    action: 'verify_proof',
+    verifierResult: { verifier: 'qra_emerge_audit', verified: true, proofSha256: proof.sha256 },
+    missionStateVersion: checkpointed.revision,
+    timestamp: clock(),
+  });
+  const artifactVerification = await verifyArtifactProof({ root, ref: artifactRef, artifact: proofBytes });
+  const done = await service.transition({
+    operationId: 'op-h12-done-complete',
+    missionId: created.mission.id,
+    expectedRevision: checkpointed.revision,
+    signal: {
+      type: 'completed',
+      agent: 'qra_emerge_audit',
+      proof: { ...proof, verified: true },
+    },
+    update: {
+      completedWork: ['a', 'b'],
+      pendingWork: [],
+      failedWork: [],
+      activeAgents: [],
+      artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
+    },
+    envelope: envelopeFor(checkpointed, 'op-h12-done-complete', 'qra_emerge_audit'),
+  });
   assert.equal(done.mission.status, 'completed');
+
   await assert.rejects(
     () => service.rollbackToCheckpoint({
       operationId: 'op-h12-done-roll',

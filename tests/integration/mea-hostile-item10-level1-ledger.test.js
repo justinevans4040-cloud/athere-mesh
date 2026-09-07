@@ -30,24 +30,26 @@ const proofOk = { verified: true, sha256: 'c'.repeat(64) };
  * alone could pass Level 1 with zero recorded performers.
  */
 test('HOLE: QR18 Level 1 must verify from recorded performers, not planted evidence', () => {
+  const ledgerMission = {
+    status: 'running',
+    objective: 'ledger action proof',
+    evidence: [],
+    completedWork: ['inspect'],
+    pendingWork: [],
+    failedWork: [],
+    currentPlan: { id: 'p', version: 1, steps: ['inspect'] },
+    artifactReferences: [artifact],
+    transitionHistory: [{
+      actor: 'nyx',
+      action: 'observe_repository',
+      changes: { evidence: { before: [], after: [{ agent: 'nyx' }] } },
+    }],
+  };
   const ledgerOnly = evaluateQr18Layers({
-    mission: {
-      status: 'running',
-      objective: 'ledger action proof',
-      evidence: [],
-      completedWork: ['inspect'],
-      pendingWork: [],
-      failedWork: [],
-      currentPlan: { id: 'p', version: 1, steps: ['inspect'] },
-      artifactReferences: [artifact],
-      transitionHistory: [{
-        actor: 'nyx',
-        action: 'observe_repository',
-        changes: { evidence: { before: [], after: [{ agent: 'nyx' }] } },
-      }],
-    },
+    mission: ledgerMission,
     proofVerification: proofOk,
     certifierAgentId: 'qra_emerge_audit',
+    proofPayload: { completedWork: ledgerMission.completedWork },
   });
   assert.equal(ledgerOnly.levels[0].id, 'action');
   assert.equal(
@@ -128,7 +130,7 @@ test('service completion after evidence clear still traces Level 1 to ledger per
     root,
     missionId: created.mission.id,
     operationId: 'op-i10-clear-proof',
-    payload: { result: 'ok' },
+    payload: { result: 'ok', completedWork: ['inspect'] },
   });
   const proofBytes = await readProofBytes(root, proof);
   const artifactRef = await writeArtifactProof({
