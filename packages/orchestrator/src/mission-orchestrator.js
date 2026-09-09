@@ -175,11 +175,9 @@ export function createMissionOrchestrator({
     ...(store === undefined ? {} : { store }),
   });
 
-  // Memory / local telemetry buses keep the historical swallow so a publish
-  // outage cannot overturn durable mission state. Network buses (Redis) set
-  // failClosedOnPublish so transport/auth/seed failure surfaces instead of
-  // looking like a delivered empty stream.
-  const failClosedOnPublish = bus.failClosedOnPublish === true;
+  // Every operational bus fails closed unless an explicitly telemetry-only
+  // implementation opts out. Silent publish loss creates a state/stream split.
+  const failClosedOnPublish = bus.failClosedOnPublish !== false;
 
   let signalSequence = 0;
   async function publish(signal) {
@@ -229,7 +227,9 @@ export function createMissionOrchestrator({
       envelope,
       ...(observability === null ? {} : { observability }),
     });
-    if (saved.duplicate !== true) await publish(saved.mission.signals.at(-1));
+    // Publish duplicate state operations too: bus idempotency makes this safe
+    // and lets a caller retry repair a prior commit-then-publish failure.
+    await publish(saved.mission.signals.at(-1));
     return saved;
   }
 
@@ -508,6 +508,7 @@ export function createMissionOrchestrator({
       operationId: proofOperationId,
       signalType: 'completed',
       nowMs: Date.parse(clock()) || Date.now(),
+      requiredBudgetKey: 'max_proof_reads',
     });
     const verification = await proofStore.verifyProof({ root: workspaceRoot, ref });
     if (verification.verified !== true) throw new Error(`proof verification failed: ${verification.reason ?? 'unknown'}`);
@@ -832,7 +833,10 @@ export function createMissionOrchestrator({
       ?? decision.strategyChange?.then?.action
       ?? null;
     const shouldRetry = (decision.nextAction === 'change_strategy' || decision.nextAction === 'retry')
-      && (strategyAction === 'retry_from_checkpoint' || strategyAction === 'rollback_to_checkpoint');
+      && (strategyAction === 'retry_from_checkpoint'
+        || strategyAction === 'rollback_to_checkpoint'
+        || strategyAction === 'create_branch'
+        || strategyAction === 'quarantine_branch');
 
     if (!shouldRetry) {
       return Object.freeze({
@@ -844,6 +848,45 @@ export function createMissionOrchestrator({
       });
     }
 
+    let healRecord = blocked;
+    const verified = (healRecord.mission.checkpoints ?? []).filter((entry) => entry?.verified === true);
+    const latestCheckpoint = verified.at(-1);
+    const onMain = !healRecord.mission.activeBranchId || healRecord.mission.activeBranchId === 'main';
+    // Item 12: open an alternate strategy branch from the last known-good checkpoint
+    // before auto-heal when still on main (so quarantine+retry has a failed path to isolate).
+    if (latestCheckpoint && onMain) {
+      try {
+        const branchOp = `${record.mission.id}-alt-branch-${healRecord.revision}`;
+        healRecord = await missionState.createBranch({
+          operationId: branchOp,
+          missionId: record.mission.id,
+          expectedRevision: healRecord.revision,
+          checkpointId: latestCheckpoint.id,
+          strategy: 'orchestrator-auto-heal-alternate',
+          envelope: createAgentOperationEnvelope({
+            record: healRecord,
+            operationId: branchOp,
+            agentId: 'qra_recovery_driver',
+            action: 'create_branch',
+            objective: 'open alternate strategy branch before checkpoint heal',
+            createdAt: clock(),
+          }),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // I12B3: only degrade on known soft failures; never silent-swallow unknown errors.
+        if (!/branches exceed cap|lacks required permission|duplicate branch id/i.test(message)) {
+          return Object.freeze({
+            revision: healRecord.revision,
+            mission: healRecord.mission,
+            status: 'blocked',
+            reason: `alternate branch failed before heal: ${message}`,
+            executive: decision,
+          });
+        }
+      }
+    }
+
     const heal = await healMissionFromCheckpoint({
       root: workspaceRoot,
       missionId: record.mission.id,
@@ -851,9 +894,10 @@ export function createMissionOrchestrator({
       ...(store === undefined ? {} : { missionStore: store }),
     });
     if (heal.status !== 'healed') {
+      const current = await missionState.get({ missionId: record.mission.id });
       return Object.freeze({
-        revision: blocked.revision,
-        mission: blocked.mission,
+        revision: current.revision,
+        mission: current.mission,
         status: 'blocked',
         reason: detail,
         executive: decision,

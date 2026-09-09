@@ -387,7 +387,19 @@ test('startup composition validates the fleet and recovers interrupted missions 
   const root = join(repositoryRoot, 'workspace', 'titan');
   await saveMission({
     root,
-    mission: createMission({ id: 'mission-startup-recovery', intent: 'test all of Titan', clock: () => '2026-08-23T12:00:00.000Z' }),
+    mission: Object.freeze({
+      ...createMission({
+        id: 'mission-startup-recovery',
+        intent: 'test all of Titan',
+        clock: () => '2026-08-23T12:00:00.000Z',
+      }),
+      permissions: Object.freeze([
+        Object.freeze({
+          actor: 'qra_recovery_driver',
+          actions: Object.freeze(['block_interrupted_mission']),
+        }),
+      ]),
+    }),
   });
   const api = await createTitanService({
     environment: { TITAN_API_BEARER_TOKEN: OWNER_TOKEN, OLLAMA_BASE_URL: 'http://127.0.0.1:11434', OLLAMA_MODEL: 'test-model' },

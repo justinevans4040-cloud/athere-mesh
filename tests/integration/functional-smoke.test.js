@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runFunctionalTeamSmoke } from '../../scripts/smoke-functional-team.js';
+import { operationalAgents } from '../../packages/fleet/src/registry.js';
 
 const OWNER_TOKEN = 'test-owner-token-0123456789abcdef0123456789';
+const TEAM_AGENTS = operationalAgents().map(({ id }) => ({ id, operational: true }));
 
 function response(status, body) {
   return {
@@ -31,14 +33,7 @@ test('functional smoke proves health, team, normal-language command, and stored 
     if (pathname === '/health') return response(200, { ready: true, enabledAgents: 28, recovery: { recovered: 0, blocked: 0, corrupt: 0, healed: 0 } });
     if (pathname === '/api/team') return response(200, {
       enabledAgents: 28,
-      agents: [
-        { id: 'miss-vale-prime', operational: true },
-        { id: 'agent-vale', operational: true },
-        { id: 'nyx', operational: true },
-        { id: 'rune', operational: true },
-        { id: 'qra_emerge_audit', operational: true },
-        { id: 'qra_recovery_driver', operational: true },
-      ],
+      agents: TEAM_AGENTS,
     });
     if (pathname === '/api/commands') return response(200, {
       mission: { id: missionId, status: 'completed', proof },
@@ -108,14 +103,7 @@ test('functional smoke refuses unverified or malformed stored proof evidence', a
     if (pathname === '/health') return response(200, { ready: true, enabledAgents: 28 });
     if (pathname === '/api/team') return response(200, {
       enabledAgents: 28,
-      agents: [
-        { id: 'miss-vale-prime', operational: true },
-        { id: 'agent-vale', operational: true },
-        { id: 'nyx', operational: true },
-        { id: 'rune', operational: true },
-        { id: 'qra_emerge_audit', operational: true },
-        { id: 'qra_recovery_driver', operational: true },
-      ],
+      agents: TEAM_AGENTS,
     });
     if (pathname === '/api/commands') return response(200, {
       mission: { id: missionId, status: 'completed', proof: { path: `proofs/${missionId}.json`, sha256: 'A'.repeat(64), verified: true } },

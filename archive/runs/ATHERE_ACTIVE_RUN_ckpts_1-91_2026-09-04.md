@@ -1,8 +1,8 @@
 # Athere Active Run
 
+> **ARCHIVE ONLY — ckpts 1–91 (frozen 2026-09-04).** Not the live run. Do not align threads to this file. Live checkpoint: `runtime/ATHERE_ACTIVE_RUN.md`. Historical lines such as “Item 12 not started” are period truth inside this archive, not current status. Nothing below was deleted.
 
-
-**Status:** Active — Items 2–24 landed; **source HIGH gaps 1/2/16/21/24 closed** (ckpt 90); **doctrine A→B boot-recovery + current-tree smoke closed** (ckpt 91).
+**Status (historical at archive cut):** Active — Items 2–24 landed; **source HIGH gaps 1/2/16/21/24 closed** (ckpt 90); **doctrine A→B boot-recovery + current-tree smoke closed** (ckpt 91).
 
 **New-thread tie-in (paste block):** `docs/current/ATHERE_THREAD_TIE_IN.md` — continue only; zero skill load = deletion; no rebuild.
 

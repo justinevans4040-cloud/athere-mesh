@@ -313,8 +313,8 @@ export function createTitanApi({
             return;
           }
           if (request.method === 'POST' && url.pathname === '/api/chat') {
-            // Owner always has a token. Public advisory chat may omit one, but only on loopback.
-            if (apiAuthToken) requireTrustedOwnerRequest(request, apiAuthToken);
+            // Loopback is not an authentication boundary: any local process can connect.
+            requireAuth(request);
             const agentId = url.searchParams.get('agent') || 'agent-vale';
             assertAdvisoryChatAgentAllowed(team, agentId);
             const text = await readText(request, maxRequestBytes);

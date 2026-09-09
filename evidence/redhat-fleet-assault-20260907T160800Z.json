@@ -1,0 +1,44 @@
+{
+  "claim": "Red Hat fleet assault across Items 3-12 closed CRITICAL/HIGH holes RH-H01/H02/H03/H04 and MH-01/02/03/04/06; break OPEN_COUNT 0",
+  "openCount": 0,
+  "attackCount": 9,
+  "results": [
+    { "id": "RH_H01_blocked_resume_bypass", "result": "REJECT_OK" },
+    { "id": "RH_H03_checkpoint_while_blocked", "result": "REJECT_OK" },
+    { "id": "RH_H02_main_multi_cp_heal", "result": "REJECT_OK" },
+    { "id": "RH_H04_no_stacked_actives", "result": "REJECT_OK" },
+    { "id": "MH_01_epistemic_no_envelope", "result": "REJECT_OK" },
+    { "id": "MH_02_bind_no_envelope", "result": "REJECT_OK" },
+    { "id": "MH_04_inspect_corrupt_ledger", "result": "REJECT_OK" },
+    { "id": "MH_04b_fleet_survives_corrupt", "result": "REJECT_OK" },
+    { "id": "MH_03_save_retry_integrity", "result": "REJECT_OK" }
+  ],
+  "breakScript": "scratch/break-redhat-fleet.mjs",
+  "priorBreaksStillZero": [
+    "scratch/break-f1-f2-f4.mjs",
+    "scratch/break-f5-f14.mjs",
+    "scratch/break-item12.mjs"
+  ],
+  "timestamp": "2026-09-07T16:08:00.000Z",
+  "closed": [
+    "RH-H01",
+    "RH-H02",
+    "RH-H03",
+    "RH-H04",
+    "MH-01",
+    "MH-02",
+    "MH-03",
+    "MH-04",
+    "MH-06"
+  ],
+  "residual": [
+    "MH-05 permission-miss false RUNNING (boot soft-fail)",
+    "MH-07 cross-op budget theater",
+    "MH-08 loopback /api/chat without bearer",
+    "MH-09 memory-bus soft publish",
+    "I12-H05/H06 lineage/select snapshot leak",
+    "I12-H08 stale artifact missionStateVersion",
+    "I12-H09 recovery graph edges unenforced"
+  ],
+  "verdict": "READY"
+}

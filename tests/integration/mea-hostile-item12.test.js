@@ -238,7 +238,7 @@ test('Item 12 hostile: rollback/retry on completed mission fails closed', async 
       checkpointId: checkpointed.mission.checkpoints[0].id,
       envelope: envelopeFor(checkpointed, 'op-h12-done-roll-running', 'qra_recovery_driver', 'rollback_to_checkpoint'),
     }),
-    /can only rollback or retry from a blocked mission/,
+    /can only rollback to checkpoint from a blocked mission|can only retry from checkpoint from a blocked mission|can only rollback or retry from a blocked mission/,
   );
 
   const proof = await writeProof({
@@ -290,7 +290,7 @@ test('Item 12 hostile: rollback/retry on completed mission fails closed', async 
       checkpointId: checkpointed.mission.checkpoints[0].id,
       envelope: envelopeFor(done, 'op-h12-done-roll', 'qra_recovery_driver', 'rollback_to_checkpoint'),
     }),
-    /cannot rollback or retry a completed mission/,
+    /cannot rollback to checkpoint a completed mission|cannot rollback or retry a completed mission/,
   );
   await assert.rejects(
     () => service.retryFromCheckpoint({
@@ -300,6 +300,17 @@ test('Item 12 hostile: rollback/retry on completed mission fails closed', async 
       checkpointId: checkpointed.mission.checkpoints[0].id,
       envelope: envelopeFor(done, 'op-h12-done-retry', 'qra_recovery_driver', 'retry_from_checkpoint'),
     }),
-    /cannot rollback or retry a completed mission/,
+    /cannot retry from checkpoint a completed mission|cannot rollback or retry a completed mission/,
+  );
+  await assert.rejects(
+    () => service.createBranch({
+      operationId: 'op-h12-done-branch',
+      missionId: created.mission.id,
+      expectedRevision: done.revision,
+      checkpointId: checkpointed.mission.checkpoints[0].id,
+      strategy: 'zombie',
+      envelope: envelopeFor(done, 'op-h12-done-branch', 'qra_recovery_driver', 'create_branch'),
+    }),
+    /cannot create branch a completed mission/,
   );
 });

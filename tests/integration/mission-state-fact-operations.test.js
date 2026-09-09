@@ -94,7 +94,7 @@ test('supersedeFact atomically retires the current fact and installs one success
   });
   assert.equal(saved.revision, 2);
   assert.deepEqual(await service.facts({ missionId: created.mission.id, key: 'SERVER_IP' }), [
-    { id: 'server-ip-v4', key: 'SERVER_IP', value: '100.64.0.11', status: 'current', supersedes: 'server-ip-v3' },
+    { id: 'server-ip-v4', key: 'SERVER_IP', value: '100.64.0.11', status: 'current' },
   ]);
   const historyFacts = await service.facts({ missionId: created.mission.id, key: 'SERVER_IP', includeHistorical: true });
   assert.deepEqual(historyFacts.map(({ id, status }) => ({ id, status })), [
@@ -122,6 +122,7 @@ test('ordinary mission reads expose current facts only and history requires an e
 
   const ordinary = await service.get({ missionId: created.mission.id });
   assert.deepEqual(ordinary.mission.authoritativeFacts.map(({ id }) => id), ['server-ip-v4']);
+  assert.equal(ordinary.mission.authoritativeFacts[0].supersedes, undefined);
   assert.equal(ordinary.mission.transitionHistory, undefined);
   const historical = await service.get({ missionId: created.mission.id, includeHistorical: true });
   assert.deepEqual(historical.mission.authoritativeFacts.map(({ id }) => id), ['server-ip-v3', 'server-ip-v4']);

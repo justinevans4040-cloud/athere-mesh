@@ -13,21 +13,28 @@ Do not invent or substitute. Load this before any external email, sample request
 - **Products under ForgeFront (not company names):** Athere Mesh, Titan, Edge Nodes, ForgeFront Command
 - **Forbidden in signatures:** wakeforged.com as the company site; signing as “Athere Mesh / Titan” instead of ForgeFront Systems
 
-## Live operator faces (2026-09-05)
+## Live operator faces (2026-09-09)
 
 - Command Deck (Lenovo): `http://127.0.0.1:5050/` — start with Titan/Ollama tokens only; do not import Ichabod `DATABASE_URL` on Lenovo.
+- Command Deck Desktop shortcut (Lenovo): `Desktop\ATHERE Command Deck.lnk` → `scripts/start-command-deck-desktop.ps1` (strips `DATABASE_URL` / mesh Postgres+Redis; opens loopback deck).
 - Command Deck (Ichabod tunnel): `http://127.0.0.1:15050/`
 - ForgeFront Solar/PM (tunnel → Ichabod `:8787`): `http://127.0.0.1:18787/` and `/pm`
 - Sales Hunter Tier Zero may merge qualified pipeline into ForgeFront `/api/state` when ingest is explicitly enabled.
 - Next capability under Zero: `outreach_send` with `humanApproved:true` (one lead) → local outbox + CRM follow-up. `phone_call` still denied.
-- Backlog Item 9 MEA: vacuum certification closed (ckpt 123) — auditor cannot certify without recorded work performers.
-- Backlog Item 10 QR18: Level 1 ledger action proof closed (ckpt 124) — planted evidence alone cannot satisfy action proof.
-- Backlog Item 11 workflow graphs: failed intermediate cannot waive plan order (ckpt 125). Item 12 not started.
+
+## Live backlog boundary (2026-09-09) — DO NOT REWIND
+
+- GitHub `master` has backlog **Items 1–24 shipped** (Item 12 checkpoints through Item 24 distributed state).
+- **Do not claim Item 12 or Item 13 is next.** That is a stale-handoff failure mode.
+- Authoritative live checkpoint: `runtime/ATHERE_ACTIVE_RUN.md` Status + ALIGNMENT GATE; reconcile against `origin/master` before speaking.
+- Local residual closes ckpts 126–132 sit **on top of** Items 12–24; they are not a rewind.
+- Still open (not the 24-item line): Sales Hunter T0 focus, full NYX upgrade ladder, full notebook IN/OUT cut, remote fabric env-gated, perform #8 Ship (Justin order), Wake/ForgeFront organize on Ichabod; Deferred Ronan; Parked 14 clusters + A15.
 ## Canonical locations
 
-- Local repository: `C:\Users\justi\Titan`
+- Lenovo live checkout (use this): `C:\Users\justi\WORKSPACE\athere-mesh`
+- Historical / alternate local path (do not assume exclusive): `C:\Users\justi\Titan`
 - GitHub: `https://github.com/justinevans4040-cloud/athere-mesh`
-- Branch: `master`
+- Branch: `master` (reconcile dirty feature branches against `origin/master` before status claims)
 - Google Drive Athere Mesh root: `1vPrBHfcvC8T2KSCgvmW-cWQOVZMUsisU`
 - Programming-backup folder: `1tndsSXC2BjZVcsF5GLZi-oKdUzaUV45_`
 - Verified archive: `17u1FlBl7AzVJCektSo586HpJGJvz0KPF`

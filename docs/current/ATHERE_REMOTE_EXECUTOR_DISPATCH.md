@@ -2,7 +2,7 @@
 
 **Status:** implemented, opt-in. Doctrine-baseline **blocker 3** + standing worker + owner env auto-wire + lease reclaim + remote inspect.
 
-This is not a numbered backlog item. It does not start Item 10 / QR18.
+This is not a numbered backlog item. It does not start or reopen Item 10 / QR18 (Item 10 shipped on `master` — see `ATHERE_LAYERED_QR18.md` and ACTIVE_RUN).
 
 ## What it is
 
@@ -72,4 +72,4 @@ node scripts/remote-executor-worker.js --once
 
 ## What this proves / does not prove
 
-See the cross-host evidence JSON under `evidence/` (owner-api mission, cohort, lease, standing-worker, earlier blocker artifacts) and each file's `doesNotProve` list. Passing unit tests alone are not acceptance. Item 10 / QR18 is not started.
+See the cross-host evidence JSON under `evidence/` (owner-api mission, cohort, lease, standing-worker, earlier blocker artifacts) and each file's `doesNotProve` list. Passing unit tests alone are not acceptance. This dispatch path does not prove Item 10 / QR18 (that backlog item is already shipped separately).

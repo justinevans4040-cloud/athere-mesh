@@ -1,0 +1,45 @@
+{
+  "claim": "Every residual named after the Item 12 and fleet Red Hat assaults is closed without weakening founder architecture or recovery authorization.",
+  "timestamp": "2026-09-07T16:32:00Z",
+  "verdict": "READY",
+  "openCount": 0,
+  "closed": [
+    "I12S1 checkpoint integrity rechecked before executive/recovery selection",
+    "I12B1 dead recoveryPermissionActions export removed",
+    "I12B2 rollback/retry share one restoreCheckpointOperation path",
+    "MH-05 missing recovery permission classified corrupt instead of false resumable",
+    "MH-07 mutation authorization requires positive max_state_mutations",
+    "MH-08 loopback advisory chat requires bearer authentication",
+    "MH-09 unmarked resonance buses fail closed and duplicate retries republish",
+    "MH-10 repeated interruptions use revision-bound recovery operation IDs",
+    "I12-H05 ordinary fact and memory reads strip supersession lineage",
+    "I12-H06 selected checkpoints expose metadata without embedded snapshots",
+    "I12-H08 artifact proof missionStateVersion is bound to completion revision",
+    "I12-H09 retry_after and rollback_to edges are path-enforced"
+  ],
+  "hostileBreaks": {
+    "scratch/break-redhat-residuals.mjs": 0,
+    "scratch/break-redhat-fleet.mjs": 0,
+    "scratch/break-item12.mjs": 0,
+    "scratch/break-f1-f2-f4.mjs": 0,
+    "scratch/break-f5-f14.mjs": 0
+  },
+  "tests": {
+    "total": 484,
+    "passed": 467,
+    "failed": 0,
+    "skipped": 17
+  },
+  "productionSha256": {
+    "packages/contracts/src/agent-operation.js": "d07d0e2eb0c6bae3ac56d025743b70126b59e0681cf406ad5b122615bf289071",
+    "packages/contracts/src/workflow-graph.js": "925e1af2cb26e10703c0df7c08e89891162a69e093f8ed1d067fd96cff721be1",
+    "packages/mission/src/mission-checkpoints.js": "120c449fe3dd7e5e486d0c3727272863d3ef3c67cf72524732e320f14cd34586",
+    "packages/mission/src/mission-state-service.js": "8427b84b6e45e2434c2ce62ff8fb873f4a548742e676ce500180ef15fbb439d9",
+    "packages/recovery/src/recovery-coordinator.js": "d0b3ecd1b8a0f6512c6ac1bf9794eb85625e7c50c433b69ad25854b64ee8ea4d",
+    "packages/api/src/titan-api.js": "84511bbd63858e9f5c95c0685497f8a8e4a663793a1cdeb1a222f438009bfb04",
+    "packages/orchestrator/src/mission-orchestrator.js": "f487b6f65e197d1c536af51d06a7ae5c3961fd7e96c21b3260924529f1853dc7",
+    "packages/proof/src/proof-store.js": "c68a88c1070d09309d2bd67f91c27adc9cae72808b23a661d83e871203dfcbb0",
+    "packages/memory/src/typed-memory.js": "136ad63bb26e0c03568fbeb09b7226e8ad94d91f764152748392ac0ec05379a7"
+  },
+  "residualRisk": []
+}

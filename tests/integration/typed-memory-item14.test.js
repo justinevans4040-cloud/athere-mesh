@@ -127,7 +127,9 @@ test('Item 14: superseded semantic fact is not current working state', async () 
   assert.equal(currentSemantic[0].content.key, 'SERVER_IP');
   assert.equal(currentSemantic[0].content.valueRedacted, true);
   assert.equal(currentSemantic[0].content.value, undefined);
+  assert.equal(currentSemantic[0].content.supersedes, undefined);
   assert.ok(historicalSemantic.some((entry) => entry.content.id === 'fact-ip-1' && entry.content.valueRedacted === true));
+  assert.ok(historicalSemantic.every((entry) => entry.content.supersededBy === undefined));
   assert.ok(!memory.working.some((entry) => entry.content?.key === 'SERVER_IP'));
   assert.equal(superseded.mission.authoritativeFacts.find((f) => f.id === 'fact-ip-2').status, 'current');
 

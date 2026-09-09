@@ -1,0 +1,106 @@
+{
+  "title": "full-plot-handoff-audit",
+  "at": "20260909T194000Z",
+  "order": "AUDIT THE WHOLE THING — do not erase or overwrite history",
+  "preservation": {
+    "archiveItem12NotStartedLine": "PRESERVED",
+    "archiveBannerAdded": true,
+    "activeRunCheckpointSections": [
+      "RED HAT RESIDUAL CLOSE ckpt 132",
+      "RED HAT FLEET ASSAULT ckpt 131",
+      "ITEM 12 SECURITY ckpt 130",
+      "ITEM 12 CHECKPOINTS ckpt 129",
+      "F5-F14 ckpt 128",
+      "ITEM 11 ckpt 125",
+      "ITEM 10 ckpt 124",
+      "ITEM 9 ckpt 123",
+      "ROSTER LOCK ckpt 112",
+      "FULL FLEET"
+    ],
+    "erasureDetected": false
+  },
+  "gitTruth": {
+    "branch": "cursor/forgefront-one-copy-and-quarantine",
+    "HEAD": "12c76fa",
+    "originMaster": "c3efddc",
+    "aheadOfMaster": 5,
+    "behindMaster": 0,
+    "items12to24AncestorsOfMaster": [
+      "9b2dc6d",
+      "eff20e0",
+      "586111b",
+      "606094d",
+      "5dd9eb5",
+      "7b811ad",
+      "7c1359e",
+      "f9775f2",
+      "7b03529"
+    ]
+  },
+  "findings": [
+    {
+      "id": "H1",
+      "severity": "CRITICAL",
+      "hole": "docs/current/ATHERE_THREAD_TIE_IN.md was the paste block and still said Item 24 may be local / Items 2-23 only — agents paste this and lose the plot",
+      "result": "CLOSED — updated Current state to Items 1-24 SHIPPED + ALIGNMENT GATE + honest unresolved list; HARD LAW preserved"
+    },
+    {
+      "id": "H2",
+      "severity": "HIGH",
+      "hole": "runtime/ATHERE_ACTIVE_RUN.md Status/Next had rewound to Item 13 next despite master shipping 13-24",
+      "result": "CLOSED earlier this turn — Status + ALIGNMENT GATE + Items 12-24 table; checkpoint history kept"
+    },
+    {
+      "id": "H3",
+      "severity": "HIGH",
+      "hole": "athere-continue skill still said Item 9 or Item 12 next (both skill copies)",
+      "result": "CLOSED — both ~/.agents and ~/.cursor copies say Items 1-24 shipped; THREAD_TIE_IN in required reading"
+    },
+    {
+      "id": "H4",
+      "severity": "MEDIUM",
+      "hole": "docs/current/ATHERE_REMOTE_EXECUTOR_DISPATCH.md said Item 10 / QR18 is not started",
+      "result": "CLOSED — corrected to shipped separately; dispatch does not prove QR18"
+    },
+    {
+      "id": "H5",
+      "severity": "MEDIUM",
+      "hole": "ATHERE_MISSION_STATE_SERVICE.md / ATHERE_WORKFLOW_PLAN_GRAPHS.md read like Item 12 unfinished",
+      "result": "CLOSED — clarified Item 12 shipped elsewhere; scope boundary kept"
+    },
+    {
+      "id": "H6",
+      "severity": "MEDIUM",
+      "hole": "archive ACTIVE_RUN still looked live and contained Item 12 not started",
+      "result": "CLOSED without erase — ARCHIVE ONLY banner added; historical line preserved"
+    },
+    {
+      "id": "H7",
+      "severity": "LOW",
+      "hole": "TITAN_OPERATING_MEMORY canonical path only C:\\Users\\justi\\Titan",
+      "result": "CLOSED — added WORKSPACE\\athere-mesh as Lenovo live checkout; Titan path retained"
+    },
+    {
+      "id": "H8",
+      "severity": "HIGH",
+      "hole": "origin/master ACTIVE_RUN still lacks ALIGNMENT GATE / Items 12-24 status table",
+      "result": "OPEN — requires Justin order to commit + push/merge; local tree fixed"
+    }
+  ],
+  "packagesPresent": [
+    "packages/mission/src/mission-checkpoints.js",
+    "packages/mission/src/mission-execution-trace.js",
+    "packages/memory/src/typed-memory.js",
+    "packages/executive/src/executive-controller.js",
+    "packages/skills/src/validated-skill-library.js",
+    "packages/improvement/src/self-improvement-sandbox.js",
+    "packages/distributed/src/distributed-mission-store.js",
+    "packages/contracts/src/distributed-state.js"
+  ],
+  "falseLiveAssertionsRemaining": [],
+  "openCountAfterRepair": 1,
+  "openResiduals": [
+    "H8: GitHub master handoff docs not updated until commit/push"
+  ],
+  "verdict": "NOT READY for cross-thread safety on GitHub master until H8 closed; READY for local handoff truth"
+}

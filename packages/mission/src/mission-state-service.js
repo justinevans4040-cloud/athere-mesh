@@ -20,12 +20,16 @@ import {
 } from '../../proof/src/qr18-layered-verification.js';
 import {
   applyCheckpointSnapshot,
+  assertBranchCap,
   assertCheckpointCap,
   assertCheckpointIntegrity,
   buildBranchRecord,
   buildCheckpointRecord,
+  captureCheckpointSnapshot,
   findBranch,
   findCheckpoint,
+  hashCheckpointSnapshot,
+  MAX_BRANCHES,
   MAX_CHECKPOINTS,
 } from './mission-checkpoints.js';
 import {
@@ -258,14 +262,26 @@ function validateFacts(value) {
 
 function currentFacts(facts, { key, includeHistorical = false, includeTentative = false } = {}) { const selected = facts.filter((fact) => { if (key !== undefined && fact.key !== key) return false; if (fact.status === 'tentative') return includeTentative; if (fact.status === 'current') return true; return includeHistorical; }); return Object.freeze(structuredClone(selected)); }
 
-/** F14: select(currentFacts) must not leak supersession lineage. */
-function selectSafeFacts(facts) {
-  return Object.freeze(currentFacts(facts).map((fact) => Object.freeze({
+/** Ordinary reads must not leak predecessor/successor lineage. */
+function readSafeFacts(facts, options) {
+  return Object.freeze(currentFacts(facts, options).map((fact) => Object.freeze({
     id: fact.id,
     key: fact.key,
     value: structuredClone(fact.value),
     status: fact.status,
     ...(fact.recordedAt ? { recordedAt: fact.recordedAt } : {}),
+  })));
+}
+
+function checkpointMetadata(checkpoints) {
+  return Object.freeze((checkpoints ?? []).map((checkpoint) => Object.freeze({
+    id: checkpoint.id,
+    label: checkpoint.label,
+    revision: checkpoint.revision,
+    actor: checkpoint.actor,
+    createdAt: checkpoint.createdAt,
+    verified: checkpoint.verified === true,
+    stateHash: checkpoint.stateHash,
   })));
 }
 
@@ -525,7 +541,12 @@ export function createMissionStateService({
       try {
         current = await store.loadMission({ root, missionId: mission.id });
         assertLoadedLedgerIntact(current.mission, current.revision);
-      } catch {
+      } catch (reloadError) {
+        // MH-03: integrity failures must fail closed — never treat tamper as lock contention.
+        const message = reloadError instanceof Error ? reloadError.message : String(reloadError);
+        if (/transition hash mismatch|transition history|integrity|corrupt|state hash/i.test(message)) {
+          throw reloadError;
+        }
         await retryOrThrow(saveError);
         continue;
       }
@@ -555,6 +576,7 @@ export function createMissionStateService({
       expectedRevision,
       operationId: operation,
       nowMs: Date.parse(clock()) || Date.now(),
+      requiredBudgetKey: 'max_state_mutations',
     });
     if (authorization.envelope.agent_id !== requiredId(actor, 'fact operation actor')) {
       throw new Error(`fact actor ${actor} does not match envelope agent_id ${authorization.envelope.agent_id}`);
@@ -598,19 +620,40 @@ export function createMissionStateService({
     return saveOperation({ mission, expectedRevision, operationId: operation, operationHash: hashValue(operationHashInput) });
   }
 
-  async function commitEpistemicOperation({ operationId, missionId, expectedRevision, actor, action, input, mutate }) {
+  async function commitEpistemicOperation({ operationId, missionId, expectedRevision, actor, action, input, mutate, envelope }) {
     const id = requiredId(missionId, 'mission id');
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
       throw new TypeError('revision conflict: expectedRevision must be a positive integer');
     }
     const operation = requiredId(operationId, 'operation id');
+    if (!envelope) throw new Error('epistemic operations require an agent operation envelope');
     const current = await store.loadMission({ root, missionId: id });
     assertLoadedLedgerIntact(current.mission, current.revision);
     const existingHistory = current.mission.transitionHistory ?? [];
     const history = existingHistory.length > 0
       ? existingHistory
       : [legacyImportRecord(current.mission, current.revision, clock())];
-    const operationHashInput = { actor, action, input };
+    const authorization = authorizeAgentOperation({
+      envelope,
+      mission: current.mission,
+      expectedRevision,
+      operationId: operation,
+      nowMs: Date.parse(clock()) || Date.now(),
+      requiredBudgetKey: 'max_state_mutations',
+    });
+    if (authorization.envelope.agent_id !== requiredId(actor, 'epistemic actor')) {
+      throw new Error(`epistemic actor ${actor} does not match envelope agent_id ${authorization.envelope.agent_id}`);
+    }
+    if (authorization.action !== action) {
+      throw new Error(`epistemic action mismatch: expected ${action}`);
+    }
+    assertRegisteredIdentityActive(authorization.envelope.agent_id);
+    const operationHashInput = {
+      actor: authorization.envelope.agent_id,
+      action,
+      input,
+      envelope: authorization.envelope,
+    };
     const prior = history.find((entry) => entry.operationId === operation);
     if (prior) {
       if (prior.operationHash !== hashValue(operationHashInput)) {
@@ -618,8 +661,6 @@ export function createMissionStateService({
       }
       return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
     }
-    const authorization = requiredFactPermission(current.mission, actor, action);
-    assertRegisteredIdentityActive(authorization.actor);
     const timestamp = clock();
     const epistemicClaims = Object.freeze(mutate(current.mission, timestamp));
     if (epistemicClaims.length > EPISTEMIC_MAX_CLAIMS) {
@@ -633,13 +674,17 @@ export function createMissionStateService({
       previousTransitionHash: history.at(-1).transitionHash,
       operationId: operation,
       operationHashInput,
-      actor: authorization.actor,
+      actor: authorization.envelope.agent_id,
       action,
       timestamp,
       input,
       before: current.mission,
       after: nextState,
-      authorization,
+      authorization: Object.freeze({
+        actor: authorization.envelope.agent_id,
+        actions: Object.freeze([action]),
+        granted: true,
+      }),
     });
     const mission = withAppendedTrace(
       Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) }),
@@ -682,6 +727,7 @@ export function createMissionStateService({
       operationId: operation,
       signalType,
       nowMs: Date.parse(clock()) || Date.now(),
+      requiredBudgetKey: 'max_state_mutations',
     });
     if (authorization.action !== action) {
       throw new Error(`recovery action mismatch: expected ${action}`);
@@ -697,16 +743,34 @@ export function createMissionStateService({
       return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
     }
     if (
-      (action === 'rollback_to_checkpoint' || action === 'retry_from_checkpoint')
+      (
+        action === 'rollback_to_checkpoint'
+        || action === 'retry_from_checkpoint'
+        || action === 'create_branch'
+        || action === 'quarantine_branch'
+      )
       && current.mission.status === 'completed'
     ) {
-      throw new Error('cannot rollback or retry a completed mission');
+      throw new Error(`cannot ${action.replaceAll('_', ' ')} a completed mission`);
     }
     if (
-      (action === 'rollback_to_checkpoint' || action === 'retry_from_checkpoint')
+      (
+        action === 'rollback_to_checkpoint'
+        || action === 'retry_from_checkpoint'
+        || action === 'quarantine_branch'
+      )
       && current.mission.status !== 'blocked'
     ) {
-      throw new Error('can only rollback or retry from a blocked mission');
+      throw new Error(`can only ${action.replaceAll('_', ' ')} from a blocked mission`);
+    }
+    // I12A1: create_branch may run on blocked (fork) or running (only if state already matches
+    // the checkpoint — never silently rewind certified work on a live running mission).
+    if (action === 'create_branch' && current.mission.status !== 'blocked' && current.mission.status !== 'running') {
+      throw new Error('can only create branch from a blocked or running mission');
+    }
+    // RH-H03: never capture a "verified" checkpoint of a blocked/failed/terminal mission.
+    if (action === 'create_checkpoint' && current.mission.status !== 'running') {
+      throw new Error('can only create checkpoint from a running mission');
     }
     const timestamp = clock();
     let nextState = mutate(current.mission, authorization, timestamp);
@@ -731,6 +795,10 @@ export function createMissionStateService({
         artifactReferences: nextState.artifactReferences,
         activeAgents: nextState.activeAgents,
         environmentObservations: nextState.environmentObservations,
+        authoritativeFacts: nextState.authoritativeFacts,
+        epistemicClaims: nextState.epistemicClaims,
+        validatedSkillBindings: nextState.validatedSkillBindings,
+        improvementBindings: nextState.improvementBindings,
         checkpoints: nextState.checkpoints,
         branches: nextState.branches,
         activeBranchId: nextState.activeBranchId,
@@ -766,6 +834,46 @@ export function createMissionStateService({
     });
   }
 
+  function restoreCheckpointOperation({
+    operationId,
+    missionId,
+    expectedRevision,
+    checkpointId,
+    envelope,
+    mode,
+  }) {
+    const id = requiredId(checkpointId, 'checkpoint id');
+    const action = mode === 'rollback' ? 'rollback_to_checkpoint' : 'retry_from_checkpoint';
+    const detail = mode === 'rollback'
+      ? 'rollback to verified checkpoint'
+      : 'retry from last known-good checkpoint';
+    return commitRecoveryOperation({
+      operationId,
+      missionId,
+      expectedRevision,
+      envelope,
+      action,
+      input: { checkpointId: id, detail },
+      resumeFromBlocked: true,
+      mutate(mission, authorization, timestamp) {
+        const checkpoint = findCheckpoint(mission, id);
+        return applyCheckpointSnapshot(mission, checkpoint, {
+          clearActiveBranch: true,
+          resyncObservation: {
+            source: authorization.envelope.agent_id,
+            key: 'environment_resync',
+            value: Object.freeze({
+              checkpointId: id,
+              mode,
+              requiresEnvironmentRebind: true,
+            }),
+            observedAt: timestamp,
+          },
+        });
+      },
+    });
+  }
+
   async function commitBindingOperation({
     operationId,
     missionId,
@@ -775,19 +883,42 @@ export function createMissionStateService({
     field,
     input,
     buildBinding,
+    envelope,
   }) {
     const id = requiredId(missionId, 'mission id');
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
       throw new TypeError('revision conflict: expectedRevision must be a positive integer');
     }
     const operation = requiredId(operationId, 'operation id');
+    if (!envelope) throw new Error('binding operations require an agent operation envelope');
     const current = await store.loadMission({ root, missionId: id });
     assertLoadedLedgerIntact(current.mission, current.revision);
     const existingHistory = current.mission.transitionHistory ?? [];
     const history = existingHistory.length > 0
       ? existingHistory
       : [legacyImportRecord(current.mission, current.revision, clock())];
-    const operationHashInput = { actor, action, field, input };
+    const authorization = authorizeAgentOperation({
+      envelope,
+      mission: current.mission,
+      expectedRevision,
+      operationId: operation,
+      nowMs: Date.parse(clock()) || Date.now(),
+      requiredBudgetKey: 'max_state_mutations',
+    });
+    if (authorization.envelope.agent_id !== requiredId(actor, 'binding actor')) {
+      throw new Error(`binding actor ${actor} does not match envelope agent_id ${authorization.envelope.agent_id}`);
+    }
+    if (authorization.action !== action) {
+      throw new Error(`binding action mismatch: expected ${action}`);
+    }
+    assertRegisteredIdentityActive(authorization.envelope.agent_id);
+    const operationHashInput = {
+      actor: authorization.envelope.agent_id,
+      action,
+      field,
+      input,
+      envelope: authorization.envelope,
+    };
     const prior = history.find((entry) => entry.operationId === operation);
     if (prior) {
       if (prior.operationHash !== hashValue(operationHashInput)) {
@@ -795,14 +926,12 @@ export function createMissionStateService({
       }
       return Object.freeze({ ...current, duplicate: true, operationVersion: prior.stateVersion });
     }
-    const authorization = requiredFactPermission(current.mission, actor, action);
-    assertRegisteredIdentityActive(authorization.actor);
     const timestamp = clock();
     const priorBindings = Array.isArray(current.mission[field]) ? current.mission[field] : [];
     if (priorBindings.length >= 32) {
       throw new Error(`${field} exceed cap (32)`);
     }
-    const nextBinding = buildBinding(timestamp, authorization.actor);
+    const nextBinding = buildBinding(timestamp, authorization.envelope.agent_id);
     const nextState = Object.freeze({
       ...current.mission,
       [field]: Object.freeze([...priorBindings, nextBinding]),
@@ -814,13 +943,17 @@ export function createMissionStateService({
       previousTransitionHash: history.at(-1).transitionHash,
       operationId: operation,
       operationHashInput,
-      actor: authorization.actor,
+      actor: authorization.envelope.agent_id,
       action,
       timestamp,
       input,
       before: current.mission,
       after: nextState,
-      authorization,
+      authorization: Object.freeze({
+        actor: authorization.envelope.agent_id,
+        actions: Object.freeze([action]),
+        granted: true,
+      }),
     });
     const mission = withAppendedTrace(
       Object.freeze({ ...nextState, transitionHistory: Object.freeze([...history, lineage]) }),
@@ -863,7 +996,19 @@ export function createMissionStateService({
       const existingHistory = current.mission.transitionHistory ?? [];
       const history = existingHistory.length > 0 ? existingHistory : [legacyImportRecord(current.mission, current.revision, clock())];
       let stateUpdate = validateUpdate(update, current.mission);
-      const authorization = authorizeAgentOperation({ envelope, mission: current.mission, expectedRevision, operationId: operation, signalType: signal?.type, nowMs: Date.parse(clock()) || Date.now() });
+      // RH-H01: blocked missions may only resume via checkpoint rollback/retry — never generic transition.
+      if (current.mission.status === 'blocked' && signal?.type === 'running') {
+        throw new Error('blocked mission can only resume via rollback_to_checkpoint or retry_from_checkpoint');
+      }
+      const authorization = authorizeAgentOperation({
+        envelope,
+        mission: current.mission,
+        expectedRevision,
+        operationId: operation,
+        signalType: signal?.type,
+        nowMs: Date.parse(clock()) || Date.now(),
+        requiredBudgetKey: 'max_state_mutations',
+      });
       const authorizedAgentId = authorization.envelope.agent_id;
       identities.assertActive(authorizedAgentId);
       if (signal?.agent !== authorizedAgentId) {
@@ -937,6 +1082,7 @@ export function createMissionStateService({
                 missionId: current.mission.id,
               },
               artifact: proofBytes,
+              expectedMissionStateVersion: expectedRevision,
             });
           } catch (error) {
             const reason = error instanceof Error ? error.message : 'invalid artifact reference';
@@ -1043,13 +1189,15 @@ export function createMissionStateService({
         ...(budget === undefined ? {} : { budget }),
       });
     },
-    async recordEpistemicClaim({ operationId, missionId, expectedRevision, actor, claim }) {
+    async recordEpistemicClaim({ operationId, missionId, expectedRevision, actor, claim, envelope }) {
       const normalized = normalizeEpistemicClaim(claim);
       const actorId = requiredId(actor, 'epistemic actor');
       const role = roleForAgent(actorId);
       if (role === 'executor' && (normalized.polarity === 'verified_true' || normalized.polarity === 'verified_false')) {
         throw new Error(`unauthorized epistemic: executor cannot record ${normalized.polarity}`);
       }
+      // Fail closed on identity before envelope so revoked/ghost actors stay distinguishable.
+      assertRegisteredIdentityActive(actorId);
       return commitEpistemicOperation({
         operationId,
         missionId,
@@ -1057,6 +1205,7 @@ export function createMissionStateService({
         actor: actorId,
         action: 'record_epistemic_claim',
         input: { claim: normalized },
+        envelope,
         mutate(mission) {
           const existing = mission.epistemicClaims ?? [];
           if (existing.some((entry) => entry.id === normalized.id)) {
@@ -1127,7 +1276,9 @@ export function createMissionStateService({
       actor,
       skillId,
       version,
+      envelope,
     }) {
+      if (!envelope) throw new Error('binding operations require an agent operation envelope');
       const skill = await skillLibrary.get({ skillId, version });
       const contentHash = hashValue(skill);
       const binding = Object.freeze({
@@ -1146,6 +1297,7 @@ export function createMissionStateService({
         action: 'observe_repository',
         field: 'validatedSkillBindings',
         input: { skillId: skill.id, version: skill.version, contentHash },
+        envelope,
         buildBinding(timestamp, authorizedActor) {
           return Object.freeze({
             ...binding,
@@ -1170,7 +1322,9 @@ export function createMissionStateService({
       expectedRevision,
       actor,
       proposalId,
+      envelope,
     }) {
+      if (!envelope) throw new Error('binding operations require an agent operation envelope');
       const proposal = improvement.get(proposalId);
       if (proposal.stage !== 'deploy' && proposal.stage !== 'monitor' && proposal.stage !== 'rollback') {
         throw new Error(`improvement proposal is not deployed: ${proposal.stage}`);
@@ -1184,6 +1338,7 @@ export function createMissionStateService({
         action: 'observe_repository',
         field: 'improvementBindings',
         input: { proposalId: proposal.id, stage: proposal.stage, contentHash },
+        envelope,
         buildBinding(timestamp, authorizedActor) {
           return Object.freeze({
             proposalId: proposal.id,
@@ -1320,8 +1475,12 @@ export function createMissionStateService({
         mutate(mission, authorization, timestamp) {
           const checkpoint = findCheckpoint(mission, fromCheckpointId);
           assertCheckpointIntegrity(checkpoint);
+          const existingBranches = mission.branches ?? [];
+          if (existingBranches.length >= MAX_BRANCHES) {
+            throw new Error(`branches exceed cap (${MAX_BRANCHES})`);
+          }
           const branchId = `br-${hashValue({ operationId, missionId: mission.id, fromCheckpointId }).slice(0, 24)}`;
-          if ((mission.branches ?? []).some((entry) => entry.id === branchId)) {
+          if (existingBranches.some((entry) => entry.id === branchId)) {
             throw new Error(`duplicate branch id: ${branchId}`);
           }
           const branch = buildBranchRecord({
@@ -1331,9 +1490,37 @@ export function createMissionStateService({
             actor: authorization.envelope.agent_id,
             createdAt: timestamp,
           });
+          // RH-H04: opening a new active branch quarantines any prior active branch (no stacked actives).
+          const quarantinedPriors = existingBranches.map((entry) => (
+            entry.status === 'active'
+              ? Object.freeze({ ...entry, status: 'quarantined' })
+              : entry
+          ));
+          const branches = Object.freeze([...quarantinedPriors, branch]);
+          assertBranchCap(branches);
+          const liveHash = hashCheckpointSnapshot(captureCheckpointSnapshot(mission));
+          const matchesCheckpoint = liveHash === checkpoint.stateHash;
+          if (mission.status === 'running' && !matchesCheckpoint) {
+            throw new Error('cannot create branch from diverged running state; block the mission first');
+          }
+          const restored = mission.status === 'blocked' || !matchesCheckpoint
+            ? applyCheckpointSnapshot(mission, checkpoint, {
+              resyncObservation: {
+                source: authorization.envelope.agent_id,
+                key: 'environment_resync',
+                value: Object.freeze({
+                  checkpointId: fromCheckpointId,
+                  mode: 'branch',
+                  strategy: branchStrategy,
+                  requiresEnvironmentRebind: true,
+                }),
+                observedAt: timestamp,
+              },
+            })
+            : mission;
           return Object.freeze({
-            ...mission,
-            branches: Object.freeze([...(mission.branches ?? []), branch]),
+            ...restored,
+            branches,
             activeBranchId: branchId,
           });
         },
@@ -1366,49 +1553,23 @@ export function createMissionStateService({
       });
     },
     async rollbackToCheckpoint({ operationId, missionId, expectedRevision, checkpointId, envelope }) {
-      const id = requiredId(checkpointId, 'checkpoint id');
-      return commitRecoveryOperation({
+      return restoreCheckpointOperation({
         operationId,
         missionId,
         expectedRevision,
+        checkpointId,
         envelope,
-        action: 'rollback_to_checkpoint',
-        input: { checkpointId: id, detail: 'rollback to verified checkpoint' },
-        resumeFromBlocked: true,
-        mutate(mission, authorization, timestamp) {
-          const checkpoint = findCheckpoint(mission, id);
-          return applyCheckpointSnapshot(mission, checkpoint, {
-            resyncObservation: {
-              source: authorization.envelope.agent_id,
-              key: 'environment_resync',
-              value: Object.freeze({ checkpointId: id, mode: 'rollback' }),
-              observedAt: timestamp,
-            },
-          });
-        },
+        mode: 'rollback',
       });
     },
     async retryFromCheckpoint({ operationId, missionId, expectedRevision, checkpointId, envelope }) {
-      const id = requiredId(checkpointId, 'checkpoint id');
-      return commitRecoveryOperation({
+      return restoreCheckpointOperation({
         operationId,
         missionId,
         expectedRevision,
+        checkpointId,
         envelope,
-        action: 'retry_from_checkpoint',
-        input: { checkpointId: id, detail: 'retry from last known-good checkpoint' },
-        resumeFromBlocked: true,
-        mutate(mission, authorization, timestamp) {
-          const checkpoint = findCheckpoint(mission, id);
-          return applyCheckpointSnapshot(mission, checkpoint, {
-            resyncObservation: {
-              source: authorization.envelope.agent_id,
-              key: 'environment_resync',
-              value: Object.freeze({ checkpointId: id, mode: 'retry' }),
-              observedAt: timestamp,
-            },
-          });
-        },
+        mode: 'retry',
       });
     },
     async get({ missionId, includeHistorical = false }) {
@@ -1421,7 +1582,8 @@ export function createMissionStateService({
         ...record,
         mission: Object.freeze({
           ...currentMission,
-          authoritativeFacts: currentFacts(record.mission.authoritativeFacts ?? []),
+          authoritativeFacts: readSafeFacts(record.mission.authoritativeFacts ?? []),
+          checkpoints: checkpointMetadata(record.mission.checkpoints),
         }),
       });
     },
@@ -1440,7 +1602,17 @@ export function createMissionStateService({
       const factKey = key === undefined ? undefined : requiredText(key, 'fact key');
       if (typeof includeHistorical !== 'boolean') throw new TypeError('includeHistorical must be a boolean');
       if (typeof includeTentative !== 'boolean') throw new TypeError('includeTentative must be a boolean');
-      return currentFacts(record.mission.authoritativeFacts ?? [], { key: factKey, includeHistorical, includeTentative });
+      if (includeHistorical) {
+        return currentFacts(record.mission.authoritativeFacts ?? [], {
+          key: factKey,
+          includeHistorical,
+          includeTentative,
+        });
+      }
+      return readSafeFacts(record.mission.authoritativeFacts ?? [], {
+        key: factKey,
+        includeTentative,
+      });
     },
     async select({ missionId, fields }) {
       if (!Array.isArray(fields) || fields.length === 0) throw new TypeError('selected state fields must be a non-empty array');
@@ -1450,8 +1622,10 @@ export function createMissionStateService({
       for (const field of fields) {
         if (!SELECTABLE_FIELDS.has(field)) throw new Error(`unsupported selected state field: ${field}`);
         selected[field] = field === 'currentFacts'
-          ? selectSafeFacts(record.mission.authoritativeFacts ?? [])
-          : structuredClone(record.mission[field]);
+          ? readSafeFacts(record.mission.authoritativeFacts ?? [])
+          : field === 'checkpoints'
+            ? checkpointMetadata(record.mission.checkpoints)
+            : structuredClone(record.mission[field]);
       }
       return Object.freeze(selected);
     },

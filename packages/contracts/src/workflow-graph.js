@@ -236,6 +236,20 @@ export function assessMissionPath({
         violations.push(`blocks:${edge.from}->blocks:${edge.to}`);
       }
     }
+    if (edge.kind === 'retry_after') {
+      // A retry target cannot be declared complete until its prerequisite repair
+      // or recovery step is complete.
+      if (completed.has(edge.to) && !completed.has(edge.from)) {
+        violations.push(`retry_after:${edge.to}->requires:${edge.from}`);
+      }
+    }
+    if (edge.kind === 'rollback_to') {
+      // Once the source failed, the rollback target must be reopened rather
+      // than remaining falsely certified as complete.
+      if (failed.has(edge.from) && completed.has(edge.to)) {
+        violations.push(`rollback_to:${edge.from}->target:${edge.to}:must_reopen`);
+      }
+    }
     if (edge.kind === 'satisfies') {
       // Informational for goals; if `from` completed, goal `to` is considered addressed.
       // No violation alone — recorded for evidence.

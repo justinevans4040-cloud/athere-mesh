@@ -14,7 +14,12 @@ const titanParts = {
   subgoals: [
     { id: 'inspect-repository', goalId: 'validate-titan', objective: 'Inspect the repository state' },
     { id: 'run-node-tests', goalId: 'validate-titan', objective: 'Execute the Node test suite' },
-    { id: 'verify-proof', goalId: 'validate-titan', objective: 'Verify proof-bound completion' },
+    {
+      id: 'verify-proof',
+      goalId: 'validate-titan',
+      objective: 'Verify proof-bound completion',
+      verificationGate: true,
+    },
   ],
   dependencies: [
     { prerequisite: 'inspect-repository', dependent: 'run-node-tests' },
@@ -91,7 +96,7 @@ test('assessMissionPath accepts an in-order completed prefix', () => {
   assert.equal(assessment.valid, true);
   assertValidMissionPath({
     workflowGraph: graph,
-    completedWork: ['inspect-repository', 'run-node-tests', 'verify-proof'],
+    completedWork: ['inspect-repository', 'run-node-tests', 'verify-proof', 'gate:verify-proof'],
     pendingWork: [],
     failedWork: [],
   });
@@ -136,6 +141,38 @@ test('assessMissionPath rejects blocked work completed while the blocker is inco
   });
   assert.equal(assessment.valid, false);
   assert.match(assessment.reason, /blocks:hold->blocks:ship/);
+});
+
+test('recovery edges are enforced instead of representational-only', () => {
+  const graph = buildWorkflowGraph({
+    goals: [{ id: 'g', objective: 'g' }],
+    subgoals: [
+      { id: 'repair', goalId: 'g', objective: 'repair' },
+      { id: 'retry', goalId: 'g', objective: 'retry' },
+    ],
+    dependencies: [
+      { kind: 'retry_after', from: 'repair', to: 'retry' },
+      { kind: 'rollback_to', from: 'retry', to: 'repair' },
+    ],
+    currentPlan: { id: 'p', version: 1, steps: ['repair', 'retry'] },
+  });
+  const retryTooEarly = assessMissionPath({
+    workflowGraph: graph,
+    completedWork: ['retry'],
+    pendingWork: ['repair'],
+    failedWork: [],
+  });
+  assert.equal(retryTooEarly.valid, false);
+  assert.match(retryTooEarly.reason, /retry_after:retry->requires:repair/);
+
+  const invalidRollbackState = assessMissionPath({
+    workflowGraph: graph,
+    completedWork: ['repair', 'retry'],
+    pendingWork: [],
+    failedWork: ['retry'],
+  });
+  assert.equal(invalidRollbackState.valid, false);
+  assert.match(invalidRollbackState.reason, /rollback_to:retry->target:repair/);
 });
 
 test('missing workflow graph is an invalid path', () => {

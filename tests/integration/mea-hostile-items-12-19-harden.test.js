@@ -93,7 +93,14 @@ test('H12: checkpoint creation fails closed at hard cap', async () => {
     id: 'mission-h12-cap',
     operationId: 'op-h12-cap-create',
   }));
-  let rev = created;
+  let rev = await service.transition({
+    operationId: 'op-h12-cap-run',
+    missionId: created.mission.id,
+    expectedRevision: created.revision,
+    signal: { type: 'running', agent: 'nyx' },
+    update: { activeAgents: ['nyx'] },
+    envelope: envelopeFor(created, 'op-h12-cap-run', 'nyx'),
+  });
   for (let i = 0; i < max; i += 1) {
     rev = await service.createCheckpoint({
       operationId: `op-h12-cap-${i}`,

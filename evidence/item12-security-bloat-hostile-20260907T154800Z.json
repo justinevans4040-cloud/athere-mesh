@@ -1,0 +1,20 @@
+﻿{
+    "openCount":  0,
+    "residualNamed":  [
+                          "I12S1 heal selects verified without pre-hash (LOW)",
+                          "I12B1 dead recoveryPermissionActions export (LOW bloat)",
+                          "I12B2 rollback/retry near-duplicate paths (LOW bloat)"
+                      ],
+    "timestamp":  "2026-09-07T15:56:27Z",
+    "breakScript":  "scratch/break-item12.mjs",
+    "suite":  "mea-hostile-item12-security + gaps + item12 + mission-checkpoints-item12 = 15/15 GREEN",
+    "claim":  "Item 12 security/bloat/bad-actor hostile audit CLOSED: create_branch cannot rewind diverged running work; rollback quarantines active branch; completed forbids branch/rollback/retry; corrupt ledger isolated in fleet recovery; blockThenHeal does not silent-swallow createBranch failures",
+    "verdict":  "READY",
+    "holesClosed":  [
+                        "I12A1",
+                        "I12A2",
+                        "I12A3",
+                        "I12A4",
+                        "I12B3"
+                    ]
+}

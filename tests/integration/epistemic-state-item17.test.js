@@ -73,6 +73,7 @@ test('Item 17: service records epistemic claims and treats polarities differentl
     missionId: created.mission.id,
     expectedRevision: created.revision,
     actor: 'miss-vale-prime',
+    envelope: envelopeFor(created, 'op-ep-unknown', 'miss-vale-prime', 'record_epistemic_claim'),
     claim: {
       id: 'ep-unknown-ip',
       subject: 'SERVER_IP',
@@ -93,6 +94,7 @@ test('Item 17: service records epistemic claims and treats polarities differentl
     missionId: created.mission.id,
     expectedRevision: unknown.revision,
     actor: 'qra_emerge_audit',
+    envelope: envelopeFor(unknown, 'op-ep-false', 'qra_emerge_audit', 'record_epistemic_claim'),
     claim: {
       id: 'ep-false-ip',
       subject: 'LEGACY_HOST',

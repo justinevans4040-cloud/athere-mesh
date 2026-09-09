@@ -87,8 +87,8 @@ test('chat API never sends denied recognized execution requests to the advisory 
     const response = await fetch(`${api.url}/api/chat?agent=agent-vale`, {
       method: 'POST', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: 'Run all Titan tests',
     });
-    assert.equal(response.status, 409);
-    assert.deepEqual(await response.json(), { error: 'execution request must use /api/commands' });
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'authentication required' });
     assert.equal(completionCalls, 0);
   } finally {
     await api.close();

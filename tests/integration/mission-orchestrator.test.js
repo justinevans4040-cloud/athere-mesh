@@ -467,7 +467,10 @@ test('recovery blocks interrupted missions without rerunning a deterministic exe
 
 test('telemetry publishing failures cannot overturn a durably completed mission', async () => {
   const root = await workspace();
-  const throwingBus = { async publish() { throw new Error('telemetry offline'); } };
+  const throwingBus = {
+    failClosedOnPublish: false,
+    async publish() { throw new Error('telemetry offline'); },
+  };
   const orchestrator = createMissionOrchestrator({
     root,
     repositoryRoot: root,
@@ -490,13 +493,11 @@ test('telemetry publishing failures cannot overturn a durably completed mission'
   assert.equal((await freshOrchestrator.getMission({ missionId: result.mission.id })).mission.status, 'completed');
 });
 
-// Network buses (Redis) set failClosedOnPublish. A swallowed transport failure
- // would look like "signal delivered" while the remote stream stays empty —
- // the exact silent-empty-stream failure the seed guard exists to prevent.
-test('network-bus publish failure fails closed and does not complete the mission', async () => {
+// Every injected bus fails closed unless it explicitly opts into soft telemetry.
+// Otherwise a swallowed publish failure makes durable state and observers diverge.
+test('unmarked bus publish failure fails closed and does not complete the mission', async () => {
   const root = await workspace();
   const throwingBus = {
-    failClosedOnPublish: true,
     async publish() { throw new Error('redis connection failed: ECONNREFUSED'); },
   };
   const orchestrator = createMissionOrchestrator({

@@ -2,7 +2,13 @@ import { createHash } from 'node:crypto';
 
 /** Hard cap against checkpoint DoS via recovery ops. */
 export const MAX_CHECKPOINTS = 32;
+/** Hard cap against branch DoS via recovery ops. */
+export const MAX_BRANCHES = 32;
 
+/**
+ * Item 12: verified checkpoints must restore work partitions AND reasoning
+ * state so a failed path cannot poison facts/claims/bindings after rollback.
+ */
 const SNAPSHOT_FIELDS = Object.freeze([
   'status',
   'completedWork',
@@ -12,12 +18,24 @@ const SNAPSHOT_FIELDS = Object.freeze([
   'artifactReferences',
   'activeAgents',
   'environmentObservations',
+  'authoritativeFacts',
+  'epistemicClaims',
+  'validatedSkillBindings',
+  'improvementBindings',
 ]);
 
 export function assertCheckpointCap(checkpoints) {
   if (!Array.isArray(checkpoints)) throw new TypeError('checkpoints must be an array');
   if (checkpoints.length > MAX_CHECKPOINTS) {
     throw new Error(`checkpoints exceed cap (${MAX_CHECKPOINTS})`);
+  }
+  return true;
+}
+
+export function assertBranchCap(branches) {
+  if (!Array.isArray(branches)) throw new TypeError('branches must be an array');
+  if (branches.length > MAX_BRANCHES) {
+    throw new Error(`branches exceed cap (${MAX_BRANCHES})`);
   }
   return true;
 }
@@ -44,13 +62,18 @@ function requiredText(value, label) {
   return value.trim();
 }
 
+function emptyDefault(field) {
+  if (field === 'status') return 'accepted';
+  return [];
+}
+
 export function captureCheckpointSnapshot(mission) {
   if (!mission || typeof mission !== 'object' || Array.isArray(mission)) {
     throw new TypeError('mission is required to capture a checkpoint');
   }
   const snapshot = {};
   for (const field of SNAPSHOT_FIELDS) {
-    snapshot[field] = structuredClone(mission[field] ?? (field === 'status' ? 'accepted' : []));
+    snapshot[field] = structuredClone(mission[field] ?? emptyDefault(field));
   }
   return Object.freeze(snapshot);
 }
@@ -72,7 +95,6 @@ export function buildCheckpointRecord({ id, label, revision, actor, createdAt, m
     snapshot,
   });
 }
-
 export function findCheckpoint(mission, checkpointId) {
   const id = requiredId(checkpointId, 'checkpoint id');
   const checkpoint = (mission.checkpoints ?? []).find((entry) => entry.id === id);
@@ -102,7 +124,6 @@ export function buildBranchRecord({ id, checkpointId, strategy, actor, createdAt
     createdAt: requiredText(createdAt, 'branch createdAt'),
   });
 }
-
 export function findBranch(mission, branchId) {
   const id = requiredId(branchId, 'branch id');
   const branch = (mission.branches ?? []).find((entry) => entry.id === id);
@@ -110,13 +131,34 @@ export function findBranch(mission, branchId) {
   return branch;
 }
 
-export function applyCheckpointSnapshot(mission, checkpoint, { resyncObservation } = {}) {
+/**
+ * Restore mission work + reasoning state from a verified checkpoint.
+ * Environment resync is marked for executors to rebind (activeAgents cleared).
+ */
+export function applyCheckpointSnapshot(mission, checkpoint, { resyncObservation, clearActiveBranch = false } = {}) {
   assertCheckpointIntegrity(checkpoint);
   const snapshot = checkpoint.snapshot;
   const observations = Array.isArray(snapshot.environmentObservations)
     ? [...snapshot.environmentObservations]
     : [];
   if (resyncObservation) observations.push(resyncObservation);
+  let branches = Array.isArray(mission.branches) ? [...mission.branches] : [];
+  let activeBranchId = mission.activeBranchId ?? 'main';
+  if (clearActiveBranch) {
+    const activeId = typeof activeBranchId === 'string' ? activeBranchId : 'main';
+    if (activeId !== 'main') {
+      branches = branches.map((entry) => (
+        entry.id === activeId && entry.status === 'active'
+          ? Object.freeze({
+            ...entry,
+            status: 'quarantined',
+            reason: entry.reason ?? 'auto-quarantined on rollback/retry',
+          })
+          : entry
+      ));
+    }
+    activeBranchId = 'main';
+  }
   return Object.freeze({
     ...mission,
     completedWork: Object.freeze(structuredClone(snapshot.completedWork ?? [])),
@@ -124,18 +166,17 @@ export function applyCheckpointSnapshot(mission, checkpoint, { resyncObservation
     failedWork: Object.freeze(structuredClone(snapshot.failedWork ?? [])),
     evidence: Object.freeze(structuredClone(snapshot.evidence ?? [])),
     artifactReferences: Object.freeze(structuredClone(snapshot.artifactReferences ?? [])),
-    activeAgents: Object.freeze(structuredClone(snapshot.activeAgents ?? [])),
+    // Force rebind after rollback/branch/retry — do not resurrect crashed agents.
+    activeAgents: Object.freeze([]),
     environmentObservations: Object.freeze(structuredClone(observations)),
+    authoritativeFacts: Object.freeze(structuredClone(snapshot.authoritativeFacts ?? [])),
+    epistemicClaims: Object.freeze(structuredClone(snapshot.epistemicClaims ?? [])),
+    validatedSkillBindings: Object.freeze(structuredClone(snapshot.validatedSkillBindings ?? [])),
+    improvementBindings: Object.freeze(structuredClone(snapshot.improvementBindings ?? [])),
+    ...(clearActiveBranch ? {
+      branches: Object.freeze(branches),
+      activeBranchId,
+    } : {}),
   });
 }
-
-export function recoveryPermissionActions() {
-  return Object.freeze([
-    'block_interrupted_mission',
-    'create_checkpoint',
-    'create_branch',
-    'quarantine_branch',
-    'rollback_to_checkpoint',
-    'retry_from_checkpoint',
-  ]);
-}
+// Recovery permission policy is enforced by agent-operation authorization.

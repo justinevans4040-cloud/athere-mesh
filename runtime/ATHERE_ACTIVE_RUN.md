@@ -1,8 +1,128 @@
 # Athere Active Run
 
-**Status:** Active — Command Deck live; Items 3–11 Phase 1–3 hostile **OPEN_COUNT 0** through ckpt 128 (F1–F14 closed). Vale Prime sole Miss Vale. Local-only.
+**Status:** Active — **FULL FLEET ONLINE** + keep-mesh / add-agents. Backlog **Items 1–24 shipped**. Hostile residual closes **ckpts 126–132** (OPEN_COUNT 0) included. Vale Prime sole Miss Vale. NYX Apex on default path. Command Deck live. Local-only.
 
-**Archive (ckpts 1–91):** `archive/runs/ATHERE_ACTIVE_RUN_ckpts_1-91_2026-09-04.md`
+**Current state doc:** `docs/current/ATHERE_MESH_TITAN_CURRENT_STATE.md`  
+**GitHub repo index (23 repos):** `docs/current/GITHUB_ACCOUNT_REPO_INDEX.md`
+
+**ALIGNMENT GATE (HARD — every agent, every thread):**
+1. Prefer `origin/master` + this **Status** line over chat summaries and dirty local guesses.
+2. **Do not claim “Item 13 next.”** Items 13–24 are already in git history on `master` (`eff20e0` … `7b03529`).
+3. If this file’s Status conflicts with `git log origin/master --oneline` for Items 13–24, stop and reconcile before speaking.
+4. Current unresolved work is **not** the Phase 0–4 24-item backlog line.
+
+**Current unresolved (honest):**
+- Sales Hunter Tier Zero build focus (drafts/pipeline; approved local_outbox send is a capability under Zero — never claim external SMTP)
+- Full NYX upgrade ladder (schema step 1 on route; ladder not finished)
+- Full IN/OUT agent cut across 65 notebooks
+- Remote fabric still env-gated
+- Perform ladder **#8 Ship** — handoff/plot lock to GitHub ordered 2026-09-09 (this pass)
+- Wake/ForgeFront organize on Ichabod (selective; no 100GB Lenovo dump)
+- **Deferred:** Ronan · **Parked:** 14 clusters · **Parked:** A15
+
+**Next:** Justin’s current order only. Do not invent backlog homework.
+
+**Archive (ckpts 1–91):** `archive/runs/ATHERE_ACTIVE_RUN_ckpts_1-91_2026-09-04.md` — **ARCHIVE ONLY** (bannered). Not live next-item.
+
+**Paste tie-in for new threads:** `docs/current/ATHERE_THREAD_TIE_IN.md`
+
+## BACKLOG ITEMS 12–24 — SHIPPED ON MASTER (canonical)
+
+| Item | Commit | Note |
+|---|---|---|
+| 12 Checkpoints / branching / rollback / quarantine | `9b2dc6d` | Self-heal for Items 1–12 |
+| 13 Execution tracing / observability | `eff20e0` | |
+| 14 Typed memory | `586111b` | |
+| 15–16 State-aware retrieval + Executive Controller | `606094d` | |
+| 17–19 Epistemic + model adapter + MCP/A2A (+ 12–19 harden) | `5dd9eb5` | |
+| 20–21 Crypto identity + gated experience→learning | `7b811ad` | |
+| 22 Validated skill library | `7c1359e` | |
+| 23 Self-improvement sandbox (+ HARDEN 22–23) | `f9775f2` | |
+| 24 Distributed state layer | `7b03529` | |
+
+Later local ckpts 126–132 are **hostile residual closes on top of that**, not a rewind to “Item 13 next.”
+
+## RED HAT RESIDUAL CLOSE — ZERO PARKING LOT (ckpt 132) — Justin 2026-09-07
+
+**Order:** Close every residual named after the fleet assault.
+
+| Residual | Result |
+|---|---|
+| I12S1 verified-without-prehash | CLOSED — checkpoint integrity checked before executive/recovery selection |
+| I12B1 dead recovery export | CLOSED — removed |
+| I12B2 rollback/retry duplication | CLOSED — shared restore path |
+| MH-05 missing recovery permission false liveness | CLOSED — classified corrupt, never resumable |
+| MH-07 cross-operation budget theater | CLOSED — mutation authorization requires positive `max_state_mutations` |
+| MH-08 unauthenticated loopback chat | CLOSED — bearer required |
+| MH-09 silent memory-bus publish loss | CLOSED — fail-closed by default; duplicate retries republish |
+| MH-10 repeated-interruption idempotency collision | CLOSED — revision-bound recovery operation IDs |
+| I12-H05/H06 fact lineage/checkpoint snapshot leaks | CLOSED — ordinary reads redact lineage/snapshots |
+| I12-H08 stale artifact revision | CLOSED — proof version bound to completion revision |
+| I12-H09 unenforced recovery graph edges | CLOSED — `retry_after` / `rollback_to` path checks |
+
+**Evidence:** `evidence/redhat-residual-close-20260907T163200Z.json` · `scratch/break-redhat-residuals.mjs` **OPEN_COUNT 0** · all prior breaks **OPEN_COUNT 0** · complete repository suite **484 tests / 467 pass / 0 fail / 17 skipped**
+
+**Residual OPEN:** none from ckpts 130–132.
+
+**Next:** Justin’s current order only (Items 13–24 already shipped on `master`).
+
+## RED HAT FLEET ASSAULT — ITEMS 3–12 (ckpt 131) — Justin 2026-09-07
+
+**Order:** Massive no-mercy hostile assault across all code to date. See how it breaks and fix it.
+
+| ID | Severity | Hole | Result |
+|---|---|---|---|
+| RH-H01 | CRITICAL | Manager/executor resume `blocked` via generic `transition` (bypass checkpoint) | CLOSED |
+| RH-H02 | HIGH | Main-line auto-heal picks latest of many CPs (poisonable) | CLOSED — require alternate branch first |
+| RH-H03 | HIGH | `create_checkpoint` while blocked captures poison | CLOSED — running only |
+| RH-H04 | MEDIUM | Stacked active branches | CLOSED — prior actives quarantined |
+| MH-01 | HIGH | Epistemic ops without envelope | CLOSED |
+| MH-02 | HIGH | Skill/improvement bind without envelope | CLOSED |
+| MH-03 | HIGH | `saveOperation` empty-catch swallows ledger tamper | CLOSED |
+| MH-04 | MEDIUM | `inspectRecovery` trusted raw store without ledger verify | CLOSED |
+| MH-06 | MEDIUM | Heal soft-masked integrity failures | CLOSED — rethrow corrupt |
+
+**Evidence:** `evidence/redhat-fleet-assault-20260907T160800Z.json` · `scratch/break-redhat-fleet.mjs` **OPEN_COUNT 0** · prior breaks F1–F14 + Item12 still **OPEN_COUNT 0**
+
+**Residual named:** all closed in ckpt 132.
+
+**Next:** Justin’s current order only (Items 13–24 already shipped on `master`).
+
+## ITEM 12 SECURITY / BLOAT / BAD-ACTOR HOSTILE (ckpt 130) — Justin 2026-09-07
+
+**Order:** Hostile audit Item 12 for security bloat and bad-actor holes (asked after capability close). Do not soften.
+
+| ID | Hole | Result |
+|---|---|---|
+| I12A1 | `create_branch` rewinds diverged **running** work | CLOSED — reject; block first |
+| I12A2 | Rollback leaves failed branch **active** | CLOSED — quarantine + `activeBranchId=main` |
+| I12A3 | `create_branch` on **completed** → zombie terminal | CLOSED — forbid recovery ops on completed |
+| I12A4 | Corrupt ledger aborts **fleet** recovery | CLOSED — isolate into `corrupt`; continue |
+| I12B3 | Orchestrator silent `catch {}` on createBranch | CLOSED — soft-fail only on cap/permission/duplicate |
+
+**Evidence:** `evidence/item12-security-bloat-hostile-20260907T154800Z.json` · `scratch/break-item12.mjs` **OPEN_COUNT 0** · `mea-hostile-item12-security.test.js` + Item 12 suites **15/15 GREEN**
+
+**Superseded by:** ckpt 131 Red Hat fleet assault.
+
+**Residual named:** all closed in ckpt 132.
+
+## ITEM 12 CHECKPOINTS / BRANCHING / ROLLBACK / QUARANTINE (ckpt 129) — Justin 2026-09-07
+
+**Order:** Execute backlog Item 12. No rebuild. Leave nothing behind.
+
+| Gate | Result | Evidence |
+|---|---|---|
+| Acceptance | Mid-mission failure recovers without full restart | `mission-checkpoints-item12.test.js` e2e + orchestrator auto-heal |
+| Hole closed | Checkpoint restores facts/claims/bindings (not only work partitions) | `mea-hostile-item12-gaps.test.js` |
+| Hole closed | `createBranch` forks live state to checkpoint (not metadata-only) | same |
+| Hole closed | Auto-heal retries from **branch origin** checkpoint | same + recovery-coordinator |
+| Hole closed | Branch hard cap 32 | `MAX_BRANCHES` |
+| Hole closed | Orchestrator opens alternate branch before heal | `blockThenHeal` |
+| Break script | **OPEN_COUNT 0** | `evidence/item12-checkpoints-branching-20260907T090000Z.json` |
+
+**Superseded security gate:** ckpt 130 (security/bloat/bad-actor).
+
+**Next:** Justin’s current order only (Items 13–24 already shipped on `master`).
 
 ## F5–F14 CLOSE — NO PARKING LOT (ckpt 128) — Justin 2026-09-06
 
@@ -61,7 +181,7 @@
 | Hole closed | Failed intermediate cannot waive plan-order for earlier incomplete steps | `evidence/item11-workflow-failed-skip-20260905T135300Z.json` |
 | Focused suite | **32/32 GREEN** | workflow + Item 10/11 reaudit + new fail-skip tests |
 
-**Production:** `packages/contracts/src/workflow-graph.js`. QR18 legacy L5 aligned. Item 12 not started.
+**Production:** `packages/contracts/src/workflow-graph.js`. QR18 legacy L5 aligned. Item 12 closed in ckpt 129.
 
 ## ITEM 10 QR18 LAYERED — LEVEL 1 LEDGER GATE (ckpt 124) — Justin 2026-09-05
 

@@ -118,7 +118,9 @@ test('startup recovery refuses to steal a genuinely active owner lease', async (
 test('restart recovery assigns interrupted running missions to the recovery driver', async () => {
   const root = await mkdtemp(join(tmpdir(), 'titan-recovery-'));
   const accepted = createMission({ id: 'running-1', intent: 'Inspect Ubuntu', clock: clock('2026-08-23T10:00:00.000Z') });
-  const running = transitionMission(accepted, { type: 'running', agent: 'jarvis' }, { clock: clock('2026-08-23T10:01:00.000Z') });
+  const running = recoverableMission(
+    transitionMission(accepted, { type: 'running', agent: 'jarvis' }, { clock: clock('2026-08-23T10:01:00.000Z') }),
+  );
   await saveMission({ root, mission: running });
   assert.deepEqual(await inspectRecovery({ root }), {
     resumable: [{ missionId: 'running-1', revision: 1, action: 'resume', assignedTo: 'qra_recovery_driver' }],
@@ -250,7 +252,7 @@ test('startup recovery preserves authoritative lineage with a stable recovery op
   });
   assert.equal((await state.verifyHistory({ missionId: 'mission-authoritative-recovery' })).valid, true);
   const history = await state.history({ missionId: 'mission-authoritative-recovery' });
-  assert.equal(history.at(-1).operationId, 'mission-authoritative-recovery-recovery-block');
+  assert.equal(history.at(-1).operationId, 'mission-authoritative-recovery-recovery-block-v1');
 });
 
 test('startup recovery imports legacy snapshots into the authoritative transition ledger', async () => {
@@ -267,7 +269,7 @@ test('startup recovery imports legacy snapshots into the authoritative transitio
   assert.equal(record.revision, 2);
   assert.equal(record.mission.transitionHistory.length, 2);
   assert.equal(record.mission.transitionHistory[0].action, 'import_legacy_snapshot');
-  assert.equal(record.mission.transitionHistory[1].operationId, 'legacy-recovery-ledger-recovery-block');
+  assert.equal(record.mission.transitionHistory[1].operationId, 'legacy-recovery-ledger-recovery-block-v1');
   const state = createMissionStateService({ root });
   const verification = await state.verifyHistory({ missionId });
   assert.equal(verification.valid, true);
@@ -288,7 +290,14 @@ test('F5: empty permissions deny recovery block_interrupted_mission', async () =
 
   assert.deepEqual(
     await recoverInterruptedMissions({ root, clock: clock('2026-08-23T10:00:20.000Z') }),
-    { recovered: [], blocked: [], corrupt: [] },
+    {
+      recovered: [],
+      blocked: [],
+      corrupt: [{
+        missionId,
+        reason: 'missing recovery permission: qra_recovery_driver block_interrupted_mission',
+      }],
+    },
   );
   const record = await loadMission({ root, missionId });
   assert.equal(record.mission.status, 'accepted');

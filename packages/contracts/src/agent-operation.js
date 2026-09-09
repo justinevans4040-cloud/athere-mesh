@@ -7,7 +7,16 @@ import {
 } from './execution-roles.js';
 
 const OPERATIONS = Object.freeze({
-  'miss-vale-prime': Object.freeze({ capabilityId: 'mission-supervisor', action: 'supervise_mission', signalType: 'running' }),
+  'miss-vale-prime': Object.freeze({
+    capabilityId: 'mission-supervisor',
+    action: 'supervise_mission',
+    signalType: 'running',
+    allowedActions: Object.freeze(['supervise_mission', 'record_epistemic_claim']),
+    capabilityFor: Object.freeze({
+      supervise_mission: 'mission-supervisor',
+      record_epistemic_claim: 'epistemic-claim-writer',
+    }),
+  }),
   'the-britt': Object.freeze({ capabilityId: 'dangerous-authority-coholder', action: 'cohold_dangerous_authority', signalType: 'running' }),
   caretaker: Object.freeze({ capabilityId: 'fleet-health-runner', action: 'fleet_health_check', signalType: 'running' }),
   'agent-vale': Object.freeze({ capabilityId: 'ollama-chat', action: 'advisory_chat', signalType: 'running' }),
@@ -49,7 +58,16 @@ const OPERATIONS = Object.freeze({
   aether_wlm: Object.freeze({ capabilityId: 'execution-kernel', action: 'execute_wlm_kernel', signalType: 'running' }),
   qra_emerge_orchestration: Object.freeze({ capabilityId: 'system-integration-runner', action: 'run_system_integration', signalType: 'running' }),
   qra_emerge_ai_secops: Object.freeze({ capabilityId: 'prompt-injection-defense', action: 'screen_prompt_injection', signalType: 'running' }),
-  qra_emerge_audit: Object.freeze({ capabilityId: 'proof-verifier', action: 'verify_proof', signalType: 'completed' }),
+  qra_emerge_audit: Object.freeze({
+    capabilityId: 'proof-verifier',
+    action: 'verify_proof',
+    signalType: 'completed',
+    allowedActions: Object.freeze(['verify_proof', 'record_epistemic_claim']),
+    capabilityFor: Object.freeze({
+      verify_proof: 'proof-verifier',
+      record_epistemic_claim: 'epistemic-claim-writer',
+    }),
+  }),
   qra_emerge_context: Object.freeze({ capabilityId: 'context-memory-lock', action: 'lock_context_memory', signalType: 'running' }),
   qra_emerge_ethics_liaison: Object.freeze({ capabilityId: 'compliance-liaison', action: 'liaise_compliance', signalType: 'running' }),
   qra_emerge_mlops_data: Object.freeze({ capabilityId: 'data-pipeline-validator', action: 'validate_data_pipeline', signalType: 'running' }),
@@ -145,7 +163,15 @@ export function createAgentOperationEnvelope({
   });
 }
 
-export function authorizeAgentOperation({ envelope, mission, expectedRevision, operationId, signalType, nowMs = Date.now() }) {
+export function authorizeAgentOperation({
+  envelope,
+  mission,
+  expectedRevision,
+  operationId,
+  signalType,
+  nowMs = Date.now(),
+  requiredBudgetKey,
+}) {
   const parsed = parseAgentEnvelope(envelope);
   const operation = operationFor(parsed.agent_id);
   const role = roleForAgent(parsed.agent_id);
@@ -182,7 +208,7 @@ export function authorizeAgentOperation({ envelope, mission, expectedRevision, o
   }
   const evaluatedAt = Number.isFinite(nowMs) ? nowMs : Date.now();
   assertEnvelopeDeadline(parsed, evaluatedAt);
-  assertEnvelopeTransitionBudget(parsed);
+  assertEnvelopeTransitionBudget(parsed, requiredBudgetKey);
   return Object.freeze({
     envelope: parsed,
     action: requestedAction,
@@ -208,7 +234,7 @@ export function assertEnvelopeDeadline(envelope, nowMs = Date.now()) {
  * F6: resource_budget must declare at least one positive limit that the
  * operation is accountable to (mutations, proof reads, etc.).
  */
-export function assertEnvelopeTransitionBudget(envelope) {
+export function assertEnvelopeTransitionBudget(envelope, requiredBudgetKey) {
   const budget = envelope?.resource_budget;
   if (!budget || typeof budget !== 'object') {
     throw new Error('agent envelope resource_budget is required');
@@ -218,6 +244,15 @@ export function assertEnvelopeTransitionBudget(envelope) {
   );
   if (!positive) {
     throw new Error('agent envelope resource_budget must declare at least one positive limit');
+  }
+  if (requiredBudgetKey !== undefined) {
+    if (typeof requiredBudgetKey !== 'string' || !/^[a-z][a-z0-9_]*$/.test(requiredBudgetKey)) {
+      throw new TypeError('required budget key must be a safe id');
+    }
+    const limit = budget[requiredBudgetKey];
+    if (typeof limit !== 'number' || !Number.isFinite(limit) || limit <= 0) {
+      throw new Error(`agent envelope resource_budget.${requiredBudgetKey} must be positive`);
+    }
   }
   return true;
 }

@@ -60,4 +60,4 @@ is deliberately unchanged; Postgres revision CAS fail-closes stale writers.
 
 The initial service completed backlog Item 3. The current implementation also carries the append-only hash-bound transition lineage from Item 4, semantic fact supersession from Item 5, artifact references from Item 6, and the idempotent mutation boundary from Item 8. Detailed contracts are in `ATHERE_STATE_TRANSITION_HISTORY.md`, `ATHERE_STATE_SUPERSESSION.md`, and `ATHERE_IDEMPOTENT_OPERATIONS.md`.
 
-Operation-level rollback means a failed validation, permission check, timeout, or atomic publication leaves the previous authoritative revision intact. Branching, checkpoint restoration, and alternative-strategy rollback remain Item 12 rather than being overstated here.
+Operation-level rollback means a failed validation, permission check, timeout, or atomic publication leaves the previous authoritative revision intact. Branching, checkpoint restoration, and alternative-strategy rollback are backlog **Item 12** (shipped — see `ATHERE_CHECKPOINTS_BRANCHING.md` and ACTIVE_RUN); they are intentionally not re-specified in this doc.

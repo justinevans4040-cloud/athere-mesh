@@ -1,0 +1,21 @@
+﻿{
+    "stamp":  "20260909T185108Z",
+    "claim":  "Lenovo Desktop shortcut installs LIVE ATHERE Command Deck at 127.0.0.1:5050 (not marketing titan.html)",
+    "desktopShortcut":  "C:\\Users\\justi\\Desktop\\ATHERE Command Deck.lnk",
+    "launcher":  "C:\\Users\\justi\\WORKSPACE\\athere-mesh\\scripts\\start-command-deck-desktop.ps1",
+    "url":  "http://127.0.0.1:5050/",
+    "htmlChecks":  {
+                       "status200":  true,
+                       "hasCommandDeck":  true,
+                       "hasCommand":  true,
+                       "hasFleet":  true,
+                       "hasRiver":  true,
+                       "hasProof":  true,
+                       "cssOk":  true,
+                       "jsOk":  true,
+                       "notMarketingBuy":  true,
+                       "notHollowForce":  true
+                   },
+    "listenerPid":  23748,
+    "ok":  true
+}

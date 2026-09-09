@@ -1,5 +1,10 @@
 # Next thread — Athere Mesh
 
+> **SUPERSEDED (2026-09-09) — DO NOT PASTE THIS AS A NEW-THREAD HANDOFF.**  
+> Newest live paste handoff: `docs/current/ATHERE_THREAD_TIE_IN.md`  
+> Live checkpoint / Status: `runtime/ATHERE_ACTIVE_RUN.md` (ALIGNMENT GATE)  
+> This file is kept for history only. Claims below (Item 9 open / Item 12 next) are **period truth from 2026-09-05**, not current status. **Nothing below was deleted.**
+
 **Paste this as the opening message (or attach this file).** Switch threads. Athere Mesh only. No ODIN. No side projects.
 
 Justin is dead serious: follow his rules or he uninstalls Cursor off this machine. No more chances on that point. Get tight. Do the job. He is frustrated and disappointed after a strong prior stretch — do not waste it.

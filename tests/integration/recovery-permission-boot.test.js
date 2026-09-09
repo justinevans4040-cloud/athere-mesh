@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createMission } from '../../packages/contracts/src/mission.js';
 import { createAgentOperationEnvelope } from '../../packages/contracts/src/agent-operation.js';
-import { recoverAndHealMissions } from '../../packages/recovery/src/recovery-coordinator.js';
+import { recoverAndHealMissions, recoverInterruptedMissions } from '../../packages/recovery/src/recovery-coordinator.js';
 import { createMissionStoreBridge } from '../../packages/mission/src/mission-store.js';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 
@@ -53,6 +53,9 @@ test('recoverAndHeal does not abort boot when a shared mission lacks recovery pe
 
   const result = await recoverAndHealMissions({ root, missionStore: store });
   assert.deepEqual(result.recovered, []);
+  assert.ok(result.corrupt.some(({ missionId, reason }) => (
+    missionId === mission.id && /missing recovery permission/.test(reason)
+  )));
   assert.equal(shared.get(mission.id).mission.status, 'accepted');
 });
 
@@ -93,11 +96,14 @@ test('F5: empty permissions deny recovery block_interrupted_mission on shared st
 
   const result = await recoverAndHealMissions({ root, missionStore: store });
   assert.deepEqual(result.recovered, []);
+  assert.ok(result.corrupt.some(({ missionId, reason }) => (
+    missionId === mission.id && /missing recovery permission/.test(reason)
+  )));
   assert.equal(shared.get(mission.id).mission.status, 'accepted');
   assert.equal(shared.get(mission.id).revision, 1);
 });
 
-test('recoverAndHeal does not abort boot on recovery idempotency conflict', async () => {
+test('repeated interruptions use revision-bound recovery IDs and block again', async () => {
   const root = await mkdtemp(join(tmpdir(), 'athere-recovery-idem-'));
   const service = createMissionStateService({ root, clock });
   const created = await service.create({
@@ -112,7 +118,14 @@ test('recoverAndHeal does not abort boot on recovery idempotency conflict', asyn
       { actor: 'nyx', actions: ['observe_repository'] },
       { actor: 'miss-vale-prime', actions: ['supervise_mission'] },
       { actor: 'qra_emerge_audit', actions: ['verify_proof'] },
-      { actor: 'qra_recovery_driver', actions: ['block_interrupted_mission'] },
+      {
+        actor: 'qra_recovery_driver',
+        actions: [
+          'block_interrupted_mission',
+          'create_checkpoint',
+          'retry_from_checkpoint',
+        ],
+      },
     ],
     currentPlan: { id: 'plan-1', version: 1, steps: ['inspect-repository'] },
     environmentObservations: [{ source: 't', key: 'k', value: true, observedAt: clock() }],
@@ -133,8 +146,23 @@ test('recoverAndHeal does not abort boot on recovery idempotency conflict', asyn
     }),
   });
 
-  // First recovery consumes the stable recovery-block operation id.
-  const shared = new Map([[running.mission.id, running]]);
+  const checkpointed = await service.createCheckpoint({
+    operationId: 'op-recovery-idem-cp',
+    missionId: running.mission.id,
+    expectedRevision: running.revision,
+    label: 'pre-interrupt',
+    envelope: createAgentOperationEnvelope({
+      record: running,
+      operationId: 'op-recovery-idem-cp',
+      agentId: 'qra_recovery_driver',
+      action: 'create_checkpoint',
+      objective: 'checkpoint before interrupt',
+      createdAt: clock(),
+    }),
+  });
+
+  // First recovery consumes the recovery-block operation ID for this revision.
+  const shared = new Map([[checkpointed.mission.id, checkpointed]]);
   const store = createMissionStoreBridge({
     async listMissionIds() {
       return Object.freeze([...shared.keys()]);
@@ -154,30 +182,48 @@ test('recoverAndHeal does not abort boot on recovery idempotency conflict', asyn
     },
   });
 
-  const first = await recoverAndHealMissions({ root, missionStore: store, clock });
-  assert.deepEqual(first.recovered, [running.mission.id]);
-  assert.equal(shared.get(running.mission.id).mission.status, 'blocked');
+  const first = await recoverInterruptedMissions({ root, missionStore: store, clock });
+  assert.deepEqual(first.recovered, [checkpointed.mission.id]);
+  assert.equal(shared.get(checkpointed.mission.id).mission.status, 'blocked');
 
-  // Resume to running with different pendingWork, then recover again. Stable
-  // recovery op id collides with the prior block payload → soft-fail, no boot abort.
-  const blocked = shared.get(running.mission.id);
-  const resumed = await createMissionStateService({ root, clock, store }).transition({
-    operationId: 'op-recovery-idem-resume',
+  // Honest resume via checkpoint, then diverge and recover again. The later
+  // revision receives a distinct recovery ID and cannot be stranded running.
+  const blocked = shared.get(checkpointed.mission.id);
+  const resumed = await createMissionStateService({ root, clock, store }).retryFromCheckpoint({
+    operationId: 'op-recovery-idem-retry',
     missionId: blocked.mission.id,
     expectedRevision: blocked.revision,
-    signal: { type: 'running', agent: 'miss-vale-prime', detail: 'resume after interrupt' },
-    update: { activeAgents: ['miss-vale-prime'], pendingWork: ['inspect-repository'], failedWork: [] },
+    checkpointId: checkpointed.mission.checkpoints[0].id,
     envelope: createAgentOperationEnvelope({
       record: blocked,
-      operationId: 'op-recovery-idem-resume',
-      agentId: 'miss-vale-prime',
-      objective: 'resume',
+      operationId: 'op-recovery-idem-retry',
+      agentId: 'qra_recovery_driver',
+      action: 'retry_from_checkpoint',
+      objective: 'resume via checkpoint',
       createdAt: clock(),
     }),
   });
-  shared.set(resumed.mission.id, resumed);
+  const diverged = await createMissionStateService({ root, clock, store }).transition({
+    operationId: 'op-recovery-idem-diverge',
+    missionId: resumed.mission.id,
+    expectedRevision: resumed.revision,
+    signal: { type: 'running', agent: 'nyx', detail: 'different pending set' },
+    update: { activeAgents: ['nyx'], pendingWork: [], failedWork: ['inspect-repository'] },
+    envelope: createAgentOperationEnvelope({
+      record: resumed,
+      operationId: 'op-recovery-idem-diverge',
+      agentId: 'nyx',
+      objective: 'diverge partitions',
+      createdAt: clock(),
+    }),
+  });
+  shared.set(diverged.mission.id, diverged);
 
   const result = await recoverAndHealMissions({ root, missionStore: store, clock });
-  assert.ok(Array.isArray(result.recovered));
-  assert.equal(typeof shared.get(resumed.mission.id).mission.status, 'string');
+  assert.deepEqual(result.recovered, [diverged.mission.id]);
+  assert.deepEqual(result.healed, [diverged.mission.id]);
+  assert.equal(shared.get(diverged.mission.id).mission.status, 'running');
+  assert.ok(shared.get(diverged.mission.id).mission.transitionHistory.some(({ operationId }) => (
+    operationId === `${diverged.mission.id}-recovery-block-v${diverged.revision}`
+  )));
 });

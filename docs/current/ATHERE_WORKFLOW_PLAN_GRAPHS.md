@@ -28,5 +28,5 @@
 
 ## What this does not do
 
-- Item 12 checkpoints / branching / rollback / quarantine (edge kinds `rollback_to` / `retry_after` / `alternate_path` are representable; alternate_path is path-armed only — not a full recovery engine)
+- Full Item 12 recovery engine (checkpoints / branching / rollback / quarantine) — shipped separately in `ATHERE_CHECKPOINTS_BRANCHING.md`; this graph only represents edge kinds `rollback_to` / `retry_after` / `alternate_path` (alternate_path is path-armed only)
 - Mutating the plan graph mid-mission (still create-time authority)

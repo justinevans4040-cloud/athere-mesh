@@ -6,6 +6,7 @@
 
 import { assessEpistemicState } from '../../contracts/src/epistemic-state.js';
 import { roleForAgent } from '../../contracts/src/execution-roles.js';
+import { assertCheckpointIntegrity } from '../../mission/src/mission-checkpoints.js';
 
 export const EXECUTIVE_ACTIONS = Object.freeze([
   'allocate_work',
@@ -61,12 +62,19 @@ function nextPendingWork(mission) {
 }
 
 function hasVerifiedCheckpoint(mission) {
-  return (mission.checkpoints ?? []).some((entry) => entry?.verified === true && entry.stateHash);
+  return verifiedCheckpoints(mission).length > 0;
 }
 
 function latestCheckpointId(mission) {
-  const verified = (mission.checkpoints ?? []).filter((entry) => entry?.verified === true && entry.stateHash);
-  return verified.at(-1)?.id ?? null;
+  return verifiedCheckpoints(mission).at(-1)?.id ?? null;
+}
+
+function verifiedCheckpoints(mission) {
+  return (mission.checkpoints ?? []).filter((entry) => {
+    if (entry?.verified !== true || !entry.stateHash || !entry.snapshot) return false;
+    assertCheckpointIntegrity(entry);
+    return true;
+  });
 }
 
 function uncertaintyFor(mission) {
