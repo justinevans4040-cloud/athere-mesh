@@ -4,6 +4,7 @@
 
 **Current state doc:** `docs/current/ATHERE_MESH_TITAN_CURRENT_STATE.md`  
 **Titan current-job map (findable):** `docs/current/TITAN_CURRENT_JOB_GATES.md`  
+**Absolute next-step queue:** `docs/current/ABSOLUTE_NEXT_STEPS.md`  
 **GitHub repo index (23 repos, company-wide):** `docs/current/GITHUB_ACCOUNT_REPO_INDEX.md`  
 **Inventory evidence:** `evidence/github-full-repo-inventory-20260909T202200Z.json`
 
@@ -23,7 +24,7 @@
 - Optional: delete or banner `wakeforged` branch `cursor/titan-current-job-gates-197c` as ARCHIVE-only after this land is pushed
 - **Deferred:** Ronan · **Parked:** 14 clusters · **Parked:** A15
 
-**Next:** Justin’s current order only. Do not invent backlog homework.
+**Next:** Justin’s current order only. Default queue when he says continue without a cut: `docs/current/ABSOLUTE_NEXT_STEPS.md`. Do not invent backlog homework.
 
 **Archive (ckpts 1–91):** `archive/runs/ATHERE_ACTIVE_RUN_ckpts_1-91_2026-09-04.md` — **ARCHIVE ONLY** (bannered). Not live next-item.
 

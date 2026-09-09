@@ -22,11 +22,14 @@ File: `research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md`
 
 ## Still open (honest — not the 24-item line)
 
+**Ordered queue:** `docs/current/ABSOLUTE_NEXT_STEPS.md`
+
 - Sales Hunter Tier Zero focus (drafts/pipeline; approved local_outbox only)
 - Full NYX upgrade ladder
 - Full IN/OUT cut across notebooks
 - Remote fabric env-gated
 - Wake/ForgeFront organize on Ichabod (selective)
+- Prove current-job land (full suite + live deck smoke)
 - Deferred: Ronan · Parked: 14 clusters · Parked: A15
 
 ## Live faces (Lenovo)

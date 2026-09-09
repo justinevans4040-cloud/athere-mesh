@@ -29,10 +29,11 @@ HARD LAW (Justin will erase and force start-over if you violate):
 
 Authoritative truth (read first, in order):
 1. runtime/ATHERE_ACTIVE_RUN.md (Status + ALIGNMENT GATE + Current unresolved)
-2. git log origin/master --oneline -20 (prove Items 12–24 commits exist)
-3. docs/current/TITAN_OPERATING_MEMORY.md — live backlog boundary + public identity
-4. research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md
-5. docs/current/ATHERE_THREAD_TIE_IN.md (this file)
+2. docs/current/ABSOLUTE_NEXT_STEPS.md (default ordered queue when Justin says continue)
+3. git log origin/master --oneline -20 (prove Items 12–24 commits exist)
+4. docs/current/TITAN_OPERATING_MEMORY.md — live backlog boundary + public identity
+5. research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md
+6. docs/current/ATHERE_THREAD_TIE_IN.md (this file)
 
 Public outreach identity (HARD — do not substitute):
 - Company: ForgeFront Systems
