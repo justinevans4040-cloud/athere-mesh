@@ -1,0 +1,19 @@
+{
+  "stamp": "20260905T125158Z",
+  "ok": true,
+  "claim": "Sales Hunter Tier Zero next capability: human-approved outreach_send + CRM follow-up",
+  "huntDecision": "PIPELINE_READY",
+  "send": {
+    "action": "outreach_send",
+    "decision": "OUTREACH_QUEUED",
+    "transport": "local_outbox",
+    "followUpAt": "2026-10-12T00:00:00.000Z",
+    "outboxPath": "sales-hunter/outbox/send-f86f7daf-f19b-4e93-97e6-8771aa9bca2b.json"
+  },
+  "lead": {
+    "outreachStatus": "sent",
+    "stage": "FOLLOW_UP",
+    "sendAuthorized": true
+  },
+  "phoneStillDenied": true
+}

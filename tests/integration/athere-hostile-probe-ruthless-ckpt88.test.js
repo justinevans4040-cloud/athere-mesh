@@ -421,6 +421,17 @@ test('CLOSED: unregistered ghost_writer cannot recordFact', async () => {
     id: 'mission-ghost-fact',
     operationId: 'op-ghost-create',
   });
+  assert.throws(
+    () => createAgentOperationEnvelope({
+      record: created,
+      operationId: 'op-ghost-fact',
+      agentId: 'ghost_writer',
+      action: 'record_fact',
+      objective: 'unregistered fact probe',
+      createdAt: clock(),
+    }),
+    /unknown operational agent/,
+  );
   await assert.rejects(
     () => service.recordFact({
       operationId: 'op-ghost-fact',
@@ -436,7 +447,7 @@ test('CLOSED: unregistered ghost_writer cannot recordFact', async () => {
       },
       evidence: { note: 'unregistered' },
     }),
-    /unknown agent identity/,
+    /fact operations require an agent operation envelope|unknown agent identity/,
   );
 });
 
@@ -456,6 +467,17 @@ test('CLOSED: permission-only fact-keeper cannot recordFact', async () => {
       { actor: 'fact-keeper', actions: ['record_fact'] },
     ],
   });
+  assert.throws(
+    () => createAgentOperationEnvelope({
+      record: created,
+      operationId: 'op-keeper-fact',
+      agentId: 'fact-keeper',
+      action: 'record_fact',
+      objective: 'permission-only fact probe',
+      createdAt: clock(),
+    }),
+    /unknown operational agent/,
+  );
   await assert.rejects(
     () => service.recordFact({
       operationId: 'op-keeper-fact',
@@ -471,7 +493,7 @@ test('CLOSED: permission-only fact-keeper cannot recordFact', async () => {
       },
       evidence: { note: 'permission-only' },
     }),
-    /unknown agent identity/,
+    /fact operations require an agent operation envelope|unknown agent identity/,
   );
 });
 

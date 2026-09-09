@@ -5,4 +5,4 @@ alwaysApply: true
 
 # Titan operating memory
 
-Read `docs/current/TITAN_OPERATING_MEMORY.md` before Titan work. Preserve its canonical locations, scope boundaries, no-removal rule, Odin exclusion, and evidence requirements. Update the memory when a live status boundary materially changes.
+Read `docs/current/TITAN_OPERATING_MEMORY.md` and `runtime/ATHERE_ACTIVE_RUN.md` (Status + ALIGNMENT GATE) before Titan work. Prefer `origin/master` over chat summaries. Preserve canonical locations, scope boundaries, no-removal rule, Odin exclusion, and evidence requirements. Update the memory when a live status boundary materially changes. Never rewind to “Item 12/13 next” while Items 1–24 are shipped on `master`.

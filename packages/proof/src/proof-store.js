@@ -169,6 +169,12 @@ export async function verifyProof({ root, ref }) {
   return { verified: true, sha256: actual };
 }
 
+export async function readProofBytes(root, ref) {
+  if (!ref || typeof ref.path !== 'string') throw new Error('invalid proof reference');
+  const proofPath = containedProofPath(root, ref.path);
+  return readFile(proofPath);
+}
+
 export async function writeArtifactProof({
   root,
   missionId,
@@ -217,7 +223,12 @@ export async function writeArtifactProof({
   return Object.freeze({ path: relativePath, proofHash, artifactHash, artifactId: id, operationId: operation, verified: true, ...(duplicate ? { duplicate: true } : {}) });
 }
 
-export async function verifyArtifactProof({ root, ref, artifact }) {
+export async function verifyArtifactProof({
+  root,
+  ref,
+  artifact,
+  expectedMissionStateVersion,
+}) {
   if (!ref || typeof ref !== 'object') throw new Error('invalid artifact proof reference');
   const operationId = requireOperationId(ref.operationId);
   const artifactId = requireArtifactId(ref.artifactId);
@@ -248,6 +259,17 @@ export async function verifyArtifactProof({ root, ref, artifact }) {
   const verifier = requireVerifierResult(record.verifierResult);
   if (!Number.isSafeInteger(record.missionStateVersion) || record.missionStateVersion < 1) {
     return { verified: false, artifactId, artifactHash, reason: 'invalid_mission_state_version' };
+  }
+  if (
+    expectedMissionStateVersion !== undefined
+    && record.missionStateVersion !== expectedMissionStateVersion
+  ) {
+    return {
+      verified: false,
+      artifactId,
+      artifactHash,
+      reason: 'mission_state_version_mismatch',
+    };
   }
   const at = requireTimestamp(record.timestamp);
   return Object.freeze({

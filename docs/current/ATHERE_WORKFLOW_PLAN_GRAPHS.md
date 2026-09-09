@@ -21,12 +21,12 @@
 ## Path rules (enforced)
 
 - `depends_on` / `blocks`: dependent cannot complete before prerequisite/`from`
-- Plan order: later plan steps cannot complete while earlier steps are incomplete, unless an `alternate_path` edge to that later step is **armed** (`from` already completed)
+- Plan order: later plan steps cannot complete while earlier steps are incomplete, unless an `alternate_path` edge to that later step is **armed** (`from` already completed). **Failed earlier steps do not waive plan order.**
 - Unknown ids in completed/pending/failed work are invalid
 - `supersedes` / `satisfies` do not waive `depends_on` or plan order
 - `workflowGraph` is immutable after create
 
 ## What this does not do
 
-- Item 12 checkpoints / branching / rollback / quarantine (edge kinds `rollback_to` / `retry_after` / `alternate_path` are representable; alternate_path is path-armed only — not a full recovery engine)
+- Full Item 12 recovery engine (checkpoints / branching / rollback / quarantine) — shipped separately in `ATHERE_CHECKPOINTS_BRANCHING.md`; this graph only represents edge kinds `rollback_to` / `retry_after` / `alternate_path` (alternate_path is path-armed only)
 - Mutating the plan graph mid-mission (still create-time authority)

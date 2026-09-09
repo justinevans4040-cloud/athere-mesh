@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-09-07T08:16:16.544Z",
+  "item": 12,
+  "claim": "Agent failure mid-mission recovers via verified checkpoint/branch/quarantine/rollback/retry without full restart; reasoning state restored; OPEN_COUNT 0",
+  "openCount": 0,
+  "results": [
+    {
+      "id": "H12_01_forge_checkpoint_transition",
+      "result": "REJECT_OK",
+      "detail": "checkpoints must be changed through recovery checkpoint operations"
+    },
+    {
+      "id": "H12_07_poison_fact_retry",
+      "result": "REJECT_OK",
+      "detail": "[\"good\"]"
+    },
+    {
+      "id": "H12_09_branch_forks_state",
+      "result": "REJECT_OK",
+      "detail": "{\"completed\":[\"a\"],\"agents\":[]}"
+    },
+    {
+      "id": "H12_10_heal_branch_origin",
+      "result": "REJECT_OK",
+      "detail": "{\"status\":\"healed\",\"revision\":11,\"checkpointId\":\"cp-676fe125a2fc7692bc738cbe\"}"
+    },
+    {
+      "id": "H12_15_branch_cap",
+      "result": "REJECT_OK",
+      "detail": "branches=32"
+    },
+    {
+      "id": "H12_04_rollback_while_running",
+      "result": "REJECT_OK",
+      "detail": "can only rollback or retry from a blocked mission"
+    }
+  ],
+  "production": [
+    "SNAPSHOT_FIELDS includes authoritativeFacts/epistemicClaims/bindings",
+    "createBranch forks via applyCheckpointSnapshot",
+    "healMissionFromCheckpoint uses branch.fromCheckpointId",
+    "MAX_BRANCHES=32",
+    "orchestrator blockThenHeal opens alternate branch before heal",
+    "activeAgents cleared + requiresEnvironmentRebind on restore"
+  ]
+}

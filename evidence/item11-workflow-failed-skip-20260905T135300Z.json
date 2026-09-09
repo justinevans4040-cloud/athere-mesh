@@ -1,0 +1,19 @@
+{
+  "checkpoint": 125,
+  "item": 11,
+  "title": "Workflow plan graphs — failed intermediate cannot waive plan order",
+  "utc": "20260905T135300Z",
+  "claim": "Athere knows whether execution remains on a valid mission path; failed earlier steps do not waive plan order for later completions.",
+  "holeClosed": {
+    "id": "plan-order-failed-waive",
+    "before": "fail b + complete c while a incomplete → assessMissionPath valid=true",
+    "after": "REJECT plan_order:c->skips:a (and service mission path invalid)",
+    "production": "packages/contracts/src/workflow-graph.js assessMissionPath; QR18 legacy L5 aligned"
+  },
+  "focusedSuite": {
+    "tests": 32,
+    "pass": 32,
+    "fail": 0
+  },
+  "verdict": "READY"
+}

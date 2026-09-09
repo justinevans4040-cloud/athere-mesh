@@ -27,7 +27,10 @@ function honestMission(overrides = {}) {
     artifactReferences: [{
       id: 'mission-proof',
       artifactId: 'mission-proof',
+      path: 'proofs/artifacts/mission-qr18-1/mission-proof-deadbeef.json',
+      operationId: 'op-artifact-1',
       verified: true,
+      serviceVerified: true,
       artifactHash: 'a'.repeat(64),
       proofHash: 'b'.repeat(64),
       agent: 'qra_emerge_audit',
@@ -65,10 +68,12 @@ test('QR18 exposes exactly six named levels', () => {
 });
 
 test('honest completion claim returns structured verified evidence at every QR18 level', () => {
+  const mission = honestMission();
   const qr18 = evaluateQr18Layers({
-    mission: honestMission(),
+    mission,
     proofVerification: proofOk,
     certifierAgentId: 'qra_emerge_audit',
+    proofPayload: { completedWork: mission.completedWork },
   });
   assert.equal(qr18.verifier, 'qr18');
   assert.equal(qr18.verified, true);
@@ -81,11 +86,15 @@ test('honest completion claim returns structured verified evidence at every QR18
   assertQr18LayersVerified(qr18);
 });
 
-test('Level 1 rejects completion with no action evidence', () => {
+test('Level 1 rejects completion with no recorded work performers', () => {
   const qr18 = evaluateQr18Layers({
-    mission: honestMission({ evidence: [], transitionHistory: [] }),
+    mission: honestMission({
+      evidence: [{ agent: 'nyx', note: 'planted only' }],
+      transitionHistory: [],
+    }),
     proofVerification: proofOk,
     certifierAgentId: 'qra_emerge_audit',
+    transitionHistory: [],
   });
   assert.equal(qr18.verified, false);
   assert.ok(qr18.failedLevels.includes('action'));

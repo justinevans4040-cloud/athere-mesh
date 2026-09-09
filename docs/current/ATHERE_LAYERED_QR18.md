@@ -12,8 +12,8 @@ QR18 is no longer a single completion hash check. Completion requires structured
 
 | Level | Id | Question |
 |---|---|---|
-| 1 | `action` | Did recorded work evidence / performers exist? |
-| 2 | `artifact` | Is there verified artifact lineage (hash + producer agent/action + verifier)? |
+| 1 | `action` | Did recorded work performers exist on the ledger? (caller evidence bags are not the gate) |
+| 2 | `artifact` | Is there **service-verified** artifact lineage (proof-store path + producer agent/action + verifier)? Caller-attested hashes alone fail. |
 | 3 | `state-transition` | Is the certifier independent of recorded performers? |
 | 4 | `subgoal` | Does `completedWork` cover the plan/subgoals? |
 | 5 | `workflow` | Empty pending/failed work; dependencies satisfied? |
@@ -29,6 +29,6 @@ Proof store primitives (`writeProof` / `verifyProof` / artifact proofs) are unch
 
 ## What this does not do
 
-- Item 11 workflow/plan graphs (still prose/`currentPlan` + dependencies)
+- Mutating the plan graph mid-mission (create-time authority remains)
 - Model-confidence substitution for QR18 (forbidden by backlog)
 - Multi-writer / Tailscale-native Postgres changes

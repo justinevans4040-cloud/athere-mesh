@@ -1,0 +1,57 @@
+{
+  "checkpoint": 126,
+  "scope": "Phases 1-3 hostile audit (Items 3-11)",
+  "utc": "20260905T214500Z",
+  "axes": ["bloat", "weak", "theater", "security"],
+  "closedThisPass": [
+    {
+      "id": "F1",
+      "severity": "CRITICAL",
+      "axis": "security",
+      "items": [6, 10],
+      "claim": "Completion accepted self-attested artifactReferences",
+      "fix": "mission-state-service completed path re-verifies via verifyArtifactProof + proof bytes; QR18 L2 requires serviceVerified"
+    },
+    {
+      "id": "F2",
+      "severity": "HIGH",
+      "axis": "theater",
+      "items": [9, 10],
+      "claim": "Executor heartbeat counted as recorded performer",
+      "fix": "entryRecordsPerformance requires non-empty evidence write only"
+    },
+    {
+      "id": "F4",
+      "severity": "HIGH",
+      "axis": "security",
+      "items": [4],
+      "claim": "Tampered ledger loaded until optional verifyHistory",
+      "fix": "verifyTransitionHistory on transition load and get()"
+    }
+  ],
+  "residualOpen": [
+    { "id": "F5", "severity": "MEDIUM", "claim": "recovery block with empty permissions legacy bypass" },
+    { "id": "F6", "severity": "MEDIUM", "claim": "envelope timeout/resource_budget not enforced on mission transitions" },
+    { "id": "F7", "severity": "MEDIUM", "claim": "fact ops lack agent envelope" },
+    { "id": "F8", "severity": "MEDIUM", "claim": "bridge store lacks FS lock serialization" },
+    { "id": "F9", "severity": "MEDIUM", "claim": "Windows mission lock PID-reuse weakness" },
+    { "id": "F10", "severity": "MEDIUM", "claim": "pre-ledger import fabricates integrity boundary" },
+    { "id": "F11", "severity": "MEDIUM", "claim": "mission proof payload not bound to completedWork semantics" },
+    { "id": "F12", "severity": "MEDIUM", "claim": "verification_gate nodes are id-regex heuristic" },
+    { "id": "F13", "severity": "MEDIUM", "claim": "mission-state-service embeds Item 12+ surfaces (bloat)" },
+    { "id": "F14", "severity": "LOW", "claim": "select(authoritativeFacts) can expose historical lineage" }
+  ],
+  "focusedSuite": {
+    "tests": 57,
+    "pass": 57,
+    "plusLedgerTamper": true
+  },
+  "freshReprobe": {
+    "forgedArtifactComplete": "REJECT",
+    "noopPerformers": [],
+    "honestComplete": "completed",
+    "tamperedLedgerTransition": "REJECT"
+  },
+  "verdict": "READY",
+  "verdictScope": "CRITICAL/HIGH Phase 1-3 holes F1/F2/F4 closed; MEDIUM residuals named not claimed closed"
+}

@@ -21,19 +21,18 @@ test('unknown agents are rejected instead of sent through a fabricated prompt', 
   );
 });
 
-test('disabled recovered agents are not routed to a completion provider', async () => {
+test('founder agent LOOM remains operational and routes to its bound provider', async () => {
   let completionCalls = 0;
   const runtime = createAgentRuntime({
     complete: async () => {
       completionCalls += 1;
-      return { content: 'should not run' };
+      return { content: 'resource check complete' };
     },
   });
-  await assert.rejects(
-    () => runtime.respond({ profile: 'owner', agentId: 'loom', text: 'hello' }),
-    /agent is not operational/,
-  );
-  assert.equal(completionCalls, 0);
+  const response = await runtime.respond({ profile: 'owner', agentId: 'loom', text: 'hello' });
+  assert.equal(response.agentId, 'loom');
+  assert.equal(response.content, 'resource check complete');
+  assert.equal(completionCalls, 1);
 });
 
 test('public profile cannot invoke owner-only Vale Prime', async () => {

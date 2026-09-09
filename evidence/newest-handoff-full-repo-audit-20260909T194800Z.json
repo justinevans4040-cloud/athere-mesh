@@ -1,0 +1,71 @@
+{
+  "title": "newest-handoff-full-repo-hostile-audit",
+  "at": "20260909T194800Z",
+  "claim": "Newest live paste handoff in this repo is docs/current/ATHERE_THREAD_TIE_IN.md; live Status authority is runtime/ATHERE_ACTIVE_RUN.md; NEXT_THREAD_HANDOFF_2026-09-05.md is superseded/stale",
+  "inventory": {
+    "pasteHandoffsByMtime": [
+      {
+        "path": "docs/current/ATHERE_THREAD_TIE_IN.md",
+        "mtime": "2026-09-09T12:36:05",
+        "role": "NEWEST_LIVE_PASTE_HANDOFF",
+        "claim": "Items 1-24 SHIPPED + ALIGNMENT GATE",
+        "sha256_16": "AA517FB0E0CFA91F"
+      },
+      {
+        "path": "runtime/NEXT_THREAD_HANDOFF_2026-09-05.md",
+        "mtime": "2026-09-05T06:54:59",
+        "role": "SUPERSEDED_STALE",
+        "claim": "Item 9 open / Item 12 next — FALSE for current plot",
+        "note": "Only file that still said Paste this as the opening — bannered SUPERSEDED 2026-09-09; body preserved"
+      },
+      {
+        "path": "evidence/s24-dump-*/athere-docs/athere-mesh-titan-handoff*.md",
+        "mtime": "2026-09-04T18:42-18:43",
+        "role": "DUMP_FOSSIL_NOT_LIVE",
+        "count": 6
+      }
+    ],
+    "liveStatusAuthority": {
+      "path": "runtime/ATHERE_ACTIVE_RUN.md",
+      "mtime": "2026-09-09T12:36:14",
+      "role": "NEWEST_LIVE_CHECKPOINT",
+      "pointsPasteTo": "docs/current/ATHERE_THREAD_TIE_IN.md"
+    },
+    "notHandoffs": [
+      "evidence/full-plot-handoff-audit-*.json (audit evidence, not paste)",
+      "archive/runs/ATHERE_ACTIVE_RUN_ckpts_1-91_2026-09-04.md (ARCHIVE ONLY)",
+      "docs/current/TITAN_OPERATING_MEMORY.md (operating memory, not paste block)"
+    ],
+    "desktopOutsideRepoCopies": "none found",
+    "pasteThisAsOpeningCount": 1,
+    "pasteThisAsOpeningFile": "runtime/NEXT_THREAD_HANDOFF_2026-09-05.md (now SUPERSEDED banner)"
+  },
+  "attacks": [
+    "Filename scan handoff|tie-in|next-thread|CONTINUE across repo excluding node_modules/git/victory-control-ref",
+    "Content scan Paste this as opening / CONTINUE ONLY / New-thread tie-in / Order to the next agent",
+    "Outside-repo Desktop + Cursor assets name scan",
+    "mtime ranking vs THREAD_TIE_IN",
+    "git log --all on handoff paths",
+    "origin/master tip versions vs local",
+    "s24 dump fossil handoffs"
+  ],
+  "failuresFound": [
+    "NEXT_THREAD_HANDOFF still marketed as paste opening while claiming Item 9/12 next",
+    "origin/master ATHERE_THREAD_TIE_IN and ACTIVE_RUN still older than local ALIGNMENT GATE (unpushed)"
+  ],
+  "fixesApplied": [
+    "Banner SUPERSEDED on runtime/NEXT_THREAD_HANDOFF_2026-09-05.md — body not deleted"
+  ],
+  "verdict": {
+    "newestPasteHandoff": "docs/current/ATHERE_THREAD_TIE_IN.md",
+    "newestLiveStatus": "runtime/ATHERE_ACTIVE_RUN.md",
+    "doNotUse": [
+      "runtime/NEXT_THREAD_HANDOFF_2026-09-05.md",
+      "evidence/s24-dump-*/athere-mesh-titan-handoff*.md",
+      "archive ACTIVE_RUN as live next"
+    ],
+    "residualRisk": "GitHub master still serves older ACTIVE_RUN / older THREAD_TIE_IN until commit+push",
+    "readyForAlignment": true,
+    "readyForCrossHostGithub": false
+  }
+}

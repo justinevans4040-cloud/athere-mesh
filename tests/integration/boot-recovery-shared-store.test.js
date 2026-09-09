@@ -11,10 +11,18 @@ const OWNER_TOKEN = 'test-owner-token-0123456789abcdef0123456789';
 
 test('boot recovery heals interrupted missions from wired shared store (not filesystem-only)', async () => {
   const repositoryRoot = await mkdtemp(join(tmpdir(), 'titan-boot-shared-'));
-  const mission = createMission({
-    id: 'mission-shared-only',
-    intent: 'test all of Titan',
-    clock: () => '2026-09-05T20:00:00.000Z',
+  const mission = Object.freeze({
+    ...createMission({
+      id: 'mission-shared-only',
+      intent: 'test all of Titan',
+      clock: () => '2026-09-05T20:00:00.000Z',
+    }),
+    permissions: Object.freeze([
+      Object.freeze({
+        actor: 'qra_recovery_driver',
+        actions: Object.freeze(['block_interrupted_mission']),
+      }),
+    ]),
   });
   // Shared-only: no filesystem snapshot under workspace/missions.
   const shared = new Map([

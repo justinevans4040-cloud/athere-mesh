@@ -7,7 +7,16 @@ import {
 } from './execution-roles.js';
 
 const OPERATIONS = Object.freeze({
-  'miss-vale-prime': Object.freeze({ capabilityId: 'mission-supervisor', action: 'supervise_mission', signalType: 'running' }),
+  'miss-vale-prime': Object.freeze({
+    capabilityId: 'mission-supervisor',
+    action: 'supervise_mission',
+    signalType: 'running',
+    allowedActions: Object.freeze(['supervise_mission', 'record_epistemic_claim']),
+    capabilityFor: Object.freeze({
+      supervise_mission: 'mission-supervisor',
+      record_epistemic_claim: 'epistemic-claim-writer',
+    }),
+  }),
   'the-britt': Object.freeze({ capabilityId: 'dangerous-authority-coholder', action: 'cohold_dangerous_authority', signalType: 'running' }),
   caretaker: Object.freeze({ capabilityId: 'fleet-health-runner', action: 'fleet_health_check', signalType: 'running' }),
   'agent-vale': Object.freeze({ capabilityId: 'ollama-chat', action: 'advisory_chat', signalType: 'running' }),
@@ -16,10 +25,21 @@ const OPERATIONS = Object.freeze({
     capabilityId: 'repository-inspector',
     action: 'observe_repository',
     signalType: 'running',
-    allowedActions: Object.freeze(['observe_repository', 'mutate_workspace_files']),
+    allowedActions: Object.freeze([
+      'observe_repository',
+      'mutate_workspace_files',
+      'record_fact',
+      'supersede_fact',
+      'correct_fact',
+      'revoke_fact',
+    ]),
     capabilityFor: Object.freeze({
       observe_repository: 'repository-inspector',
       mutate_workspace_files: 'workspace-file-worker',
+      record_fact: 'authoritative-fact-writer',
+      supersede_fact: 'authoritative-fact-writer',
+      correct_fact: 'authoritative-fact-writer',
+      revoke_fact: 'authoritative-fact-writer',
     }),
   }),
   loom: Object.freeze({ capabilityId: 'resource-commander', action: 'resource_clearance', signalType: 'running' }),
@@ -38,7 +58,16 @@ const OPERATIONS = Object.freeze({
   aether_wlm: Object.freeze({ capabilityId: 'execution-kernel', action: 'execute_wlm_kernel', signalType: 'running' }),
   qra_emerge_orchestration: Object.freeze({ capabilityId: 'system-integration-runner', action: 'run_system_integration', signalType: 'running' }),
   qra_emerge_ai_secops: Object.freeze({ capabilityId: 'prompt-injection-defense', action: 'screen_prompt_injection', signalType: 'running' }),
-  qra_emerge_audit: Object.freeze({ capabilityId: 'proof-verifier', action: 'verify_proof', signalType: 'completed' }),
+  qra_emerge_audit: Object.freeze({
+    capabilityId: 'proof-verifier',
+    action: 'verify_proof',
+    signalType: 'completed',
+    allowedActions: Object.freeze(['verify_proof', 'record_epistemic_claim']),
+    capabilityFor: Object.freeze({
+      verify_proof: 'proof-verifier',
+      record_epistemic_claim: 'epistemic-claim-writer',
+    }),
+  }),
   qra_emerge_context: Object.freeze({ capabilityId: 'context-memory-lock', action: 'lock_context_memory', signalType: 'running' }),
   qra_emerge_ethics_liaison: Object.freeze({ capabilityId: 'compliance-liaison', action: 'liaise_compliance', signalType: 'running' }),
   qra_emerge_mlops_data: Object.freeze({ capabilityId: 'data-pipeline-validator', action: 'validate_data_pipeline', signalType: 'running' }),
@@ -46,7 +75,16 @@ const OPERATIONS = Object.freeze({
   qra_recovery_driver: Object.freeze({ capabilityId: 'recovery-coordinator', action: 'block_interrupted_mission', signalType: 'blocked' }),
   qra_route_controller: Object.freeze({ capabilityId: 'task-cluster-router', action: 'route_cluster_task', signalType: 'running' }),
   qra_signal_watch: Object.freeze({ capabilityId: 'port-watcher', action: 'watch_ports', signalType: 'running' }),
-  sales_hunter: Object.freeze({ capabilityId: 'outbound-acquisition', action: 'hunt_outbound', signalType: 'running' }),
+  sales_hunter: Object.freeze({
+    capabilityId: 'outbound-acquisition',
+    action: 'hunt_outbound',
+    signalType: 'running',
+    allowedActions: Object.freeze(['hunt_outbound', 'outreach_send']),
+    capabilityFor: Object.freeze({
+      hunt_outbound: 'outbound-acquisition',
+      outreach_send: 'outbound-acquisition',
+    }),
+  }),
   cluster_core_loop_captain: Object.freeze({ capabilityId: 'sprint-supervisor', action: 'supervise_sprint', signalType: 'running' }),
   cluster_core_ship_lead: Object.freeze({ capabilityId: 'hotfix-shipper', action: 'ship_hotfix', signalType: 'running' }),
   cluster_core_qc_sentinel: Object.freeze({ capabilityId: 'output-reviewer', action: 'review_outbound_output', signalType: 'running' }),
@@ -125,7 +163,15 @@ export function createAgentOperationEnvelope({
   });
 }
 
-export function authorizeAgentOperation({ envelope, mission, expectedRevision, operationId, signalType }) {
+export function authorizeAgentOperation({
+  envelope,
+  mission,
+  expectedRevision,
+  operationId,
+  signalType,
+  nowMs = Date.now(),
+  requiredBudgetKey,
+}) {
   const parsed = parseAgentEnvelope(envelope);
   const operation = operationFor(parsed.agent_id);
   const role = roleForAgent(parsed.agent_id);
@@ -157,16 +203,56 @@ export function authorizeAgentOperation({ envelope, mission, expectedRevision, o
     }
   }
   const permission = (mission.permissions ?? []).find(({ actor }) => actor === parsed.agent_id);
-  const legacyRecovery = (mission.permissions ?? []).length === 0
-    && parsed.agent_id === 'qra_recovery_driver'
-    && requestedAction === 'block_interrupted_mission';
-  if (!permission?.actions?.includes(requestedAction) && !legacyRecovery) {
+  if (!permission?.actions?.includes(requestedAction)) {
     throw new Error(`actor ${parsed.agent_id} lacks required permission: ${requestedAction}`);
   }
+  const evaluatedAt = Number.isFinite(nowMs) ? nowMs : Date.now();
+  assertEnvelopeDeadline(parsed, evaluatedAt);
+  assertEnvelopeTransitionBudget(parsed, requiredBudgetKey);
   return Object.freeze({
     envelope: parsed,
     action: requestedAction,
     role,
-    permission: Object.freeze(structuredClone(permission ?? { actor: parsed.agent_id, actions: [requestedAction] })),
+    permission: Object.freeze(structuredClone(permission)),
   });
+}
+
+/** F6: envelopes carry timeout — mission auth must fail closed when the deadline has passed. */
+export function assertEnvelopeDeadline(envelope, nowMs = Date.now()) {
+  const createdAt = Date.parse(envelope?.provenance?.created_at);
+  const timeout = envelope?.timeout;
+  if (!Number.isFinite(createdAt) || !Number.isSafeInteger(timeout) || timeout < 1) {
+    throw new Error('agent envelope timeout binding is invalid');
+  }
+  if (nowMs > createdAt + timeout) {
+    throw new Error('agent envelope timeout exceeded');
+  }
+  return true;
+}
+
+/**
+ * F6: resource_budget must declare at least one positive limit that the
+ * operation is accountable to (mutations, proof reads, etc.).
+ */
+export function assertEnvelopeTransitionBudget(envelope, requiredBudgetKey) {
+  const budget = envelope?.resource_budget;
+  if (!budget || typeof budget !== 'object') {
+    throw new Error('agent envelope resource_budget is required');
+  }
+  const positive = Object.values(budget).some(
+    (value) => typeof value === 'number' && Number.isFinite(value) && value > 0,
+  );
+  if (!positive) {
+    throw new Error('agent envelope resource_budget must declare at least one positive limit');
+  }
+  if (requiredBudgetKey !== undefined) {
+    if (typeof requiredBudgetKey !== 'string' || !/^[a-z][a-z0-9_]*$/.test(requiredBudgetKey)) {
+      throw new TypeError('required budget key must be a safe id');
+    }
+    const limit = budget[requiredBudgetKey];
+    if (typeof limit !== 'number' || !Number.isFinite(limit) || limit <= 0) {
+      throw new Error(`agent envelope resource_budget.${requiredBudgetKey} must be positive`);
+    }
+  }
+  return true;
 }

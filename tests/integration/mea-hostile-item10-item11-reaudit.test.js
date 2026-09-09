@@ -103,7 +103,10 @@ test('HOLE CHECK: QR18 Level 5 must not accept skipped plan steps when workflowG
       artifactReferences: [{
         id: 'mission-proof',
         artifactId: 'mission-proof',
+        path: 'proofs/artifacts/mission-hostile-1/mission-proof-deadbeef.json',
+        operationId: 'op-art-1',
         verified: true,
+        serviceVerified: true,
         artifactHash: 'a'.repeat(64),
         proofHash: 'b'.repeat(64),
         agent: 'qra_emerge_audit',
@@ -250,7 +253,7 @@ test('HOLE CHECK: forged qr18 bag + stripped artifact still cannot complete', as
     root,
     missionId: created.mission.id,
     operationId: 'op-hostile-qr18-proof-1',
-    payload: { ok: true },
+    payload: { ok: true, completedWork: ['a', 'b'] },
   });
 
   await assert.rejects(

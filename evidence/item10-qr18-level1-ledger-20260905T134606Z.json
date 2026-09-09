@@ -1,0 +1,31 @@
+{
+  "checkpoint": 124,
+  "item": 10,
+  "title": "Layered QR18 — Level 1 ledger action proof",
+  "utc": "20260905T134606Z",
+  "claim": "Every important completion claim can be traced to its evidence and verifier; Level 1 action proof is ledger-recorded performers, not planted evidence bags.",
+  "holeClosed": {
+    "id": "qr18-level1-set-length-and-planted-evidence",
+    "before": "Level 1 used Set.length (always falsy) so ledger-only performers failed; planted evidence alone passed Level 1",
+    "after": "Level 1 verified iff recordedWorkPerformers non-empty; planted evidence insufficient",
+    "production": "packages/proof/src/qr18-layered-verification.js evaluateAction"
+  },
+  "focusedSuite": {
+    "tests": 21,
+    "pass": 21,
+    "fail": 0,
+    "files": [
+      "tests/contract/qr18-layered-verification.test.js",
+      "tests/integration/qr18-layered-completion-gate.test.js",
+      "tests/integration/mea-hostile-item10-item11-reaudit.test.js",
+      "tests/integration/mea-hostile-item10-level1-ledger.test.js"
+    ]
+  },
+  "hostileProbe": {
+    "ledgerOnlyClearedEvidence": "Level 1 ACCEPT with recordedPerformers=['nyx']",
+    "plantedEvidenceNoPerformers": "Level 1 REJECT",
+    "serviceClearThenComplete": "status=completed; L1 recordedPerformers=['nyx']; evidenceEntries=0",
+    "forgedQr18Bag": "prior reaudit still REJECT"
+  },
+  "verdict": "READY"
+}

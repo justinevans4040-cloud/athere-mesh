@@ -250,6 +250,13 @@ test('command deck UI is served on loopback; owner token only on same-origin boo
     const body = await boot.json();
     assert.equal(body.ownerToken, OWNER_TOKEN);
     assert.equal(body.tokenPolicy, 'same-origin-only');
+
+    // Chrome often omits Origin on same-origin GET — still disclose.
+    const chromeLike = await fetch(`${api.url}/api/deck/bootstrap`, {
+      headers: { 'sec-fetch-site': 'same-origin' },
+    });
+    assert.equal(chromeLike.status, 200);
+    assert.equal((await chromeLike.json()).ownerToken, OWNER_TOKEN);
   } finally {
     await api.close();
   }
@@ -380,7 +387,19 @@ test('startup composition validates the fleet and recovers interrupted missions 
   const root = join(repositoryRoot, 'workspace', 'titan');
   await saveMission({
     root,
-    mission: createMission({ id: 'mission-startup-recovery', intent: 'test all of Titan', clock: () => '2026-08-23T12:00:00.000Z' }),
+    mission: Object.freeze({
+      ...createMission({
+        id: 'mission-startup-recovery',
+        intent: 'test all of Titan',
+        clock: () => '2026-08-23T12:00:00.000Z',
+      }),
+      permissions: Object.freeze([
+        Object.freeze({
+          actor: 'qra_recovery_driver',
+          actions: Object.freeze(['block_interrupted_mission']),
+        }),
+      ]),
+    }),
   });
   const api = await createTitanService({
     environment: { TITAN_API_BEARER_TOKEN: OWNER_TOKEN, OLLAMA_BASE_URL: 'http://127.0.0.1:11434', OLLAMA_MODEL: 'test-model' },

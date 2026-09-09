@@ -69,7 +69,7 @@ test('completed signal cannot bypass completedWork authorization gate', async ()
     root,
     missionId: created.mission.id,
     operationId: 'op-mea-hostile-bypass-proof-1',
-    payload: { result: 'hostile-completed-bypass' },
+    payload: { result: 'hostile-completed-bypass', completedWork: [] },
   });
 
   await assert.rejects(

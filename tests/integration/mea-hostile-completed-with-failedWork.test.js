@@ -69,7 +69,7 @@ test('completed signal cannot publish success while failedWork remains non-empty
     root,
     missionId: created.mission.id,
     operationId: 'op-mea-hostile-failedWork-proof-1',
-    payload: { result: 'hostile-completed-with-failedWork' },
+    payload: { result: 'hostile-completed-with-failedWork', completedWork: ['inspect', 'verify'] },
   });
 
   await assert.rejects(

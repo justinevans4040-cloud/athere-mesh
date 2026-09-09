@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { createAgentOperationEnvelope } from '../../packages/contracts/src/agent-operation.js';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 
 function clock() {
@@ -60,6 +61,14 @@ test('Item 15: service retrieveMemory prefers current fact over superseded simil
     factId: 'fact-ip-1',
     successor: { id: 'fact-ip-2', value: '10.0.0.9' },
     reason: 'rotated',
+    envelope: createAgentOperationEnvelope({
+      record: created,
+      operationId: 'op-ret-supersede',
+      agentId: 'nyx',
+      action: 'supersede_fact',
+      objective: 'rotated',
+      createdAt: clock(),
+    }),
   });
 
   const result = await service.retrieveMemory({

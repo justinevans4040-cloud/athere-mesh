@@ -1,0 +1,16 @@
+{
+  "stamp": "20260905T050816Z",
+  "product": "ForgeFront by Wake Industries",
+  "moved": [
+    "DCE_SARA_PACKET.html",
+    "scripts/SARA_SEND.txt",
+    "scripts/build_sara_dce_packet.py",
+    "scripts/illinois_shines_official_truth.md",
+    "scripts/noon_sales_pack.md",
+    "scripts/sara_portal_token.txt",
+    "scripts/script_il_june_2026_sara.md",
+    "scripts/simple_direct_script_sara.md"
+  ],
+  "disposedDir": "/home/the_founder/forgefront/forgefront-meta/disposed-job-apis-20260905",
+  "ok": true
+}

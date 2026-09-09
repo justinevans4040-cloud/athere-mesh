@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createAgentOperationEnvelope } from '../../packages/contracts/src/agent-operation.js';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
-import { writeProof } from '../../packages/proof/src/proof-store.js';
+import { writeArtifactProof, writeProof, readProofBytes, verifyArtifactProof } from '../../packages/proof/src/proof-store.js';
 
 function clock() {
   return '2026-09-04T04:00:00.000Z';
@@ -67,11 +67,12 @@ test('completion without verified artifact lineage fails QR18 Level 2 at the sta
     },
     envelope: envelopeFor(running, 'op-qr18-gate-evidence-1', 'nyx'),
   });
+  const completedWork = ['inspect', 'verify'];
   const proof = await writeProof({
     root,
     missionId: created.mission.id,
     operationId: 'op-qr18-gate-proof-1',
-    payload: { result: 'ok' },
+    payload: { result: 'ok', completedWork },
   });
 
   await assert.rejects(
@@ -89,7 +90,7 @@ test('completion without verified artifact lineage fails QR18 Level 2 at the sta
         },
       },
       update: {
-        completedWork: ['inspect', 'verify'],
+        completedWork,
         pendingWork: [],
         failedWork: [],
         activeAgents: [],
@@ -127,12 +128,30 @@ test('honest completion stores service-evaluated QR18 levels on the mission resu
     },
     envelope: envelopeFor(running, 'op-qr18-honest-evidence-1', 'nyx'),
   });
+  const completedWork = ['inspect', 'verify'];
   const proof = await writeProof({
     root,
     missionId: created.mission.id,
     operationId: 'op-qr18-honest-proof-1',
-    payload: { result: 'ok' },
+    payload: { result: 'ok', completedWork },
   });
+  const proofBytes = await readProofBytes(root, proof);
+  const artifactOp = 'op-qr18-honest-artifact-1';
+  const artifactRef = await writeArtifactProof({
+    root,
+    missionId: created.mission.id,
+    artifactId: 'mission-proof',
+    artifact: proofBytes,
+    operationId: artifactOp,
+    predecessorHash: null,
+    agent: 'qra_emerge_audit',
+    action: 'verified_mission_proof',
+    verifierResult: { verifier: 'qra_emerge_audit', verified: true, proofSha256: proof.sha256 },
+    missionStateVersion: executed.revision,
+    timestamp: clock(),
+  });
+  const artifactVerification = await verifyArtifactProof({ root, ref: artifactRef, artifact: proofBytes });
+  assert.equal(artifactVerification.verified, true);
 
   const completed = await service.transition({
     operationId: 'op-qr18-honest-complete-1',
@@ -144,20 +163,11 @@ test('honest completion stores service-evaluated QR18 levels on the mission resu
       proof: { ...proof, verified: true },
     },
     update: {
-      completedWork: ['inspect', 'verify'],
+      completedWork,
       pendingWork: [],
       failedWork: [],
       activeAgents: [],
-      artifactReferences: [{
-        id: 'mission-proof',
-        artifactId: 'mission-proof',
-        verified: true,
-        artifactHash: 'a'.repeat(64),
-        proofHash: 'b'.repeat(64),
-        agent: 'qra_emerge_audit',
-        action: 'verified_mission_proof',
-        verifierResult: { verifier: 'qra_emerge_audit', verified: true },
-      }],
+      artifactReferences: [{ id: 'mission-proof', ...artifactRef, ...artifactVerification }],
     },
     envelope: envelopeFor(executed, 'op-qr18-honest-complete-1', 'qra_emerge_audit'),
   });

@@ -140,6 +140,14 @@ test('validatedSkillBindings enter mission stateHash and cannot be forged via tr
     actor: 'nyx',
     skillId: skill.id,
     version: skill.version,
+    envelope: createAgentOperationEnvelope({
+      record: created,
+      operationId: 'op-bind-skill-1',
+      agentId: 'nyx',
+      action: 'observe_repository',
+      objective: 'bind skill',
+      createdAt: clock(),
+    }),
   });
   assert.equal(bound.mission.validatedSkillBindings.length, 1);
   assert.equal(bound.mission.validatedSkillBindings[0].skillId, skill.id);
@@ -208,6 +216,14 @@ test('improvementBindings enter mission stateHash and cannot be forged via trans
     expectedRevision: created.revision,
     actor: 'nyx',
     proposalId: deployed.id,
+    envelope: createAgentOperationEnvelope({
+      record: created,
+      operationId: 'op-bind-imp-1',
+      agentId: 'nyx',
+      action: 'observe_repository',
+      objective: 'bind improvement',
+      createdAt: clock(),
+    }),
   });
   assert.equal(bound.mission.improvementBindings.length, 1);
   assert.equal(bound.mission.improvementBindings[0].proposalId, deployed.id);

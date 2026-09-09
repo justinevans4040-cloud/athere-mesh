@@ -1,0 +1,15 @@
+{
+    "redisIchabod6380":  "auth-required-alive",
+    "ok":  true,
+    "tunnel":  "http://127.0.0.1:18787/",
+    "health":  {
+                   "ok":  true,
+                   "product":  "ForgeFront",
+                   "brand":  "ForgeFront by Wake Industries",
+                   "version":  "3.0",
+                   "buildId":  "2d35fc703e73",
+                   "authRequired":  false,
+                   "time":  "2026-09-05T06:14:57.845Z"
+               },
+    "stamp":  "20260905T061458Z"
+}

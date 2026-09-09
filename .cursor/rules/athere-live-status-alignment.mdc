@@ -1,0 +1,23 @@
+---
+description: Prevent stale ACTIVE_RUN / Item-13 rewind handoffs on Athere Mesh
+alwaysApply: true
+---
+
+# Athere live-status alignment (HARD)
+
+Before any status lecture, “next item,” or backlog claim on Athere Mesh / Titan:
+
+1. `git fetch origin master` (or note if fetch failed).
+2. Read `runtime/ATHERE_ACTIVE_RUN.md` **Status + ALIGNMENT GATE**.
+3. Cross-check `git log origin/master --oneline` for Items 12–24 commits.
+4. Prefer `origin/master` + Status over chat summaries and dirty local rewinds.
+
+## Forbidden claims without fresh evidence
+
+- “Item 12 is next” / “Item 13 is next”
+- Treating local residual ckpts as a rewind past shipped Items 13–24
+- Lecturing from conversation memory when it conflicts with ACTIVE_RUN Status
+
+## Still-open work lives in ACTIVE_RUN “Current unresolved”
+
+Sales Hunter T0, NYX ladder, notebook IN/OUT, remote fabric, Ship #8, Wake organize, deferred/parked roster — **not** inventing Phase 4 Item 13 homework.

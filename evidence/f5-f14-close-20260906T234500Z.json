@@ -1,0 +1,95 @@
+{
+  "generatedAt": "2026-09-06T23:46:20.448Z",
+  "claim": "F5-F14 all closed; OPEN_COUNT 0; no residual parking lot",
+  "openCount": 0,
+  "results": [
+    {
+      "id": "F5_empty_perm_recovery",
+      "result": "REJECT_OK",
+      "detail": "actor qra_recovery_driver lacks required permission: block_interrupted_mission"
+    },
+    {
+      "id": "F6_timeout_enforced",
+      "result": "REJECT_OK",
+      "detail": "agent envelope timeout exceeded"
+    },
+    {
+      "id": "F6_budget_positive",
+      "result": "REJECT_OK",
+      "detail": "agent envelope resource_budget must declare at least one positive limit"
+    },
+    {
+      "id": "F7_fact_requires_envelope",
+      "result": "REJECT_OK",
+      "detail": "fact operations require an agent operation envelope"
+    },
+    {
+      "id": "F8_bridge_serialized",
+      "result": "REJECT_OK",
+      "detail": "maxConcurrent=1"
+    },
+    {
+      "id": "F9_windows_lock_identity",
+      "result": "OK",
+      "detail": "mission save under locking store succeeded"
+    },
+    {
+      "id": "F10_create_integrity_bound",
+      "result": "OK",
+      "detail": "{\"valid\":true,\"integrityBound\":true,\"provenanceRoot\":\"create\",\"missionId\":\"f10real\",\"stateVersion\":1,\"transitionCount\":1,\"stateHash\":\"efbea2c1933acf4f486acf733f802041e8b41a6f730c437d419195ad91cf9aa1\"}"
+    },
+    {
+      "id": "F10_import_root_present",
+      "result": "OK",
+      "detail": "import_legacy_snapshot"
+    },
+    {
+      "id": "F10_cannot_certify_import_root",
+      "result": "REJECT_OK",
+      "detail": "cannot certify mission whose ledger roots in an unverified legacy import"
+    },
+    {
+      "id": "F11_payload_work_mismatch",
+      "result": "REJECT_OK",
+      "detail": "mission proof payload completedWork does not match completion claim"
+    },
+    {
+      "id": "F12_no_regex_gates",
+      "result": "REJECT_OK",
+      "detail": "regex=false explicit=true"
+    },
+    {
+      "id": "F12_open_gate_blocks_path",
+      "result": "REJECT_OK",
+      "detail": "verification_gate_open:verify->requires:gate:verify"
+    },
+    {
+      "id": "F13_recovery_cannot_complete",
+      "result": "REJECT_OK",
+      "detail": "agent qra_recovery_driver cannot perform completed transition with create_checkpoint"
+    },
+    {
+      "id": "F14_select_strips_lineage",
+      "result": "REJECT_OK",
+      "detail": "{\"id\":\"a2\",\"key\":\"k\",\"value\":2,\"status\":\"current\"}"
+    }
+  ],
+  "production": [
+    "F5 remove empty-permissions recovery bypass",
+    "F6 envelope timeout + positive resource_budget on authorize",
+    "F7 fact ops require agent envelope",
+    "F8 bridge saveMission keyed lock serialization",
+    "F9 Windows process start ticks for lock identity",
+    "F10 cannot certify import_legacy_snapshot-rooted ledger; integrityBound on verifyHistory",
+    "F11 proof payload completedWork bound at complete + QR18 L6",
+    "F12 explicit verificationGate only; open gate fails path",
+    "F13 Item12 surfaces kept; recovery cannot emit completed",
+    "F14 select(currentFacts) strips lineage"
+  ],
+  "suites": {
+    "focusedPass": 50,
+    "focusedFail": 0,
+    "f1f2f4Open": 0,
+    "f5f14Open": 0
+  }
+}

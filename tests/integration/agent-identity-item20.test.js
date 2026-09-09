@@ -134,14 +134,15 @@ test('Item 20: revoked agent identity cannot perform consequential transitions',
 test('Item 20 safety: revoked identity cannot record facts or epistemic claims', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'athere-id20c-'));
   const identities = createAgentIdentityRegistry();
+  identities.revoke('nyx', { revokedAt: clock(), reason: 'compromised' });
   identities.revoke('miss-vale-prime', { revokedAt: clock(), reason: 'compromised' });
   const service = createMissionStateService({ root, clock, identities });
   const created = await service.create(createInput({
     operationId: 'op-id20-create-3',
     id: 'mission-id20-3',
     permissions: [
-      { actor: 'miss-vale-prime', actions: ['supervise_mission', 'record_fact', 'record_epistemic_claim'] },
-      { actor: 'nyx', actions: ['observe_repository'] },
+      { actor: 'miss-vale-prime', actions: ['supervise_mission', 'record_epistemic_claim'] },
+      { actor: 'nyx', actions: ['observe_repository', 'record_fact'] },
       { actor: 'rune', actions: ['execute_node_tests'] },
       { actor: 'qra_emerge_audit', actions: ['verify_proof', 'record_epistemic_claim'] },
       { actor: 'qra_recovery_driver', actions: [...RECOVERY_ACTIONS] },
@@ -153,7 +154,7 @@ test('Item 20 safety: revoked identity cannot record facts or epistemic claims',
       operationId: 'op-id20-fact-revoked',
       missionId: created.mission.id,
       expectedRevision: created.revision,
-      actor: 'miss-vale-prime',
+      actor: 'nyx',
       fact: {
         id: 'fact-1',
         key: 'k',
@@ -161,6 +162,14 @@ test('Item 20 safety: revoked identity cannot record facts or epistemic claims',
         status: 'current',
         recordedAt: clock(),
       },
+      envelope: createAgentOperationEnvelope({
+        record: created,
+        operationId: 'op-id20-fact-revoked',
+        agentId: 'nyx',
+        action: 'record_fact',
+        objective: 'revoked fact probe',
+        createdAt: clock(),
+      }),
     }),
     /revoked/,
   );

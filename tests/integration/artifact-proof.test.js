@@ -36,6 +36,15 @@ test('artifact proof binds exact artifact bytes to producer, verifier, mission s
     missionStateVersion: 7,
     timestamp: '2026-08-28T14:15:00.000Z',
   });
+  assert.deepEqual(
+    await verifyArtifactProof({ root, ref, artifact, expectedMissionStateVersion: 8 }),
+    {
+      verified: false,
+      artifactId: 'source-main-js',
+      artifactHash: ref.artifactHash,
+      reason: 'mission_state_version_mismatch',
+    },
+  );
 });
 
 test('artifact proof rejects different bytes and malformed provenance', async () => {

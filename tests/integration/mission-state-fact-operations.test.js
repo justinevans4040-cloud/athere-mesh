@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createAgentOperationEnvelope } from '../../packages/contracts/src/agent-operation.js';
 import { createMissionStateService } from '../../packages/mission/src/mission-state-service.js';
 import { createMissionStoreBridge } from '../../packages/mission/src/mission-store.js';
 
@@ -9,6 +10,11 @@ const clockValues = [
   '2026-08-31T14:20:02.000Z',
   '2026-08-31T14:20:03.000Z',
   '2026-08-31T14:20:04.000Z',
+  '2026-08-31T14:20:05.000Z',
+  '2026-08-31T14:20:06.000Z',
+  '2026-08-31T14:20:07.000Z',
+  '2026-08-31T14:20:08.000Z',
+  '2026-08-31T14:20:09.000Z',
 ];
 function createClock() { let i = 0; return () => clockValues[Math.min(i++, clockValues.length - 1)]; }
 
@@ -41,10 +47,22 @@ function input() {
   };
 }
 
+function factEnvelope(record, operationId, action, createdAt, objective = 'Maintain authoritative facts safely') {
+  return createAgentOperationEnvelope({
+    record,
+    operationId,
+    agentId: 'nyx',
+    action,
+    createdAt,
+    objective,
+  });
+}
+
 async function createService() {
-  const service = createMissionStateService({ root: '/state', clock: createClock(), store: createStore() });
+  const clock = createClock();
+  const service = createMissionStateService({ root: '/state', clock, store: createStore() });
   const created = await service.create(input());
-  return { service, created };
+  return { service, created, clock };
 }
 
 test('generic transitions cannot replace authoritative fact collections', async () => {
@@ -62,7 +80,7 @@ test('generic transitions cannot replace authoritative fact collections', async 
 });
 
 test('supersedeFact atomically retires the current fact and installs one successor', async () => {
-  const { service, created } = await createService();
+  const { service, created, clock } = await createService();
   const saved = await service.supersedeFact({
     operationId: 'op-supersede-fact-1',
     missionId: created.mission.id,
@@ -72,10 +90,11 @@ test('supersedeFact atomically retires the current fact and installs one success
     successor: { id: 'server-ip-v4', value: '100.64.0.11' },
     reason: 'verified address change',
     evidence: { source: 'runtime-probe' },
+    envelope: factEnvelope(created, 'op-supersede-fact-1', 'supersede_fact', clock()),
   });
   assert.equal(saved.revision, 2);
   assert.deepEqual(await service.facts({ missionId: created.mission.id, key: 'SERVER_IP' }), [
-    { id: 'server-ip-v4', key: 'SERVER_IP', value: '100.64.0.11', status: 'current', supersedes: 'server-ip-v3' },
+    { id: 'server-ip-v4', key: 'SERVER_IP', value: '100.64.0.11', status: 'current' },
   ]);
   const historyFacts = await service.facts({ missionId: created.mission.id, key: 'SERVER_IP', includeHistorical: true });
   assert.deepEqual(historyFacts.map(({ id, status }) => ({ id, status })), [
@@ -89,7 +108,7 @@ test('supersedeFact atomically retires the current fact and installs one success
 });
 
 test('ordinary mission reads expose current facts only and history requires an explicit request', async () => {
-  const { service, created } = await createService();
+  const { service, created, clock } = await createService();
   await service.supersedeFact({
     operationId: 'op-supersede-read-boundary-1',
     missionId: created.mission.id,
@@ -98,10 +117,12 @@ test('ordinary mission reads expose current facts only and history requires an e
     factId: 'server-ip-v3',
     successor: { id: 'server-ip-v4', value: '100.64.0.11' },
     reason: 'verified address change',
+    envelope: factEnvelope(created, 'op-supersede-read-boundary-1', 'supersede_fact', clock()),
   });
 
   const ordinary = await service.get({ missionId: created.mission.id });
   assert.deepEqual(ordinary.mission.authoritativeFacts.map(({ id }) => id), ['server-ip-v4']);
+  assert.equal(ordinary.mission.authoritativeFacts[0].supersedes, undefined);
   assert.equal(ordinary.mission.transitionHistory, undefined);
   const historical = await service.get({ missionId: created.mission.id, includeHistorical: true });
   assert.deepEqual(historical.mission.authoritativeFacts.map(({ id }) => id), ['server-ip-v3', 'server-ip-v4']);
@@ -109,7 +130,7 @@ test('ordinary mission reads expose current facts only and history requires an e
 });
 
 test('correctFact records correction lineage without exposing the incorrect value as current', async () => {
-  const { service, created } = await createService();
+  const { service, created, clock } = await createService();
   await service.correctFact({
     operationId: 'op-correct-fact-1',
     missionId: created.mission.id,
@@ -118,6 +139,7 @@ test('correctFact records correction lineage without exposing the incorrect valu
     factId: 'server-ip-v3',
     successor: { id: 'server-ip-corrected', value: '100.64.0.12' },
     reason: 'prior observation was incorrect',
+    envelope: factEnvelope(created, 'op-correct-fact-1', 'correct_fact', clock()),
   });
   const facts = await service.facts({ missionId: created.mission.id, key: 'SERVER_IP', includeHistorical: true });
   assert.equal(facts[0].status, 'corrected');
@@ -127,7 +149,7 @@ test('correctFact records correction lineage without exposing the incorrect valu
 });
 
 test('revokeFact removes a revoked fact from normal agent retrieval and preserves explicit history', async () => {
-  const { service, created } = await createService();
+  const { service, created, clock } = await createService();
   await service.revokeFact({
     operationId: 'op-revoke-fact-1',
     missionId: created.mission.id,
@@ -135,6 +157,7 @@ test('revokeFact removes a revoked fact from normal agent retrieval and preserve
     actor: 'nyx',
     factId: 'server-ip-v3',
     reason: 'source authority withdrawn',
+    envelope: factEnvelope(created, 'op-revoke-fact-1', 'revoke_fact', clock()),
   });
   assert.deepEqual(await service.facts({ missionId: created.mission.id, key: 'SERVER_IP' }), []);
   const historical = await service.facts({ missionId: created.mission.id, key: 'SERVER_IP', includeHistorical: true });
@@ -144,7 +167,7 @@ test('revokeFact removes a revoked fact from normal agent retrieval and preserve
 });
 
 test('recordFact refuses to create a second current fact and requires explicit supersession', async () => {
-  const { service, created } = await createService();
+  const { service, created, clock } = await createService();
   await assert.rejects(
     service.recordFact({
       operationId: 'op-record-duplicate-fact-1',
@@ -152,6 +175,7 @@ test('recordFact refuses to create a second current fact and requires explicit s
       expectedRevision: created.revision,
       actor: 'nyx',
       fact: { id: 'server-ip-v4', key: 'SERVER_IP', value: '100.64.0.11', status: 'current' },
+      envelope: factEnvelope(created, 'op-record-duplicate-fact-1', 'record_fact', clock()),
     }),
     /current fact already exists for key SERVER_IP; supersede or correct it explicitly/,
   );
@@ -161,16 +185,25 @@ test('atomic fact operations enforce declared actor capabilities', async () => {
   const store = createStore();
   const data = input();
   data.permissions = [{ actor: 'nyx', actions: ['observe_repository'] }];
-  const service = createMissionStateService({ root: '/state', clock: createClock(), store });
+  const clock = createClock();
+  const service = createMissionStateService({ root: '/state', clock, store });
   const created = await service.create(data);
   await assert.rejects(
-    service.revokeFact({ operationId: 'op-denied-revoke-1', missionId: created.mission.id, expectedRevision: created.revision, actor: 'nyx', factId: 'server-ip-v3', reason: 'test' }),
+    service.revokeFact({
+      operationId: 'op-denied-revoke-1',
+      missionId: created.mission.id,
+      expectedRevision: created.revision,
+      actor: 'nyx',
+      factId: 'server-ip-v3',
+      reason: 'test',
+      envelope: factEnvelope(created, 'op-denied-revoke-1', 'revoke_fact', clock()),
+    }),
     /actor nyx lacks required permission: revoke_fact/,
   );
 });
 
 test('atomic fact operations reject stale revisions without changing authority', async () => {
-  const { service, created } = await createService();
+  const { service, created, clock } = await createService();
   await assert.rejects(
     service.supersedeFact({
       operationId: 'op-stale-supersede-1',
@@ -180,6 +213,12 @@ test('atomic fact operations reject stale revisions without changing authority',
       factId: 'server-ip-v3',
       successor: { id: 'server-ip-v4', value: '100.64.0.11' },
       reason: 'stale caller',
+      envelope: factEnvelope(
+        { mission: created.mission, revision: created.revision + 1 },
+        'op-stale-supersede-1',
+        'supersede_fact',
+        clock(),
+      ),
     }),
     /revision conflict/,
   );
@@ -189,7 +228,8 @@ test('atomic fact operations reject stale revisions without changing authority',
 });
 
 test('fact operation IDs suppress exact retries and reject conflicting reuse', async () => {
-  const { service, created } = await createService();
+  const { service, created, clock } = await createService();
+  const createdAt = clock();
   const request = {
     operationId: 'op-supersede-server-ip-1',
     missionId: created.mission.id,
@@ -199,6 +239,7 @@ test('fact operation IDs suppress exact retries and reject conflicting reuse', a
     successor: { id: 'server-ip-v4', value: '100.64.0.11' },
     reason: 'verified address change',
     evidence: { source: 'runtime-probe' },
+    envelope: factEnvelope(created, 'op-supersede-server-ip-1', 'supersede_fact', createdAt),
   };
 
   const first = await service.supersedeFact(request);
@@ -215,7 +256,8 @@ test('fact operation IDs suppress exact retries and reject conflicting reuse', a
 });
 
 test('concurrent retries converge on one committed fact mutation', async () => {
-  const { service, created } = await createService();
+  const { service, created, clock } = await createService();
+  const createdAt = clock();
   const request = {
     operationId: 'op-concurrent-revoke-1',
     missionId: created.mission.id,
@@ -223,6 +265,7 @@ test('concurrent retries converge on one committed fact mutation', async () => {
     actor: 'nyx',
     factId: 'server-ip-v3',
     reason: 'concurrent verified revocation',
+    envelope: factEnvelope(created, 'op-concurrent-revoke-1', 'revoke_fact', createdAt),
   };
 
   const results = await Promise.all([service.revokeFact(request), service.revokeFact(request)]);

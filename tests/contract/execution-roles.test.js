@@ -77,17 +77,18 @@ function ledgerEntry({ actor, action, evidenceAfter }) {
   };
 }
 
-test('recorded performers come from the service-written ledger, never from payload content', () => {
+test('recorded performers come from evidence writes on the ledger, never from payload or action alone', () => {
   const history = [
     ledgerEntry({ actor: 'titan', action: 'create', evidenceAfter: [] }),
+    // Executor action with no evidence write is not performance.
     ledgerEntry({ actor: 'nyx', action: 'observe_repository' }),
     ledgerEntry({ actor: 'rune', action: 'execute_node_tests', evidenceAfter: [{ any: 'shape' }] }),
     // An auditor transition that changed nothing about evidence is not performance.
     ledgerEntry({ actor: 'qra_emerge_audit', action: 'verify_proof' }),
-    // Payload content naming an agent is irrelevant; only the recorded actor counts.
+    // Payload content naming an agent is irrelevant; only the recorded actor + evidence write counts.
     ledgerEntry({ actor: 'nyx', action: 'observe_repository', evidenceAfter: [{ agent: 'qra_emerge_audit' }] }),
   ];
-  assert.deepEqual([...recordedWorkPerformers(history)], ['nyx', 'rune']);
+  assert.deepEqual([...recordedWorkPerformers(history)], ['rune', 'nyx']);
   assert.deepEqual([...recordedWorkPerformers([])], []);
   assert.throws(() => recordedWorkPerformers('not-an-array'), /transitionHistory must be an array/);
 });

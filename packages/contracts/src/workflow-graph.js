@@ -129,6 +129,9 @@ export function buildWorkflowGraph({
   }
 
   const planSteps = Array.isArray(currentPlan?.steps) ? currentPlan.steps : [];
+  const subgoalById = new Map(
+    subgoals.filter((entry) => plainObject(entry)).map((entry) => [entry.id, entry]),
+  );
   for (const step of planSteps) {
     const id = requiredId(step, 'plan step');
     if (!nodeIds.has(id)) {
@@ -138,7 +141,8 @@ export function buildWorkflowGraph({
     if (!nodeIds.has(actionId)) {
       addNode({ id: actionId, kind: 'action', subgoalId: id });
     }
-    if (/verify|proof|audit/i.test(id)) {
+    // F12: verification_gate nodes are explicit only — never invented from id regex.
+    if (subgoalById.get(id)?.verificationGate === true) {
       const gateId = `gate:${id}`;
       if (!nodeIds.has(gateId)) {
         addNode({ id: gateId, kind: 'verification_gate', subgoalId: id });
@@ -199,6 +203,7 @@ export function assessMissionPath({
   for (const node of workflowGraph.nodes) {
     if (node.kind === 'subgoal') knownWorkNodes.add(node.id);
     if (node.kind === 'action' && typeof node.subgoalId === 'string') knownWorkNodes.add(node.subgoalId);
+    if (node.kind === 'verification_gate') knownWorkNodes.add(node.id);
   }
   for (const id of completedWork) {
     if (!knownWorkNodes.has(id)) violations.push(`unknown_work_node:${id}`);
@@ -231,16 +236,31 @@ export function assessMissionPath({
         violations.push(`blocks:${edge.from}->blocks:${edge.to}`);
       }
     }
+    if (edge.kind === 'retry_after') {
+      // A retry target cannot be declared complete until its prerequisite repair
+      // or recovery step is complete.
+      if (completed.has(edge.to) && !completed.has(edge.from)) {
+        violations.push(`retry_after:${edge.to}->requires:${edge.from}`);
+      }
+    }
+    if (edge.kind === 'rollback_to') {
+      // Once the source failed, the rollback target must be reopened rather
+      // than remaining falsely certified as complete.
+      if (failed.has(edge.from) && completed.has(edge.to)) {
+        violations.push(`rollback_to:${edge.from}->target:${edge.to}:must_reopen`);
+      }
+    }
     if (edge.kind === 'satisfies') {
       // Informational for goals; if `from` completed, goal `to` is considered addressed.
       // No violation alone — recorded for evidence.
     }
   }
 
-  // Plan order: earlier incomplete steps cannot be skipped while a later step is
-  // completed, unless an alternate_path edge to that later step has its `from`
-  // node already completed (armed alternate). A bare alternate_path declaration
-  // does not waive order.
+  // Plan order: earlier plan steps must be completed before a later step is
+  // completed, unless an alternate_path edge to that later step is armed
+  // (`from` already completed). Failed earlier steps do NOT waive order — that
+  // would let a later completion skip still-incomplete prior work. Recovery /
+  // retry paths are Item 12; alternate_path is the only create-time skip arm.
   const planActions = workflowGraph.nodes
     .filter((node) => node.kind === 'action' && typeof node.subgoalId === 'string')
     .map((node) => node.subgoalId);
@@ -255,13 +275,16 @@ export function assessMissionPath({
     if (alternateArmed) continue;
     for (let earlier = 0; earlier < index; earlier += 1) {
       const prior = planActions[earlier];
-      if (completed.has(prior) || failed.has(prior)) continue;
-      const hasDepends = workflowGraph.edges.some(
-        (edge) => edge.kind === 'depends_on' && edge.from === prior && edge.to === step,
-      );
-      if (hasDepends || earlier === index - 1) {
-        violations.push(`plan_order:${step}->skips:${prior}`);
-      }
+      if (completed.has(prior)) continue;
+      violations.push(`plan_order:${step}->skips:${prior}`);
+    }
+  }
+
+  // F12: explicit verification gates must be cleared when their subgoal completes.
+  for (const node of workflowGraph.nodes) {
+    if (node.kind !== 'verification_gate' || typeof node.subgoalId !== 'string') continue;
+    if (completed.has(node.subgoalId) && !completed.has(node.id)) {
+      violations.push(`verification_gate_open:${node.subgoalId}->requires:${node.id}`);
     }
   }
 

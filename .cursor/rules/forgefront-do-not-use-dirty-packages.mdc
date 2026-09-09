@@ -1,0 +1,24 @@
+﻿---
+description: ForgeFront + all projects — LIVE only; ZZ_DO_NOT_USE never served
+alwaysApply: true
+---
+
+# LIVE vs DO_NOT_USE (ForgeFront + all projects)
+
+Follow the user-global rule `live-vs-do-not-use` for every product.
+
+## ForgeFront Systems LIVE
+
+- Ichabod: `/home/the_founder/forgefront/solar-command/`
+- URL: `http://127.0.0.1:18787/`
+- Brand: **ForgeFront Systems** (empty seed; no DCE demo projects)
+
+## NEVER serve
+
+- `ZZ_DO_NOT_USE__*` under vault `02_PROJECTS/` or Drive package folders
+- Vault `09_QUARANTINE/`
+- `solar-command-latest` (quarantined duplicate)
+- Sara/IL Shines job archives
+- Home-root old zips / ODIN `odin-security-backup-*`
+
+If Justin asks to see the app → open LIVE only. Fix LIVE if wrong. Do not pull quarantine forward.

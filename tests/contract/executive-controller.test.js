@@ -5,6 +5,7 @@ import {
   assertExecutivePreservesIntegrity,
   decideNext,
 } from '../../packages/executive/src/executive-controller.js';
+import { hashCheckpointSnapshot } from '../../packages/mission/src/mission-checkpoints.js';
 
 function baseMission(overrides = {}) {
   return {
@@ -88,6 +89,7 @@ test('Item 16 contract: running mission with pending inspect allocates nyx', () 
 });
 
 test('Item 16 contract: blocked mission with checkpoint changes strategy without breaking integrity', () => {
+  const snapshot = { status: 'running', completedWork: ['inspect-repository'] };
   const mission = baseMission({
     status: 'blocked',
     completedWork: ['inspect-repository'],
@@ -100,8 +102,8 @@ test('Item 16 contract: blocked mission with checkpoint changes strategy without
       id: 'cp-1',
       verified: true,
       label: 'after-inspect',
-      stateHash: 'a'.repeat(64),
-      snapshot: { status: 'running', completedWork: ['inspect-repository'] },
+      stateHash: hashCheckpointSnapshot(snapshot),
+      snapshot,
     }],
   });
   const decision = decideNext({ mission });

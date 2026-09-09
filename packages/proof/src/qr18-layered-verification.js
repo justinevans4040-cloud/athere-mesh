@@ -37,13 +37,16 @@ function planSteps(mission) {
   return [];
 }
 
-function evaluateAction(mission) {
+function evaluateAction(mission, transitionHistory) {
   const evidence = Array.isArray(mission?.evidence) ? mission.evidence : [];
-  const performers = evidence
+  const evidenceAgents = evidence
     .map((entry) => (plainObject(entry) ? entry.agent ?? entry.executor : null))
     .filter((value) => typeof value === 'string' && value.length > 0);
-  const historyActors = recordedWorkPerformers(mission?.transitionHistory ?? []);
-  const verified = evidence.length > 0 || historyActors.length > 0;
+  // Action proof is structural: service-recorded performers from the ledger.
+  // Caller-planted evidence entries are supporting detail only — never the gate.
+  const historyActors = recordedWorkPerformers(transitionHistory ?? mission?.transitionHistory ?? []);
+  const recordedPerformers = Object.freeze([...historyActors]);
+  const verified = recordedPerformers.length > 0;
   return levelRecord({
     level: 1,
     id: 'action',
@@ -51,10 +54,10 @@ function evaluateAction(mission) {
     verified,
     evidence: {
       evidenceEntries: evidence.length,
-      evidenceAgents: Object.freeze(performers),
-      recordedPerformers: Object.freeze([...historyActors]),
+      evidenceAgents: Object.freeze(evidenceAgents),
+      recordedPerformers,
     },
-    ...(verified ? {} : { reason: 'no recorded action evidence' }),
+    ...(verified ? {} : { reason: 'no recorded work performers' }),
   });
 }
 
@@ -62,6 +65,12 @@ function evaluateArtifact(mission) {
   const refs = Array.isArray(mission?.artifactReferences) ? mission.artifactReferences : [];
   const accepted = refs.filter((ref) => plainObject(ref)
     && ref.verified === true
+    && typeof ref.path === 'string'
+    && ref.path.length > 0
+    && typeof ref.operationId === 'string'
+    && ref.operationId.length > 0
+    && typeof ref.artifactId === 'string'
+    && ref.artifactId.length > 0
     && typeof ref.artifactHash === 'string'
     && /^[a-f0-9]{64}$/.test(ref.artifactHash)
     && typeof ref.proofHash === 'string'
@@ -70,7 +79,8 @@ function evaluateArtifact(mission) {
     && typeof ref.verifierResult.verifier === 'string'
     && ref.verifierResult.verified === true
     && typeof ref.agent === 'string'
-    && typeof ref.action === 'string');
+    && typeof ref.action === 'string'
+    && ref.serviceVerified === true);
   const verified = accepted.length > 0;
   return levelRecord({
     level: 2,
@@ -86,9 +96,11 @@ function evaluateArtifact(mission) {
         agent: ref.agent,
         action: ref.action,
         verifier: ref.verifierResult.verifier,
+        path: ref.path,
+        operationId: ref.operationId,
       }))),
     },
-    ...(verified ? {} : { reason: 'no verified artifact lineage with producer and verifier' }),
+    ...(verified ? {} : { reason: 'no service-verified artifact lineage with producer and verifier' }),
   });
 }
 
@@ -169,7 +181,7 @@ function evaluateWorkflow(mission) {
       for (let earlier = 0; earlier < index; earlier += 1) {
         const prior = planSteps[earlier];
         if (typeof prior !== 'string') continue;
-        if (completedSet.has(prior) || failed.includes(prior)) continue;
+        if (completedSet.has(prior)) continue;
         broken.push(`plan_order:${step}->skips:${prior}`);
       }
     }
@@ -223,7 +235,7 @@ function evaluateWorkflow(mission) {
   });
 }
 
-function evaluateMission(mission, proofVerification) {
+function evaluateMission(mission, proofVerification, proofPayload) {
   const proofOk = plainObject(proofVerification)
     && proofVerification.verified === true
     && typeof proofVerification.sha256 === 'string'
@@ -231,7 +243,13 @@ function evaluateMission(mission, proofVerification) {
   const objective = typeof mission?.objective === 'string' && mission.objective.trim().length > 0
     ? mission.objective
     : (typeof mission?.intent === 'string' ? mission.intent : '');
-  const verified = proofOk && objective.trim().length > 0;
+  const completedWork = Array.isArray(mission?.completedWork) ? mission.completedWork : [];
+  const claimed = proofPayload?.completedWork;
+  const workBound = Array.isArray(claimed)
+    && claimed.length === completedWork.length
+    && claimed.every((item) => typeof item === 'string')
+    && [...claimed].sort().join('\0') === [...completedWork].sort().join('\0');
+  const verified = proofOk && objective.trim().length > 0 && workBound;
   return levelRecord({
     level: 6,
     id: 'mission',
@@ -241,9 +259,14 @@ function evaluateMission(mission, proofVerification) {
       proofVerified: proofOk,
       proofSha256: proofOk ? proofVerification.sha256 : null,
       objective: objective.trim().length > 0 ? objective.trim() : null,
+      completedWorkBound: workBound,
     },
     ...(verified ? {} : {
-      reason: !proofOk ? 'mission proof verification failed' : 'mission objective/intent missing',
+      reason: !proofOk
+        ? 'mission proof verification failed'
+        : objective.trim().length === 0
+          ? 'mission objective/intent missing'
+          : 'mission proof payload completedWork does not match mission',
     }),
   });
 }
@@ -262,16 +285,17 @@ export function evaluateQr18Layers({
   proofVerification,
   certifierAgentId,
   transitionHistory,
+  proofPayload,
 } = {}) {
   if (!plainObject(mission)) throw new TypeError('mission is required for QR18 layered verification');
 
   const levels = Object.freeze([
-    evaluateAction(mission),
+    evaluateAction(mission, transitionHistory),
     evaluateArtifact(mission),
     evaluateStateTransition(mission, certifierAgentId, transitionHistory),
     evaluateSubgoal(mission),
     evaluateWorkflow(mission),
-    evaluateMission(mission, proofVerification),
+    evaluateMission(mission, proofVerification, proofPayload),
   ]);
 
   const failed = levels.filter((entry) => entry.verified !== true).map((entry) => entry.id);

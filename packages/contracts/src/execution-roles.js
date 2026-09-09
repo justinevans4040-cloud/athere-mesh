@@ -62,6 +62,10 @@ const EXECUTOR_ACTIONS = Object.freeze(new Set([
   'communicate_stakeholders',
   'investigate_forensics',
   'run_cluster_wave',
+  'record_fact',
+  'supersede_fact',
+  'correct_fact',
+  'revoke_fact',
 ]));
 const AUDITOR_ACTIONS = Object.freeze(new Set(['verify_proof']));
 const MANAGER_ACTIONS = Object.freeze(new Set([
@@ -164,17 +168,29 @@ export function normalizeAgentId(value) {
 }
 
 /**
- * A ledger entry records *performance* when the actor wrote work evidence into
- * authoritative mission state, or performed an executor action. Both facts are
- * written by the mission state service from the validated envelope and its own
- * before/after state diff — a caller cannot author either one.
+ * A ledger entry records *performance* only when the actor wrote non-empty work
+ * evidence into authoritative mission state. Empty `{}` bags, boolean/number-only
+ * bags, and executor action strings alone are not performance — they must not
+ * unlock success certification. Substance requires at least one non-empty string
+ * (recursively) in the evidence entry.
  */
+function evidenceEntryHasSubstance(entry) {
+  if (entry == null) return false;
+  if (typeof entry === 'string') return entry.trim().length > 0;
+  if (typeof entry === 'number' || typeof entry === 'boolean') return false;
+  if (Array.isArray(entry)) return entry.some((item) => evidenceEntryHasSubstance(item));
+  if (typeof entry === 'object') {
+    return Object.values(entry).some((value) => evidenceEntryHasSubstance(value));
+  }
+  return false;
+}
+
 function entryRecordsPerformance(entry) {
   if (!entry || typeof entry !== 'object') return false;
-  if (typeof entry.action === 'string' && EXECUTOR_ACTIONS.has(entry.action)) return true;
   const evidenceChange = entry.changes?.evidence;
   if (!evidenceChange || typeof evidenceChange !== 'object') return false;
-  return Array.isArray(evidenceChange.after) && evidenceChange.after.length > 0;
+  if (!Array.isArray(evidenceChange.after) || evidenceChange.after.length === 0) return false;
+  return evidenceChange.after.some((item) => evidenceEntryHasSubstance(item));
 }
 
 /**
@@ -193,15 +209,14 @@ export function recordedWorkPerformers(transitionHistory = []) {
 }
 
 /**
- * True when the transition under authorization would itself write work evidence into
- * authoritative state. The certifier would then be the recorded actor of a performance
- * entry, so perform-and-certify in one transition is the same violation as doing it
- * across two. Only the presence of the write matters; its contents are never read.
+ * True when the transition under authorization would itself write substantive
+ * work evidence into authoritative state.
  */
 function updateWritesWorkEvidence(update) {
   if (!Object.hasOwn(update, 'evidence')) return false;
   const evidence = update.evidence;
-  return Array.isArray(evidence) ? evidence.length > 0 : evidence !== undefined && evidence !== null;
+  if (!Array.isArray(evidence) || evidence.length === 0) return false;
+  return evidence.some((item) => evidenceEntryHasSubstance(item));
 }
 
 function requiredPlanSteps(mission) {
@@ -296,10 +311,16 @@ export function authorizeCompletedWorkClaim({
   if (isMissionCompletion) {
     assertCompletedSignalWorkCertified({ mission, update });
   }
+  const performers = recordedWorkPerformers(transitionHistory);
   assertIndependentSuccessCertification({
     certifierAgentId: agentId,
-    recordedPerformers: recordedWorkPerformers(transitionHistory),
+    recordedPerformers: performers,
     certifierPerformsInThisTransition: updateWritesWorkEvidence(update),
   });
+  // Vacuum certification: an auditor with no recorded work performers has sole
+  // authority to declare success without any independent resulting reality.
+  if (performers.size === 0) {
+    throw new Error('cannot certify success without recorded work performers');
+  }
   return Object.freeze({ enforced: true, role, agentId });
 }

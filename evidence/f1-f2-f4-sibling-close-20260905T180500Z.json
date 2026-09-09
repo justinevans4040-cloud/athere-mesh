@@ -1,0 +1,96 @@
+{
+  "generatedAt": "2026-09-05T18:07:55.020Z",
+  "claim": "F1/F2/F4 siblings closed: forged artifacts, empty/boolean/whitespace evidence, ledger verify on all load/mutate paths",
+  "openCount": 0,
+  "results": [
+    {
+      "id": "F1A_preplant_forged_refs",
+      "result": "REJECT",
+      "detail": "artifact provenance verification failed: invalid artifact proof path"
+    },
+    {
+      "id": "F1B_artifact_wrong_bytes",
+      "result": "REJECT",
+      "detail": "artifact provenance verification failed: artifact_hash_mismatch"
+    },
+    {
+      "id": "F1C_honest",
+      "result": "ACCEPT_OK",
+      "detail": "completed"
+    },
+    {
+      "id": "F2A_empty_object_evidence",
+      "result": "REJECT_OK",
+      "detail": ""
+    },
+    {
+      "id": "F2B_clear_keeps_prior_performer",
+      "result": "OK",
+      "detail": "nyx"
+    },
+    {
+      "id": "F2C_noop_complete",
+      "result": "REJECT",
+      "detail": "cannot certify success without recorded work performers"
+    },
+    {
+      "id": "F4A_tamper_get",
+      "result": "REJECT",
+      "detail": "transition hash mismatch at version 1"
+    },
+    {
+      "id": "F4B_tamper_recovery_checkpoint",
+      "result": "REJECT",
+      "detail": "transition hash mismatch at version 1"
+    },
+    {
+      "id": "F4C_tamper_recordFact",
+      "result": "REJECT",
+      "detail": "transition hash mismatch at version 1"
+    },
+    {
+      "id": "F2D_boolean_only_evidence",
+      "result": "REJECT_OK",
+      "detail": ""
+    },
+    {
+      "id": "F2E_whitespace_evidence",
+      "result": "REJECT_OK",
+      "detail": ""
+    },
+    {
+      "id": "F4D_tamper_select",
+      "result": "REJECT",
+      "detail": "transition hash mismatch at version 1"
+    },
+    {
+      "id": "F4E_tamper_history",
+      "result": "REJECT",
+      "detail": "transition hash mismatch at version 1"
+    },
+    {
+      "id": "F4F_tamper_reconstruct",
+      "result": "REJECT",
+      "detail": "transition hash mismatch at version 1"
+    },
+    {
+      "id": "F4G_tamper_memory",
+      "result": "REJECT",
+      "detail": "transition hash mismatch at version 1"
+    },
+    {
+      "id": "F4H_tamper_authorityFor",
+      "result": "REJECT",
+      "detail": "transition hash mismatch at version 1"
+    }
+  ],
+  "suites": {
+    "focused": "mea-hostile-phase1-3-reaudit + ledger-tamper + item12 + execution-roles + mea + orchestrator + mission-state + qr18",
+    "pass": 49,
+    "fail": 0
+  },
+  "production": [
+    "packages/contracts/src/execution-roles.js#evidenceEntryHasSubstance",
+    "packages/mission/src/mission-state-service.js#assertLoadedLedgerIntact"
+  ]
+}
