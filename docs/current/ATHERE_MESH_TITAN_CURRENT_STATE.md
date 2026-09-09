@@ -34,10 +34,13 @@ File: `research/ATHERE_MESH_MODIFICATION_BACKLOG_2026-08-25.md`
 | Surface | URL |
 |---|---|
 | Command Deck | `http://127.0.0.1:5050/` |
-| Command Deck (Ichabod tunnel) | `http://127.0.0.1:15050/` |
-| ForgeFront Solar / PM | `http://127.0.0.1:18787/` and `/pm` |
+| Command Deck (Ichabod tunnel) | `http://127.0.0.1:15050/` (dedicated script; not shared with other tunnels) |
+| Solar/job Command Center + PM (product vertical — NOT the company) | `http://127.0.0.1:18787/` and `/pm` → Ichabod `:8787` |
 
 Desktop shortcut: `ATHERE Command Deck.lnk` → `scripts/start-command-deck-desktop.ps1`
+
+**Company site:** https://forgefront-systems.vercel.app (ForgeFront Systems)  
+**Full GitHub org map:** `docs/current/GITHUB_ACCOUNT_REPO_INDEX.md`
 
 ## Preserve rule
 

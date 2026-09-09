@@ -17,9 +17,11 @@ Do not invent or substitute. Load this before any external email, sample request
 
 - Command Deck (Lenovo): `http://127.0.0.1:5050/` — start with Titan/Ollama tokens only; do not import Ichabod `DATABASE_URL` on Lenovo.
 - Command Deck Desktop shortcut (Lenovo): `Desktop\ATHERE Command Deck.lnk` → `scripts/start-command-deck-desktop.ps1` (strips `DATABASE_URL` / mesh Postgres+Redis; opens loopback deck).
-- Command Deck (Ichabod tunnel): `http://127.0.0.1:15050/`
-- ForgeFront Solar/PM (tunnel → Ichabod `:8787`): `http://127.0.0.1:18787/` and `/pm`
-- Sales Hunter Tier Zero may merge qualified pipeline into ForgeFront `/api/state` when ingest is explicitly enabled.
+- Command Deck (Ichabod tunnel): `http://127.0.0.1:15050/` — dedicated Deck tunnel only (`scripts/start-ichabod-deck-tunnel.ps1`)
+- Solar/job Command Center + PM (vertical app, not the company): `http://127.0.0.1:18787/` → Ichabod `:8787` (`scripts/start-forgefront-tunnel.ps1` — dedicated; do not multiplex with Deck/Ollama)
+- Company site: https://forgefront-systems.vercel.app
+- Account repo map: `docs/current/GITHUB_ACCOUNT_REPO_INDEX.md`
+- Sales Hunter Tier Zero may merge qualified pipeline into the solar/job Command Center `/api/state` when ingest is explicitly enabled (that app is not “the company”).
 - Next capability under Zero: `outreach_send` with `humanApproved:true` (one lead) → local outbox + CRM follow-up. `phone_call` still denied.
 
 ## Live backlog boundary (2026-09-09) — DO NOT REWIND

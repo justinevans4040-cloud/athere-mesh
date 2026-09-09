@@ -1,0 +1,393 @@
+﻿[
+    {
+        "name":  "athere-mesh",
+        "url":  "https://github.com/justinevans4040-cloud/athere-mesh",
+        "private":  false,
+        "archived":  false,
+        "defaultBranch":  "master",
+        "pushedAt":  "2026-09-09T20:04:56Z",
+        "description":  "",
+        "language":  "JavaScript",
+        "languages":  "JavaScript,Rust,Python,HTML,CSS,Shell,C,PowerShell",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "686",
+        "readmeHead":  "# ATHERE Mesh |  | Current architecture authority: |  | - [Strategic directive](docs/current/ATHERE_MESH_STRATEGIC_DIRECTIVE.md) | - [Frozen architecture baseline](docs/current/ATHERE_ARCHITECTURE_BASELINE_2026-08-26.md) | - [Evaluation and regression harness](docs/current/ATHERE_EVALUATION_HARNESS.md) | - [Authoritative Mission State Service](docs/current/ATHERE_MISSION_STATE_SERVICE.md) | - [Versioned State Transition History](docs/current/ATHERE_STATE_TRANSITION_HISTORY.md) | - [Authoritative"
+    },
+    {
+        "name":  "wakeforged",
+        "url":  "https://github.com/justinevans4040-cloud/wakeforged",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-09-09T04:41:33Z",
+        "description":  "",
+        "language":  "JavaScript",
+        "languages":  "JavaScript,TypeScript,C#,HTML,PLpgSQL,Batchfile,PowerShell,Java",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "290",
+        "readmeHead":  "# WakeForge |  | WakeForge is the ForgeFront Systems command deck for seeing, building, deploying, and controlling AI agents. |  | **Windows / ΓÇ£just tell me what to clickΓÇ¥:** open **`START-HERE.txt`** in this folder. |  | ## Run locally |  | **Fastest (Node.js):** from the repo folder: |  | ```sh | npm install | npm start | ``` |  | Then open **http://127.0.0.1:4173** |  | **Windows:** double-click **`START-WAKEFORGE.bat`** (installs dependencies on first run). |  | **No Node:** use Python: "
+    },
+    {
+        "name":  "ForgeFront-Systems-Showcase",
+        "url":  "https://github.com/justinevans4040-cloud/ForgeFront-Systems-Showcase",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-09-03T08:01:16Z",
+        "description":  "",
+        "language":  "HTML",
+        "languages":  "HTML",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "32",
+        "readmeHead":  "# ForgeFront Systems |  | \u003cp align=\"center\"\u003e |   \u003cimg src=\"https://forgefront-systems.vercel.app/assets/forgefront-home-forge-hero.png\" alt=\"ForgeFront Systems\" width=\"100%\" /\u003e | \u003c/p\u003e |  | **Agentic software. Vertical products. Intelligent systems built to do real work.** |  | [ForgeFront Systems](https://forgefront-systems.vercel.app/index.html) ┬╖ [Justin Evans on GitHub](https://github.com/justinevans4040-cloud) |  | ## Portfolio |  | ForgeFront Systems is the independent software, intelligen"
+    },
+    {
+        "name":  "wakecodex",
+        "url":  "https://github.com/justinevans4040-cloud/wakecodex",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-09-02T07:04:07Z",
+        "description":  "WAKE automation and publishing workspace",
+        "language":  "HTML",
+        "languages":  "HTML,Python,JavaScript,TypeScript,PowerShell,CSS,Batchfile",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "1175",
+        "readmeHead":  "# WAKE Local Automation System |  | Windows-first local content pipeline for WAKE, Aurora Storytime, and Respawn Academy. |  | The Lenovo is the primary control machine. The older laptop acts as a LAN-only local cloud node for shared storage, backups, and later optional worker jobs. |  | ## What This Build Includes |  | - Config-driven folder layout | - Safe ingest into archive plus working copies | - Restartable pipeline stages tracked in SQLite | - Local transcription integration with `faster-"
+    },
+    {
+        "name":  "the-sixth-gate",
+        "url":  "https://github.com/justinevans4040-cloud/the-sixth-gate",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "master",
+        "pushedAt":  "2026-08-30T21:24:45Z",
+        "description":  "",
+        "language":  null,
+        "languages":  "",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "22",
+        "readmeHead":  "# The Sixth Gate |  | A fiction book project by Justin Evans. |  | ## Copyright |  | All Rights Reserved. |  | ## Repository Operations Template | This repository follows the standard operating files: STATUS.md, ROADMAP.md, CHANGELOG.md, CONTRIBUTING.md, SECURITY.md, GOVERNANCE.md, and REPO_TEMPLATE.md."
+    },
+    {
+        "name":  "literary-projects",
+        "url":  "https://github.com/justinevans4040-cloud/literary-projects",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "master",
+        "pushedAt":  "2026-08-29T17:06:46Z",
+        "description":  "The Architect\u0027s Renaissance ΓÇö public vault, lore, covers, and blogging home by Justin Evans",
+        "language":  null,
+        "languages":  "",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "43",
+        "readmeHead":  "# Literary Projects |  | \u003e What happens when the tools we build begin to remember who we are ΓÇö and why we built them? |  | Primary literary repositories by **Justin Evans** in one place. |  | This GitHub is the **public vault + process home** for active book projects.   | It is **not** a chat app. Files live here so they cannot vanish in an update. |  | ## Included Projects |  | | Project | Path | Status | | |------|------|--------| | | The Architect\u0027s Renaissance | repo root (`docs/`, `blog/`"
+    },
+    {
+        "name":  "green-rack-runner",
+        "url":  "https://github.com/justinevans4040-cloud/green-rack-runner",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "master",
+        "pushedAt":  "2026-08-29T01:38:53Z",
+        "description":  "Personal league Rack Runner ΓÇö source matches Ichabod hub (Functional V2). See WHERE-IT-LIVES.md.",
+        "language":  "HTML",
+        "languages":  "HTML,JavaScript,PowerShell,Batchfile",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  122,
+        "readmeHead":  "# RackRunner ΓÇö Personal League (Functional V2) |  | **Start here:** [`WHERE-IT-LIVES.md`](WHERE-IT-LIVES.md) ΓÇö single map for repo, Ichabod, and bar gear. No hunting the hard drive. |  | **Live hub:** http://100.77.131.28:8876/ (Ichabod, Tailscale)   | **Deploy:** `deploy-ichabod-now.ps1`   | **GitHub:** must match Ichabod after every deploy. |  | --- |  | # RackRunner |  | **ForgeFront Systems ΓÇö Pool Tournament Director** |  | RackRunner is an offline-first tournament control desk for run"
+    },
+    {
+        "name":  "wake-engine-v6",
+        "url":  "https://github.com/justinevans4040-cloud/wake-engine-v6",
+        "private":  false,
+        "archived":  false,
+        "defaultBranch":  "master",
+        "pushedAt":  "2026-08-26T00:10:21Z",
+        "description":  "",
+        "language":  "JavaScript",
+        "languages":  "JavaScript,CSS,PowerShell,Batchfile,HTML",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "688",
+        "readmeHead":  "\u003cdiv align=\"center\"\u003e |   \u003ch1\u003eWAKE Engine Omega\u003c/h1\u003e |   \u003cp\u003e\u003cstrong\u003eThe local command console. Specialized tools underneath ΓÇö not a fake all-in-one autopilot.\u003c/strong\u003e\u003c/p\u003e | \u003c/div\u003e |  | [![WAKE Engine CI](https://github.com/justinevans4040-cloud/wake-engine-v6/actions/workflows/ci.yml/badge.svg)](https://github.com/justinevans4040-cloud/wake-engine-v6/actions/workflows/ci.yml) | [![Windows Installer](https://github.com/justinevans4040-cloud/wake-engine-v6/actions/workflows/release.yml/badge.svg"
+    },
+    {
+        "name":  "python-pal",
+        "url":  "https://github.com/justinevans4040-cloud/python-pal",
+        "private":  false,
+        "archived":  false,
+        "defaultBranch":  "master",
+        "pushedAt":  "2026-08-23T22:59:52Z",
+        "description":  "Bilingual Python learning app (EN/ES) ΓÇö React, Vite, Pyodide, Electron, Capacitor",
+        "language":  "JavaScript",
+        "languages":  "JavaScript,CSS,Python,HTML",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  113,
+        "readmeHead":  "# Python Pal |  | **ForgeFront Systems ΓÇö Bilingual Python Learning** |  | Python Pal is a bilingual English/Spanish Python-learning application. The current canonical source contains 19 progressive lessons and 6 portfolio project briefs. The expanded curriculum requested later is **not present in this release**. |  | No account is required. Learner progress is stored locally on the device. |  | ## Current repository state |  | - Canonical branch: `master` | - Canonical release commit: `995ecd1"
+    },
+    {
+        "name":  "The-Britt",
+        "url":  "https://github.com/justinevans4040-cloud/The-Britt",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-23T19:24:45Z",
+        "description":  "",
+        "language":  "JavaScript",
+        "languages":  "",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "43",
+        "readmeHead":  "# The Britt |  | The Britt is a Windows-first local execution assistant backed by Ollama. It provides real file, PowerShell, desktop, scheduling, Google Drive, memory, diagnostics, and configured Ubuntu SSH tools through a local web interface. |  | ## Start |  | 1. Install Node.js 20 or newer and Ollama. | 2. From `app/backend`, run `npm install`. | 3. Pull the default model with `ollama pull llama3.2`. | 4. Run `Launch-TheBritt-Backend.ps1`. | 5. Open `Talk-TheBritt.html` or run `Talk-TheBritt."
+    },
+    {
+        "name":  "forgefront-solar-command",
+        "url":  "https://github.com/justinevans4040-cloud/forgefront-solar-command",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-22T10:45:10Z",
+        "description":  "ForgeFront Solar Command / Call Coach ΓÇö ComEd IL Shines setter UI",
+        "language":  "HTML",
+        "languages":  "HTML,JavaScript,Python,PowerShell,Batchfile",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "49",
+        "readmeHead":  "# DCE Command Center V3 ΓÇö Project Management System |  | ## Purpose | DCE Command Center V3 is a professional, multi-project operating workspace for exhibition, experiential, fabrication, logistics, installation, live-event and stakeholder management. It is designed to become the working command layer between project managers, production teams, clients, vendors, field crews and leadership ΓÇö on phone and PC ΓÇö without forcing users to jump between unrelated applications for daily project con"
+    },
+    {
+        "name":  "viral-forge-recovery",
+        "url":  "https://github.com/justinevans4040-cloud/viral-forge-recovery",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "recovery/onedrive-2026-08-20",
+        "pushedAt":  "2026-08-20T18:35:57Z",
+        "description":  "Recovered Viral Forge source preserved from OneDrive before Lenovo wipe",
+        "language":  "PowerShell",
+        "languages":  "PowerShell,Python,Batchfile",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "39",
+        "readmeHead":  "# ViralForge Brothers (Free/Local Content Engine) |  | This repo is a **repeatable blueprint** for a free/local-first ΓÇ£content engine agentΓÇ¥ that outputs **real, runnable pipelines** (script ΓåÆ voice ΓåÆ visuals ΓåÆ edit ΓåÆ publish assets). |  | Start here: | - `prompts/ViralForge_Brothers_SYSTEM.md` (copy-paste system prompt) | - `docs/architecture.md` (diagram + components) | - `docs/runbook.md` (simple repeat steps) | "
+    },
+    {
+        "name":  "wake--runtime--recovery",
+        "url":  "https://github.com/justinevans4040-cloud/wake--runtime--recovery",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-20T16:39:35Z",
+        "description":  "",
+        "language":  "Python",
+        "languages":  "Python,PowerShell,Shell,Batchfile",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "113",
+        "readmeHead":  "# wake--runtime--recovery |  | **GitHub:** https://github.com/justinevans4040-cloud/wake--runtime--recovery |  | --- |  | ## START HERE ΓÇö Forensic file-search scanner (CANONICAL) |  | This is the **most important tool** in this repo. Do not lose it. Do not reinvent it. Do not run it silently. |  | ### What it is |  | | Piece | File | Role | | |---|---|---| | | **Scanner core** | `tools/forensics/forgefront_dell_forensic_scan.sh` | Embeds `dell_forensic_scanner_v1.py` ΓÇö SHA-256 every file, FT"
+    },
+    {
+        "name":  "forgebuilder",
+        "url":  "https://github.com/justinevans4040-cloud/forgebuilder",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-17T15:32:37Z",
+        "description":  "ForgeFront Systems application factory ΓÇö generates subject-app scaffolds and shared learning infrastructure",
+        "language":  "TypeScript",
+        "languages":  "TypeScript,CSS,JavaScript,HTML",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "244",
+        "readmeHead":  "# ForgeBuilder |  | Internal **ForgeFront Systems** app factory. Generate subject learning apps from a shared foundation. |  | ```bash | npm install | npm run build | npx forge new ai-ml | npm run check | npx playwright install chromium | npm run smoketest | ``` |  | Company name is exactly **ForgeFront Systems**. Category ids (e.g. `ai-ml`) are not commercial product names. |  | ## What this does |  | - `forge new \u003capp-id\u003e` scaffolds bilingual Electron/React apps under `examples/` | - Shared pa"
+    },
+    {
+        "name":  "speakeasy",
+        "url":  "https://github.com/justinevans4040-cloud/speakeasy",
+        "private":  false,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-17T10:16:29Z",
+        "description":  "SpeakEasy ΓÇö WakeForged PWA and Android Capacitor shell (com.wakeforged.speakeasy)",
+        "language":  "HTML",
+        "languages":  "HTML,JavaScript,PowerShell,Java,TypeScript",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "183",
+        "readmeHead":  "# SpeakEasy |  | SpeakEasy by ForgeFront Systems is a private, on-device voice-to-text desktop application with a Prohibition-era black-and-gold interface. |  | ## Canonical source |  | - Repository: `justinevans4040-cloud/speakeasy` | - Canonical branch: `main` | - Current application line: `1.2.x` | - Microsoft Store product ID: `9NN1J22323MG` | - Microsoft Store listing: https://apps.microsoft.com/detail/9NN1J22323MG | - Microsoft Store monthly add-on product ID: `speakeasy_monthly` (`$3.99/m"
+    },
+    {
+        "name":  "wakecodex-agent",
+        "url":  "https://github.com/justinevans4040-cloud/wakecodex-agent",
+        "private":  false,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-17T10:05:20Z",
+        "description":  "Sanitized cloud-agent mirror of WAKECodex automation code",
+        "language":  "Python",
+        "languages":  "Python,PowerShell",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "136",
+        "readmeHead":  "# WAKECodex Agent Mirror |  | Public, sanitized mirror of the WAKE automation codebase for cloud-agent collaboration. |  | ## Included |  | - `src/` automation code | - `tests/` coverage for the automation services | - `scripts/` operator and pipeline scripts | - `config/content/` templates and phrase bank | - safe config examples and setup docs |  | ## Excluded |  | - runtime logs | - queue state | - storage exports and media | - local credentials and machine-specific settings | - branding libr"
+    },
+    {
+        "name":  "clerk-netlify-template",
+        "url":  "https://github.com/justinevans4040-cloud/clerk-netlify-template",
+        "private":  false,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-17T10:05:15Z",
+        "description":  "",
+        "language":  "JavaScript",
+        "languages":  "JavaScript,CSS",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "36",
+        "readmeHead":  "# Clerk template |  | ![Clerk site Image](https://res.cloudinary.com/dub20ptvt/image/upload/v1665094543/hcmgdw4wyixrorybwuff.png) |  | Learn more about [Clerk](https://clerk.dev). |  | ## What\u0027s in the stack |  | - [Netlify](https://netlify.com/) deployment + deploy previews and CI/CD | - [Tailwind](https://tailwindcss.com/) for styling |  | --- |  | ## Getting Started |  | ### Clone Repo | - Select the \"Use This Template\" button at the top right-hand corner of this repo. | ![Screen Shot 2022-11"
+    },
+    {
+        "name":  "wake-engine",
+        "url":  "https://github.com/justinevans4040-cloud/wake-engine",
+        "private":  false,
+        "archived":  false,
+        "defaultBranch":  "master",
+        "pushedAt":  "2026-08-17T10:05:10Z",
+        "description":  "",
+        "language":  "JavaScript",
+        "languages":  "JavaScript,CSS,PowerShell,HTML,Batchfile",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "450",
+        "readmeHead":  "\u003cdiv align=\"center\"\u003e |   \u003ch1\u003eWAKE Engine V6\u003c/h1\u003e |   \u003cp\u003e\u003cb\u003eThe engine doesn\u0027t just build the reality. It makes sure the reality survives.\u003c/b\u003e\u003c/p\u003e | \u003c/div\u003e |  | **CURRENT (2026-07-30):** WAKE Engine V6 is the sovereign, local-first architectural layer for ForgeFront Systems. Designed for the HackerNoon Decentralized AI track, WAKE shifts power back to the local machine. It is a desktop command engine that runs **Tier Zero** operations with extreme durability, cryptographic local security, and ato"
+    },
+    {
+        "name":  "wake-engine.github.8.1.2026",
+        "url":  "https://github.com/justinevans4040-cloud/wake-engine.github.8.1.2026",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-17T10:05:05Z",
+        "description":  "",
+        "language":  null,
+        "languages":  "",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "13",
+        "readmeHead":  "# Forgefront Systems \u0026 Wake Industries |  | Welcome to the monorepo for all Forgefront Systems and Wake Industries projects. |  | ## Overview |  | This repository serves as a central location for code, documentation, and assets related to: | - Forgefront system components | - Wake Industries initiatives | - Shared libraries and tooling |  | ## Repository Structure |  | - `src/` ΓÇô Source code for various services and applications. | - `docs/` ΓÇô Documentation, design docs, and specifications. "
+    },
+    {
+        "name":  "terminal-forge",
+        "url":  "https://github.com/justinevans4040-cloud/terminal-forge",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-17T10:04:47Z",
+        "description":  "Terminal Forge ΓÇö bilingual command-line learning by ForgeFront Systems",
+        "language":  "JavaScript",
+        "languages":  "JavaScript,CSS,Python,HTML",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "93",
+        "readmeHead":  ""
+    },
+    {
+        "name":  "crave-it-create-it",
+        "url":  "https://github.com/justinevans4040-cloud/crave-it-create-it",
+        "private":  false,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-17T10:04:41Z",
+        "description":  "Crave It, I Create It ΓÇö mobile kitchen fleet storefront, driver POS, and ops",
+        "language":  "JavaScript",
+        "languages":  "JavaScript,HTML,TypeScript,CSS,Batchfile,Shell",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "74",
+        "readmeHead":  "# Crave It, I Create It |  | Standalone mobile kitchen fleet site for a Las Vegas tamale / street-corn business. |  | **Core idea:** every truck is its own moving kitchen with live inventory. Customers see where it is, whatΓÇÖs left, and reserve pickup or nearby drop-off. Sales deduct that truckΓÇÖs stock. Concept Lab: *you crave it, I create it.* |  | ## Live / production |  | ```bash | npm start | ``` |  | Serves the customer site, driver board, ops board, and API on one port (`PORT`, default "
+    },
+    {
+        "name":  "forgefront-learning-platform-blueprint",
+        "url":  "https://github.com/justinevans4040-cloud/forgefront-learning-platform-blueprint",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "master",
+        "pushedAt":  "2026-08-17T10:04:21Z",
+        "description":  "",
+        "language":  "TypeScript",
+        "languages":  "TypeScript",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "62",
+        "readmeHead":  "# ForgeFront Learning Platform Blueprint |  | Standalone artifact repository for the ForgeFront Systems learning-platform concept. |  | This repository preserves the initial master blueprint and dashboard concept for the theory-first technical education suite connected to Terminal Forge practice. |  | ## Contents |  | - `artifacts/ForgeFront_Learning_Platform_Master_Blueprint_v1.0.docx` |   - Master product blueprint for the ForgeFront Learning Platform. |   - Defines the subject-app suite, shar"
+    },
+    {
+        "name":  "toms-internet-guide",
+        "url":  "https://github.com/justinevans4040-cloud/toms-internet-guide",
+        "private":  true,
+        "archived":  false,
+        "defaultBranch":  "main",
+        "pushedAt":  "2026-08-17T10:04:15Z",
+        "description":  "Tom\u0027s Internet Guide ΓÇö Microsoft Store packaging (private)",
+        "language":  "Batchfile",
+        "languages":  "Batchfile,JavaScript,CSS,Python,HTML",
+        "topics":  "",
+        "lastCommit":  {
+
+                       },
+        "treeEntries":  "294",
+        "readmeHead":  "# TOM\u0027S INTERNET GUIDE |  | **ForgeFront Systems ΓÇö Plain-Language Internet Safety Learning** |  | Tom\u0027s Internet Guide is an offline-capable learning application for understanding internet accounts, privacy, permissions, passwords, verification, scams, tracking, subscriptions, and safe online decisions without unnecessary technical jargon. |  | No account is required. Learning progress is stored locally on the device. |  | ## Current application |  | The canonical application source is **versi"
+    }
+]

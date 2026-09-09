@@ -1,0 +1,22 @@
+{
+  "title": "live-capability-probe",
+  "at": "20260909T201000Z",
+  "method": "athere-continue + step-ladder-hostile-audit; live HTTP against 127.0.0.1:5050 with same-origin bootstrap bearer",
+  "liveNow": {
+    "commandDeck": "UP http://127.0.0.1:5050/ HTML COMMAND DECK",
+    "health": { "ready": true, "enabledAgents": 28, "recovery": { "recovered": 3, "healed": 3, "blocked": 0, "corrupt": 0 } },
+    "ollama": ["ministral-3:3b", "qwen2.5-coder:7b", "qwen2.5-coder:3b", "llama3.2:3b", "llama3.1:8b"],
+    "forgefront_18787": "DOWN",
+    "commands": {
+      "inventory Desktop": "completed",
+      "organize Desktop\\athere-mesh-scratch": "completed",
+      "build titan": "completed",
+      "fleet health": "needs_clarification",
+      "hunt outbound": "needs_clarification",
+      "test all of Titan": "500",
+      "chat agent-vale hello": "200 live ollama"
+    }
+  },
+  "claim": "Right now Athere on Lenovo can run Command Deck, owner plain-text missions for inventory/organize/build, and public advisory chat; Sales Hunter/ForgeFront tunnel and some phrases are not live this second.",
+  "verdict": "READY for honest capability report; NOT READY to claim full OS / every agent full work / Sales Hunter CRM live this second"
+}

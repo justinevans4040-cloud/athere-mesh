@@ -1,0 +1,20 @@
+{
+  "title": "forgefront-dedicated-tunnel",
+  "at": "20260909T201500Z",
+  "claim": "ForgeFront has its own SSH tunnel 127.0.0.1:18787 -> Ichabod :8787, separate process from Ollama :11434 and Lenovo Deck :5050",
+  "tunnels": {
+    "forgefront": { "local": "127.0.0.1:18787", "remote": "127.0.0.1:8787", "sshPid": 18380, "health": { "product": "ForgeFront Systems", "brand": "ForgeFront Systems" }, "home": 200, "pm": 200 },
+    "ollama": { "local": "127.0.0.1:11434", "sshPid": 24088 },
+    "lenovoDeck": { "local": "127.0.0.1:5050", "pid": 23132, "note": "native process, not a tunnel" }
+  },
+  "scripts": [
+    "scripts/start-forgefront-tunnel.ps1",
+    "scripts/start-ichabod-deck-tunnel.ps1"
+  ],
+  "attacks": [
+    "Refuse multiplexing reserved ports into FF script",
+    "Prove FF listen pid != Ollama listen pid",
+    "Prove home + /pm + /api/health 200"
+  ],
+  "verdict": "READY"
+}

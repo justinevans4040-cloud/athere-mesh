@@ -3,7 +3,8 @@
 **Status:** Active — **FULL FLEET ONLINE** + keep-mesh / add-agents. Backlog **Items 1–24 shipped**. Hostile residual closes **ckpts 126–132** (OPEN_COUNT 0) included. Vale Prime sole Miss Vale. NYX Apex on default path. Command Deck live. Local-only.
 
 **Current state doc:** `docs/current/ATHERE_MESH_TITAN_CURRENT_STATE.md`  
-**GitHub repo index (23 repos):** `docs/current/GITHUB_ACCOUNT_REPO_INDEX.md`
+**GitHub repo index (23 repos, company-wide):** `docs/current/GITHUB_ACCOUNT_REPO_INDEX.md`  
+**Inventory evidence:** `evidence/github-full-repo-inventory-20260909T202200Z.json`
 
 **ALIGNMENT GATE (HARD — every agent, every thread):**
 1. Prefer `origin/master` + this **Status** line over chat summaries and dirty local guesses.
