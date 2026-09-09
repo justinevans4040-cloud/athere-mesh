@@ -82,7 +82,7 @@ export function hashCheckpointSnapshot(snapshot) {
   return createHash('sha256').update(JSON.stringify(canonicalize(snapshot))).digest('hex');
 }
 
-export function buildCheckpointRecord({ id, label, revision, actor, createdAt, mission }) {
+export function buildCheckpointRecord({ id, label, revision, actor, createdAt, mission, tieIn }) {
   const snapshot = captureCheckpointSnapshot(mission);
   return Object.freeze({
     id: requiredId(id, 'checkpoint id'),
@@ -93,6 +93,7 @@ export function buildCheckpointRecord({ id, label, revision, actor, createdAt, m
     verified: true,
     stateHash: hashCheckpointSnapshot(snapshot),
     snapshot,
+    ...(tieIn === undefined ? {} : { tieIn: Object.freeze(structuredClone(tieIn)) }),
   });
 }
 export function findCheckpoint(mission, checkpointId) {

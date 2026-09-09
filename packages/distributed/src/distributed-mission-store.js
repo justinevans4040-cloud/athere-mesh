@@ -156,6 +156,16 @@ export function createDistributedMissionStore({
       return saved;
     },
 
+    ...(typeof primaryStore.loadCurrentJobPointer === 'function' && typeof primaryStore.saveCurrentJobPointer === 'function'
+      ? {
+        loadCurrentJobPointer: (...args) => primaryStore.loadCurrentJobPointer(...args),
+        saveCurrentJobPointer: (...args) => {
+          assertWriteAuthority('primary');
+          return primaryStore.saveCurrentJobPointer(...args);
+        },
+      }
+      : {}),
+
     async loadMissionReplica({ missionId, replicaIndex = 0, root } = {}) {
       void root;
       const id = requireDistributedMissionId(missionId, 'missionId');

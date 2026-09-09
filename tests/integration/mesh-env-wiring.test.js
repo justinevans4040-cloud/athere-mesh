@@ -28,6 +28,13 @@ test('truthyEnvFlag accepts 1/true/yes/on and rejects empty or nonsense', () => 
   assert.equal(truthyEnvFlag(undefined), false);
 });
 
+test('sold deploy without Postgres fails closed (product amnesia)', async () => {
+  await assert.rejects(
+    () => resolveMeshOrchestratorDeps(offlineEnv({ ATHERE_MESH_SOLD_DEPLOY: '1' })),
+    /sold Titan requires the Postgres mission store/i,
+  );
+});
+
 test('offline env leaves orchestrator on memory bus + no remote queue + no shared store', async () => {
   const deps = await resolveMeshOrchestratorDeps(offlineEnv());
   assert.equal(deps.bus, undefined);

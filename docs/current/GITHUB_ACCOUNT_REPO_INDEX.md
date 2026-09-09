@@ -16,8 +16,8 @@
 
 | Repo | Role | Notes |
 |---|---|---|
-| **[athere-mesh](https://github.com/justinevans4040-cloud/athere-mesh)** | Athere Mesh + Titan build cell | Sole Mesh/Titan git home. `master` current. |
-| **[wakeforged](https://github.com/justinevans4040-cloud/wakeforged)** | WakeForge command deck for agents | Private. Local `:4173`. Company ForgeFront Systems. |
+| **[athere-mesh](https://github.com/justinevans4040-cloud/athere-mesh)** | Athere Mesh + Titan build cell | **Sole Mesh/Titan git home.** `master` current. Titan current-job gates live here — see `docs/current/TITAN_CURRENT_JOB_GATES.md`. |
+| **[wakeforged](https://github.com/justinevans4040-cloud/wakeforged)** | WakeForge command deck for agents | Private. Local `:4173`. Company ForgeFront Systems. Branch `cursor/titan-current-job-gates-197c` was **temporary parking** after an `athere-mesh` push 403 — **not** the live Titan home after 2026-09-09 land. |
 | **[ForgeFront-Systems-Showcase](https://github.com/justinevans4040-cloud/ForgeFront-Systems-Showcase)** | Company portfolio / site source | Feeds forgefront-systems.vercel.app |
 | **[green-rack-runner](https://github.com/justinevans4040-cloud/green-rack-runner)** | RackRunner tournament desk | Live hub Ichabod `:8876` |
 | **[speakeasy](https://github.com/justinevans4040-cloud/speakeasy)** | SpeakEasy voice-to-text | Microsoft Store product |

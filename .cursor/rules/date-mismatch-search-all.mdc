@@ -1,0 +1,29 @@
+---
+description: HARD - if a handoff/doc date is not today, search all live places before trusting it
+alwaysApply: true
+---
+
+# Date mismatch = search all places (HARD)
+
+If the file you are reading has a date / "As of" / Status timestamp that is **not today** (calendar day on this machine), treat it as **possibly stale**.
+
+Do not lecture from it. Do not invent "next item" from it. Immediately refresh from live places, in order:
+
+1. `C:\Users\justi\WAKE_MEMORY\START_HERE.md` (must be today or say so)
+2. `git fetch` + `git log origin/master -1` for the active product repo
+3. `runtime/ATHERE_ACTIVE_RUN.md` Status + ALIGNMENT GATE (Athere/Titan)
+4. `docs/current/ATHERE_THREAD_TIE_IN.md` (paste handoff — must match Status)
+5. GitHub search / other remotes if a named SHA is missing locally (`gh api …/commits/<sha>`)
+6. Wrong-home fallbacks only after live home fails (example: work briefly parked on `wakeforged` because `athere-mesh` push 403'd)
+
+## Law
+
+- Stale date ≠ authority. Fresh evidence wins.
+- Chat summaries lose to dated live files that match today, then to git/GitHub.
+- If START_HERE is missing or older than 24 hours with no write, stop and say so.
+
+## Forbidden
+
+- Trusting a 2026-09-05 handoff on 2026-09-09 without re-checking
+- Claiming code is "missing" without searching GitHub remotes and known fallback branches
+- Continuing with "Item N next" from an old Status line when master already shipped it

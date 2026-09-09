@@ -15,6 +15,14 @@ export async function createPostgresMissionStore({ db }) {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS titan_current_job_pointer (
+      slot TEXT PRIMARY KEY CHECK (slot = 'current'),
+      revision INTEGER NOT NULL CHECK (revision > 0),
+      pointer JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
   return Object.freeze({
     async load({ missionId }) {
@@ -33,6 +41,44 @@ export async function createPostgresMissionStore({ db }) {
         'SELECT mission_id FROM titan_missions ORDER BY mission_id ASC',
       );
       return Object.freeze(result.rows.map((row) => row.mission_id));
+    },
+
+    async loadPointer() {
+      const result = await db.query(
+        `SELECT revision, pointer FROM titan_current_job_pointer WHERE slot = 'current'`,
+      );
+      if (result.rows.length === 0) return undefined;
+      const row = result.rows[0];
+      const pointer = typeof row.pointer === 'string' ? JSON.parse(row.pointer) : row.pointer;
+      return Object.freeze({ revision: row.revision, pointer });
+    },
+
+    async savePointer({ pointer, expectedRevision }) {
+      if (!pointer || typeof pointer !== 'object') throw new TypeError('current-job pointer is required');
+      const payload = JSON.stringify(pointer);
+      let result;
+      if (expectedRevision === undefined || expectedRevision === 0) {
+        result = await db.query(
+          `INSERT INTO titan_current_job_pointer (slot, revision, pointer)
+           VALUES ('current', 1, $1::jsonb)
+           ON CONFLICT (slot) DO NOTHING
+           RETURNING revision, pointer`,
+          [payload],
+        );
+      } else {
+        if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) throw new Error('invalid expected revision');
+        result = await db.query(
+          `UPDATE titan_current_job_pointer
+           SET revision = revision + 1, pointer = $1::jsonb, updated_at = CURRENT_TIMESTAMP
+           WHERE slot = 'current' AND revision = $2
+           RETURNING revision, pointer`,
+          [payload, expectedRevision],
+        );
+      }
+      if (result.rows.length === 0) throw new Error('revision conflict');
+      const row = result.rows[0];
+      const stored = typeof row.pointer === 'string' ? JSON.parse(row.pointer) : row.pointer;
+      return Object.freeze({ revision: row.revision, pointer: stored });
     },
 
     async save({ mission, expectedRevision }) {

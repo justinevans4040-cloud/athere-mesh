@@ -1,6 +1,6 @@
 # Athere Mesh — New-thread tie-in
 
-**Verified newest live paste handoff in this repo:** `2026-09-09T194800Z` (hostile full-repo audit). Supersedes `runtime/NEXT_THREAD_HANDOFF_2026-09-05.md`.
+**Verified newest live paste handoff in this repo:** `2026-09-09T220000Z` (current-job gates on athere-mesh + date-mismatch rule). Supersedes `runtime/NEXT_THREAD_HANDOFF_2026-09-05.md`.
 
 Paste the block below into a new agent thread so it continues this repo without rewriting, rebuilding, or inventing scope.
 
@@ -43,9 +43,11 @@ Public outreach identity (HARD — do not substitute):
 Current state (do not reopen as unfinished):
 - Backlog Items 1–24 are SHIPPED on GitHub master (Item 12 9b2dc6d … Item 24 7b03529).
 - FULL FLEET ONLINE / Command Deck live — see ACTIVE_RUN Status.
+- Titan current-job gates live on athere-mesh — docs/current/TITAN_CURRENT_JOB_GATES.md (NOT wakeforged).
 - Local hostile residual closes (ckpts 126–132) sit ON TOP of Items 12–24 — not a rewind to Item 13.
-- Still open (NOT the 24-item line): Sales Hunter T0 focus; full NYX upgrade ladder; notebook IN/OUT cut; remote fabric env-gated; perform #8 Ship (Justin order); Wake/ForgeFront organize on Ichabod; Deferred Ronan; Parked 14 clusters + A15.
+- Still open (NOT the 24-item line): Sales Hunter T0 focus; full NYX upgrade ladder; notebook IN/OUT cut; remote fabric env-gated; full-suite/live API smoke after current-job land; Wake/ForgeFront organize on Ichabod; Deferred Ronan; Parked 14 clusters + A15.
 - Deferred: mission-hash skill library (checkpoint 81) — do not start unless re-ordered.
+- Date rule: if a handoff date is not today, search START_HERE + ACTIVE_RUN + origin/master + GitHub before trusting it.
 
 First reply: one line proving you read ACTIVE_RUN Status + origin/master (no Item 13 homework).
 Then wait for Justin’s next order — or execute only what THIS message orders.

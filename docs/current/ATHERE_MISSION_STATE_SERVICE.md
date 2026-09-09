@@ -38,6 +38,14 @@ The service persists this record through the existing atomic, revision-checked m
 
 `select()` and the orchestrator's `selectMissionState()` return only explicitly requested allowlisted fields, plus the mission ID and authoritative state version. Internal signals or permissions are not included unless the caller explicitly requests an allowed field.
 
+## Current job pointer
+
+One **current-job pointer** is persisted next to mission snapshots (same CAS, filesystem hermetic/dev and Postgres adapter). `/api/commands` and operational envelopes resolve pointer or id → `select()` lookback → stamp `state_version` → **then** tools. If no id exists, Titan loads the pointer; if none exists it creates a mission, then works. Advisory `/api/chat` envelopes (`advisory-*`, revision 0) cannot admit tools.
+
+On stop, crash-block, or slice end the orchestrator writes a **tie-in** checkpoint before returning (job id, revision, status after stop, work partitions, last checkpoint, next concrete step, actor, operation id, expected-revision CAS, evidence/artifact refs, next named agent). Boot runs `recoverAndHealMissions`; the pointer still names the live job.
+
+Sold deploys set `ATHERE_MESH_SOLD_DEPLOY=1` and require Postgres (`ATHERE_MESH_POSTGRES_URL`). Filesystem remains the hermetic default for tests. Retrieval (Item 15) must not override this lookback.
+
 ## Production locations
 
 - Service: `packages/mission/src/mission-state-service.js`

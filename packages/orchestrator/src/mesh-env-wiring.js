@@ -53,6 +53,7 @@ export async function resolveMeshOrchestratorDeps(env = process.env) {
   let proofStore;
 
   const wantRemoteQueue = truthyEnvFlag(env.ATHERE_MESH_REMOTE_WORK_QUEUE);
+  const soldDeploy = truthyEnvFlag(env.ATHERE_MESH_SOLD_DEPLOY);
   const redisOptions = resolveRedisResonanceOptions(env);
 
   if (redisOptions === null) {
@@ -88,6 +89,10 @@ export async function resolveMeshOrchestratorDeps(env = process.env) {
     const sharedProofs = await createPostgresProofStore({ db: shared.client });
     proofStore = createSharedProofFacade({ sharedProofStore: sharedProofs });
     wired.sharedProofStore = true;
+  } else if (soldDeploy) {
+    throw new Error(
+      'sold Titan requires the Postgres mission store; refusing filesystem-only boot (product amnesia)',
+    );
   }
 
   return Object.freeze({

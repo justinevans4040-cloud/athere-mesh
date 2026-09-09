@@ -58,6 +58,17 @@ import {
   isBrandedSelfImprovementSandbox,
 } from '../../improvement/src/self-improvement-sandbox.js';
 import { createDistributedMissionStore, isBrandedDistributedMissionStore } from '../../distributed/src/distributed-mission-store.js';
+import {
+  OPERATIONAL_LOOKBACK_FIELDS,
+  assertOperationalAdmission,
+  buildTieInRecord,
+  isAdvisoryMissionId,
+  isLiveJobStatus,
+  nextConcreteStep,
+  nextNamedAgent,
+  normalizeCurrentJobPointer,
+} from './current-job-pointer.js';
+import { runAuditLadderLoop } from '../../proof/src/step-ladder-audit-loop.js';
 
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const FACT_STATUSES = new Set(['current', 'superseded', 'revoked', 'corrected', 'historical', 'tentative']);
@@ -67,7 +78,7 @@ const MUTABLE_FIELDS = new Set([
   'authoritativeFacts',
 ]);
 const SELECTABLE_FIELDS = new Set([
-  'objective', 'permissions', 'currentFacts', 'checkpoints', 'branches', 'activeBranchId', 'workflowGraph',
+  'status', 'objective', 'permissions', 'currentFacts', 'checkpoints', 'branches', 'activeBranchId', 'workflowGraph',
   'executionTrace',
   ...[...MUTABLE_FIELDS].filter((field) => field !== 'authoritativeFacts'),
 ]);
@@ -205,6 +216,12 @@ function assertLoadedLedgerIntact(mission, revision) {
 }
 
 function requiredText(value, label) { if (typeof value !== 'string' || value.trim().length === 0) throw new TypeError(`${label} must be a non-empty string`); return value.trim(); }
+function requirePointerStore(store) {
+  if (typeof store?.loadCurrentJobPointer !== 'function' || typeof store?.saveCurrentJobPointer !== 'function') {
+    throw new Error('current-job pointer store is not wired');
+  }
+  return store;
+}
 function requiredId(value, label) { const id = requiredText(value, label); if (!SAFE_ID.test(id)) throw new TypeError(`${label} is invalid`); return id; }
 function boundedInteger(value, label, { min, max }) { if (!Number.isSafeInteger(value) || value < min || value > max) throw new TypeError(`${label} must be between ${min} and ${max}`); return value; }
 function optionalId(value, label) { return value === undefined ? undefined : requiredId(value, label); }
@@ -1427,15 +1444,19 @@ export function createMissionStateService({
         },
       });
     },
-    async createCheckpoint({ operationId, missionId, expectedRevision, label, envelope }) {
+    async createCheckpoint({ operationId, missionId, expectedRevision, label, envelope, tieIn }) {
       const checkpointLabel = requiredText(label, 'checkpoint label');
+      const tieInRecord = tieIn === undefined ? undefined : Object.freeze(structuredClone(tieIn));
       return commitRecoveryOperation({
         operationId,
         missionId,
         expectedRevision,
         envelope,
         action: 'create_checkpoint',
-        input: { label: checkpointLabel },
+        input: {
+          label: checkpointLabel,
+          ...(tieInRecord === undefined ? {} : { tieIn: tieInRecord }),
+        },
         mutate(mission, authorization, timestamp) {
           const existing = mission.checkpoints ?? [];
           if (existing.length >= MAX_CHECKPOINTS) {
@@ -1452,6 +1473,7 @@ export function createMissionStateService({
             actor: authorization.envelope.agent_id,
             createdAt: timestamp,
             mission,
+            ...(tieInRecord === undefined ? {} : { tieIn: tieInRecord }),
           });
           const checkpoints = Object.freeze([...existing, checkpoint]);
           assertCheckpointCap(checkpoints);
@@ -1571,6 +1593,170 @@ export function createMissionStateService({
         envelope,
         mode: 'retry',
       });
+    },
+    async loadCurrentJobPointer() {
+      const wired = requirePointerStore(store);
+      const record = await wired.loadCurrentJobPointer({ root });
+      return record === undefined ? undefined : Object.freeze(record);
+    },
+    async setCurrentJobPointer({ jobId, missionRevision, expectedRevision = 0, actor, operationId }) {
+      const wired = requirePointerStore(store);
+      const pointer = normalizeCurrentJobPointer({
+        jobId,
+        missionRevision,
+        actor,
+        operationId,
+        updatedAt: clock(),
+      });
+      return wired.saveCurrentJobPointer({
+        root,
+        pointer,
+        expectedRevision,
+      });
+    },
+    async lookback({ missionId }) {
+      const id = requiredId(missionId, 'mission id');
+      if (isAdvisoryMissionId(id)) throw new Error('advisory envelope cannot admit operational tools');
+      const selected = await this.select({ missionId: id, fields: [...OPERATIONAL_LOOKBACK_FIELDS] });
+      return Object.freeze(selected);
+    },
+    async admitWork({ missionId, envelope, create } = {}) {
+      assertOperationalAdmission({ missionId, envelope, stateVersion: envelope?.state_version });
+      if (envelope) {
+        assertOperationalAdmission({ envelope });
+      }
+      let id = optionalId(missionId ?? envelope?.mission_id, 'mission id');
+      if (id && isAdvisoryMissionId(id)) throw new Error('advisory envelope cannot admit operational tools');
+      const pointerRecord = await this.loadCurrentJobPointer();
+      if (!id) id = pointerRecord?.pointer?.jobId;
+      if (id) {
+        let record;
+        try {
+          record = await store.loadMission({ root, missionId: id });
+        } catch (error) {
+          if (!/not found/i.test(error.message)) throw error;
+          record = undefined;
+        }
+        if (record && isLiveJobStatus(record.mission.status)) {
+          const lookback = await this.lookback({ missionId: id });
+          assertOperationalAdmission({ missionId: id, stateVersion: lookback.stateVersion });
+          return Object.freeze({
+            record,
+            lookback,
+            created: false,
+            pointer: pointerRecord ?? null,
+            toolsAdmitted: true,
+            stateVersion: lookback.stateVersion,
+            nextStep: nextConcreteStep(record.mission),
+            nextAgent: nextNamedAgent(record.mission),
+          });
+        }
+      }
+      if (typeof create !== 'function') {
+        throw new Error('no current job pointer; create a mission before tools');
+      }
+      const created = await create();
+      if (!created?.mission?.id) throw new Error('mission create did not return a job');
+      if (isAdvisoryMissionId(created.mission.id)) throw new Error('advisory envelope cannot admit operational tools');
+      try {
+        await this.setCurrentJobPointer({
+          jobId: created.mission.id,
+          missionRevision: created.revision,
+          expectedRevision: pointerRecord?.revision ?? 0,
+          actor: 'titan',
+          operationId: `${created.mission.id}-current-job`,
+        });
+      } catch (error) {
+        if (!/revision conflict/i.test(error?.message ?? '')) throw error;
+        const won = await this.loadCurrentJobPointer();
+        if (!won?.pointer?.jobId) throw new Error('current-job pointer missing after CAS conflict');
+        const winner = await store.loadMission({ root, missionId: won.pointer.jobId });
+        const lookback = await this.lookback({ missionId: winner.mission.id });
+        return Object.freeze({
+          record: winner,
+          lookback,
+          created: false,
+          pointer: won,
+          toolsAdmitted: true,
+          stateVersion: lookback.stateVersion,
+          nextStep: nextConcreteStep(winner.mission),
+          nextAgent: nextNamedAgent(winner.mission),
+        });
+      }
+      const lookback = await this.lookback({ missionId: created.mission.id });
+      return Object.freeze({
+        record: created,
+        lookback,
+        created: true,
+        pointer: await this.loadCurrentJobPointer(),
+        toolsAdmitted: true,
+        stateVersion: lookback.stateVersion,
+        nextStep: nextConcreteStep(created.mission),
+        nextAgent: nextNamedAgent(created.mission),
+      });
+    },
+    runAuditLadder({ mission, proofVerification, certifierAgentId, transitionHistory } = {}) {
+      return runAuditLadderLoop({
+        mission,
+        proofVerification,
+        certifierAgentId,
+        transitionHistory,
+      });
+    },
+    async writeTieIn({
+      missionId,
+      expectedRevision,
+      operationId,
+      envelope,
+      reason,
+      actor = 'qra_recovery_driver',
+      nextStep,
+      nextAgent,
+      label,
+    }) {
+      const id = requiredId(missionId, 'mission id');
+      const operation = requiredId(operationId, 'operation id');
+      const why = requiredText(reason, 'tie-in reason');
+      if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+        throw new TypeError('revision conflict: expectedRevision must be a positive integer');
+      }
+      const current = await store.loadMission({ root, missionId: id });
+      if (current.revision !== expectedRevision) {
+        throw new Error(`revision conflict: expected ${expectedRevision}, found ${current.revision}`);
+      }
+      const ladder = runAuditLadderLoop({
+        mission: current.mission,
+        certifierAgentId: 'qra_emerge_audit',
+        transitionHistory: current.mission.transitionHistory,
+      });
+      const statusAfterStop = why === 'slice_end' ? current.mission.status : 'blocked';
+      const tieIn = buildTieInRecord({
+        jobId: current.mission.id,
+        revision: current.revision,
+        statusAfterStop,
+        mission: current.mission,
+        actor,
+        operationId: operation,
+        expectedRevision,
+        nextStep,
+        nextAgent,
+        auditLadder: Object.freeze({
+          loop: ladder.loop,
+          nextRung: ladder.nextRung?.id ?? null,
+          walked: ladder.walked,
+          skippedRungs: ladder.skippedRungs,
+        }),
+        reason: why,
+      });
+      const checkpointed = await this.createCheckpoint({
+        operationId: `${operation}-checkpoint`,
+        missionId: id,
+        expectedRevision,
+        label: label ?? (why === 'slice_end' ? 'tie-in-slice' : `tie-in-${why}`),
+        envelope,
+        tieIn,
+      });
+      return Object.freeze({ ...checkpointed, tieIn, auditLadder: ladder });
     },
     async get({ missionId, includeHistorical = false }) {
       if (typeof includeHistorical !== 'boolean') throw new TypeError('includeHistorical must be a boolean');

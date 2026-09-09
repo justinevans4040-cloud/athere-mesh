@@ -90,6 +90,15 @@ export function createAgentRuntime({ complete }) {
       if (!envelope.allowed_actions.includes('respond')) {
         throw runtimeError('ACTION_NOT_ALLOWED', 'agent envelope does not permit respond');
       }
+      const advisory = envelope.mission_id.startsWith('advisory-') || envelope.state_version === 0;
+      if (advisory) {
+        if (Number(envelope.resource_budget?.max_tool_calls) > 0) {
+          throw runtimeError('ADVISORY_TOOLS_FORBIDDEN', 'advisory envelope cannot admit operational tools');
+        }
+        if (envelope.allowed_actions.some((action) => action !== 'respond')) {
+          throw runtimeError('ADVISORY_TOOLS_FORBIDDEN', 'advisory envelope cannot admit operational tools');
+        }
+      }
 
       const response = await completeWithinTimeout(complete, {
         agent: Object.freeze({ id: agent.id, name: agent.name, role: agent.role }),

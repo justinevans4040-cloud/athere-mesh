@@ -55,6 +55,9 @@ function authorizeEnvelope(input, operation) {
     unauthorized(operation, 'expected_output_schema does not cover the executor result');
   }
   const requester = envelope.provenance.requested_by;
+  if (envelope.mission_id.startsWith('advisory-') || envelope.state_version === 0) {
+    unauthorized(operation, 'advisory envelope cannot admit operational tools');
+  }
   if (requester === 'miss-vale-prime') {
     if (!envelope.mission_id.startsWith('mission-')
       || !Number.isSafeInteger(envelope.state_version)

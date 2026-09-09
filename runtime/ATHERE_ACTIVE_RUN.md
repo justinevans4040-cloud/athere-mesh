@@ -1,8 +1,9 @@
 # Athere Active Run
 
-**Status:** Active — **FULL FLEET ONLINE** + keep-mesh / add-agents. Backlog **Items 1–24 shipped**. Hostile residual closes **ckpts 126–132** (OPEN_COUNT 0) included. Vale Prime sole Miss Vale. NYX Apex on default path. Command Deck live. Local-only.
+**Status:** Active — **FULL FLEET ONLINE** + keep-mesh / add-agents. Backlog **Items 1–24 shipped**. Hostile residual closes **ckpts 126–132** (OPEN_COUNT 0) included. **Titan current-job gates landed on this repo** (pointer / admit / tie-in continuity / QR18 ladder). Vale Prime sole Miss Vale. NYX Apex on default path. Command Deck live. Local-only. **As of 2026-09-09.**
 
 **Current state doc:** `docs/current/ATHERE_MESH_TITAN_CURRENT_STATE.md`  
+**Titan current-job map (findable):** `docs/current/TITAN_CURRENT_JOB_GATES.md`  
 **GitHub repo index (23 repos, company-wide):** `docs/current/GITHUB_ACCOUNT_REPO_INDEX.md`  
 **Inventory evidence:** `evidence/github-full-repo-inventory-20260909T202200Z.json`
 
@@ -17,8 +18,9 @@
 - Full NYX upgrade ladder (schema step 1 on route; ladder not finished)
 - Full IN/OUT agent cut across 65 notebooks
 - Remote fabric still env-gated
-- Perform ladder **#8 Ship** — handoff/plot lock to GitHub ordered 2026-09-09 (this pass)
+- Perform ladder **#8 Ship** — handoff/plot lock continuing 2026-09-09 (current-job gates now on `athere-mesh`; full-suite/live API smoke still open)
 - Wake/ForgeFront organize on Ichabod (selective; no 100GB Lenovo dump)
+- Optional: delete or banner `wakeforged` branch `cursor/titan-current-job-gates-197c` as ARCHIVE-only after this land is pushed
 - **Deferred:** Ronan · **Parked:** 14 clusters · **Parked:** A15
 
 **Next:** Justin’s current order only. Do not invent backlog homework.

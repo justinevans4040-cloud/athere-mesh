@@ -44,6 +44,13 @@ or claim multi-master orchestration. Filesystem stale-lock takeover stays
 process-local and does not apply to the shared Postgres path — CAS is the
 cross-host concurrency boundary.
 
+The current-job pointer is the same singleton CAS record on this store
+(`titan_current_job_pointer` / `.current-job-pointer.json`). Two writers cannot
+split the current job.
+
+Sold Titan (`ATHERE_MESH_SOLD_DEPLOY`) fails closed unless this Postgres adapter
+is wired. Filesystem remains the hermetic test default.
+
 ## What this proves
 
 - Two `createMissionStateService` instances sharing one Postgres-backed store see the

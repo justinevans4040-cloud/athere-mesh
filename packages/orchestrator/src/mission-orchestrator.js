@@ -13,12 +13,20 @@ import { createNyxSchema, assertNyxKillSwitch } from '../../nyx/src/nyx-schema.j
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 import { createSharedProofFacade } from '../../proof/src/shared-proof-facade.js';
 import { evaluateQr18Layers, assertQr18LayersVerified } from '../../proof/src/qr18-layered-verification.js';
+import { assertSliceAuditFloor, runAuditLadderLoop } from '../../proof/src/step-ladder-audit-loop.js';
 import { healMissionFromCheckpoint, recoverAndHealMissions } from '../../recovery/src/recovery-coordinator.js';
 import { createMemoryResonanceBus } from '../../resonance/src/resonance-bus.js';
+import {
+  buildTieInRecord,
+  hasWorkSliceCheckpoint,
+  isLiveJobStatus,
+  nextConcreteStep,
+  nextNamedAgent,
+  sliceProgress,
+} from '../../mission/src/current-job-pointer.js';
 
 /**
  * Keep-mesh OS lifecycle gates (beyond Vale Prime / NYX+RUNE work / audit).
- * Houston is a label only — agents matter.
  */
 const NOTEBOOK_LIFECYCLE_PERMISSIONS = Object.freeze([
   { actor: 'caretaker', actions: ['fleet_health_check'] },
@@ -565,15 +573,20 @@ export function createMissionOrchestrator({
     return record;
   }
 
-  async function executeFileWork({ text, action }) {
+  async function executeFileWork({ text, action, existing }) {
     const isOrganize = action.resource === 'organize-by-type';
     const workSubgoal = isOrganize ? 'organize-files' : 'inventory-files';
     const nyxAction = isOrganize ? 'mutate_workspace_files' : 'observe_repository';
     const capabilityId = isOrganize ? 'workspace-file-worker' : 'repository-inspector';
-    let record = await createFileWorkMission({ id: missionId(idFactory), objective: text, action });
-    record = await persistTransition(record, `${record.mission.id}-supervision`, {
-      type: 'running', agent: 'miss-vale-prime', detail: 'Vale Prime mission supervision started',
-    }, { activeAgents: ['miss-vale-prime'] });
+    let record = existing ?? await createFileWorkMission({ id: missionId(idFactory), objective: text, action });
+    await bindCurrentJob(record);
+    record = (await missionState.admitWork({ missionId: record.mission.id })).record;
+    const progress = sliceProgress(record.mission);
+    if (!progress.supervised) {
+      record = await persistTransition(record, `${record.mission.id}-supervision`, {
+        type: 'running', agent: 'miss-vale-prime', detail: 'Vale Prime mission supervision started',
+      }, { activeAgents: ['miss-vale-prime'] });
+    }
 
     try {
       const pre = await runNotebookPreLifecycle(record, { domain: 'files' });
@@ -637,7 +650,7 @@ export function createMissionOrchestrator({
         fileWork: fileResult,
       });
     } catch (error) {
-      return blockThenHeal(recordFromLifecycleError(record, error), error instanceof Error ? error.message : String(error));
+      return stopWithTieIn(recordFromLifecycleError(record, error), error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -678,11 +691,16 @@ export function createMissionOrchestrator({
     return record;
   }
 
-  async function executeBuild({ text }) {
-    let record = await createBuildMission({ id: missionId(idFactory), objective: text });
-    record = await persistTransition(record, `${record.mission.id}-supervision`, {
-      type: 'running', agent: 'miss-vale-prime', detail: 'Vale Prime mission supervision started',
-    }, { activeAgents: ['miss-vale-prime'] });
+  async function executeBuild({ text, existing }) {
+    let record = existing ?? await createBuildMission({ id: missionId(idFactory), objective: text });
+    await bindCurrentJob(record);
+    record = (await missionState.admitWork({ missionId: record.mission.id })).record;
+    const progress = sliceProgress(record.mission);
+    if (!progress.supervised) {
+      record = await persistTransition(record, `${record.mission.id}-supervision`, {
+        type: 'running', agent: 'miss-vale-prime', detail: 'Vale Prime mission supervision started',
+      }, { activeAgents: ['miss-vale-prime'] });
+    }
 
     try {
       const pre = await runNotebookPreLifecycle(record, { domain: 'build' });
@@ -784,7 +802,7 @@ export function createMissionOrchestrator({
         build: buildResult,
       });
     } catch (error) {
-      return blockThenHeal(recordFromLifecycleError(record, error), error instanceof Error ? error.message : String(error));
+      return stopWithTieIn(recordFromLifecycleError(record, error), error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -797,8 +815,32 @@ export function createMissionOrchestrator({
     return { revision: blocked.revision, mission: blocked.mission };
   }
 
-  async function durableCheckpoint(record, label) {
+  async function durableCheckpoint(record, label, extras = {}) {
+    const ladder = runAuditLadderLoop({
+      mission: record.mission,
+      certifierAgentId: 'qra_emerge_audit',
+      transitionHistory: record.mission.transitionHistory,
+    });
+    assertSliceAuditFloor({ ladder, slice: label });
     const operationId = `${record.mission.id}-ckpt-${label}`;
+    const tieIn = buildTieInRecord({
+      jobId: record.mission.id,
+      revision: record.revision,
+      statusAfterStop: record.mission.status,
+      mission: record.mission,
+      actor: 'qra_recovery_driver',
+      operationId,
+      expectedRevision: record.revision,
+      nextStep: extras.nextStep ?? nextConcreteStep(record.mission),
+      nextAgent: extras.nextAgent ?? nextNamedAgent(record.mission),
+      auditLadder: Object.freeze({
+        loop: ladder.loop,
+        nextRung: ladder.nextRung?.id ?? null,
+        walked: ladder.walked,
+        skippedRungs: ladder.skippedRungs,
+      }),
+      reason: extras.reason ?? 'slice_end',
+    });
     return missionState.createCheckpoint({
       operationId,
       missionId: record.mission.id,
@@ -813,7 +855,95 @@ export function createMissionOrchestrator({
         createdAt: record.mission.updatedAt,
         taskId: `checkpoint-${label}`,
       }),
+      tieIn,
     });
+  }
+
+  async function stopWithTieIn(record, detail) {
+    const hadWorkCheckpoint = hasWorkSliceCheckpoint(record.mission);
+    let current = record;
+    try {
+      const operationId = `${record.mission.id}-stop-r${record.revision}`;
+      current = await missionState.writeTieIn({
+        missionId: record.mission.id,
+        expectedRevision: record.revision,
+        operationId,
+        reason: 'crash',
+        actor: 'qra_recovery_driver',
+        envelope: createAgentOperationEnvelope({
+          record,
+          operationId: `${operationId}-checkpoint`,
+          agentId: 'qra_recovery_driver',
+          action: 'create_checkpoint',
+          objective: `tie-in before stop: ${detail}`,
+          createdAt: record.mission.updatedAt,
+          taskId: 'tie-in-crash',
+        }),
+      });
+    } catch (error) {
+      if (!/revision conflict/i.test(error?.message ?? '')) throw error;
+      current = await missionState.get({ missionId: record.mission.id, includeHistorical: true });
+    }
+    if (hadWorkCheckpoint || hasWorkSliceCheckpoint(current.mission)) {
+      return blockThenHeal(current, detail);
+    }
+    const blocked = await block(current, detail);
+    const decision = await missionState.decideNext({
+      missionId: blocked.mission.id,
+      actor: 'orchestrator',
+    });
+    return Object.freeze({
+      revision: blocked.revision,
+      mission: blocked.mission,
+      status: 'blocked',
+      reason: detail,
+      executive: decision,
+    });
+  }
+
+  async function bindCurrentJob(record) {
+    const existing = await missionState.loadCurrentJobPointer();
+    if (existing?.pointer?.jobId === record.mission.id) return existing;
+    try {
+      return await missionState.setCurrentJobPointer({
+        jobId: record.mission.id,
+        missionRevision: record.revision,
+        expectedRevision: existing?.revision ?? 0,
+        actor: 'titan',
+        operationId: `${record.mission.id}-current-job`,
+      });
+    } catch (error) {
+      if (!/revision conflict/i.test(error?.message ?? '')) throw error;
+      return missionState.loadCurrentJobPointer();
+    }
+  }
+
+  async function loadLiveJob({ missionId } = {}) {
+    let id = missionId;
+    if (!id) {
+      const pointer = await missionState.loadCurrentJobPointer();
+      id = pointer?.pointer?.jobId;
+    }
+    if (!id) return undefined;
+    try {
+      const record = await missionState.get({ missionId: id, includeHistorical: true });
+      if (!isLiveJobStatus(record.mission.status)) return undefined;
+      return record;
+    } catch (error) {
+      if (/not found/i.test(error.message)) return undefined;
+      throw error;
+    }
+  }
+
+  async function healLiveIfBlocked(record) {
+    if (record.mission.status !== 'blocked') return record;
+    await healMissionFromCheckpoint({
+      root: workspaceRoot,
+      missionId: record.mission.id,
+      clock,
+      ...(store === undefined ? {} : { missionStore: store }),
+    });
+    return missionState.get({ missionId: record.mission.id, includeHistorical: true });
   }
 
   function recordFromLifecycleError(record, error) {
@@ -914,33 +1044,30 @@ export function createMissionOrchestrator({
     });
   }
 
-  return Object.freeze({
-    async execute({ profile, text }) {
-      const plan = planCommand({ profile, text });
-      if (plan.status !== 'ready') return plan;
-      const isFileInventory = plan.action.kind === 'read' && plan.action.resource === 'inventory';
-      const isFileOrganize = plan.action.kind === 'local_write' && plan.action.resource === 'organize-by-type';
-      if (isFileInventory || isFileOrganize) {
-        return executeFileWork({ text, action: plan.action });
-      }
-      if (plan.action.kind === 'build' && plan.action.target === 'titan') {
-        return executeBuild({ text });
-      }
-      if (plan.action.kind !== 'test') {
-        return Object.freeze({ status: 'blocked', reason: `no operational executor for ${plan.action.kind}` });
-      }
-
-      let record = await createAuthoritativeMission({ id: missionId(idFactory), objective: text });
+  async function executeTestPipeline({ text, existing }) {
+    let record = existing ?? await createAuthoritativeMission({ id: missionId(idFactory), objective: text });
+    await bindCurrentJob(record);
+    const admitted = await missionState.admitWork({ missionId: record.mission.id });
+    record = admitted.record;
+    const started = sliceProgress(record.mission);
+    if (!started.supervised) {
       record = await persistTransition(record, `${record.mission.id}-supervision`, {
         type: 'running', agent: 'miss-vale-prime', detail: 'Vale Prime mission supervision started',
       }, { activeAgents: ['miss-vale-prime'] });
+    }
 
-      try {
-        const pre = await runNotebookPreLifecycle(record, { domain: 'code' });
+    try {
+      let pre = { record, stages: Object.freeze(['caretaker', 'qra_emerge_orchestration', 'qra_route_controller', 'loom', 'the-britt']) };
+      if (!sliceProgress(record.mission).preLifecycle) {
+        pre = await runNotebookPreLifecycle(record, { domain: 'code' });
         record = pre.record;
+      }
 
+      let nyxEvidence = (record.mission.evidence ?? []).find((entry) => entry.agent === 'nyx');
+      let inspection = nyxEvidence?.result;
+      if (!sliceProgress(record.mission).inspected) {
         const inspectStarted = Date.now();
-        const inspection = parseRepositoryInspectionResult(await testExecutor.inspect({
+        inspection = parseRepositoryInspectionResult(await testExecutor.inspect({
           repositoryRoot: workerRepositoryRoot,
           envelope: executionEnvelope({
             record,
@@ -957,7 +1084,7 @@ export function createMissionOrchestrator({
           }),
         }));
         const inspectLatencyMs = Date.now() - inspectStarted;
-        const nyxEvidence = Object.freeze({ executor: 'repository-inspector', result: inspection });
+        nyxEvidence = Object.freeze({ executor: 'repository-inspector', result: inspection });
         record = await persistTransition(record, `${record.mission.id}-inspection`, {
           type: 'running',
           agent: 'nyx',
@@ -974,8 +1101,13 @@ export function createMissionOrchestrator({
           costUsd: 0,
         });
         record = await durableCheckpoint(record, 'after-inspect');
+      }
+
+      let runeEvidence = (record.mission.evidence ?? []).find((entry) => entry.agent === 'rune');
+      let result = runeEvidence?.result;
+      if (!sliceProgress(record.mission).tested) {
         const testStarted = Date.now();
-        const result = parseNodeTestExecutionResult(await testExecutor.runTests({
+        result = parseNodeTestExecutionResult(await testExecutor.runTests({
           repositoryRoot: workerRepositoryRoot,
           envelope: executionEnvelope({
             record,
@@ -992,9 +1124,8 @@ export function createMissionOrchestrator({
           }),
         }));
         const testLatencyMs = Date.now() - testStarted;
-        const validatedCounts = testCounts(result);
-        const runeResult = Object.freeze({ command: result.command, exitCode: result.exitCode, ...validatedCounts });
-        const runeEvidence = Object.freeze({ executor: 'node-test-runner', result: runeResult });
+        const runeResult = Object.freeze({ command: result.command, exitCode: result.exitCode, ...testCounts(result) });
+        runeEvidence = Object.freeze({ executor: 'node-test-runner', result: runeResult });
         record = await persistTransition(record, `${record.mission.id}-tests`, {
           type: 'running',
           agent: 'rune',
@@ -1012,12 +1143,22 @@ export function createMissionOrchestrator({
         });
         if (result.exitCode !== 0 || result.failed !== 0) throw new Error(failureMessage(result));
         record = await durableCheckpoint(record, 'after-tests');
+      }
 
-        const agentEvidence = Object.freeze([
-          Object.freeze({ agent: 'nyx', ...nyxEvidence }),
-          Object.freeze({ agent: 'rune', ...runeEvidence }),
-        ]);
-        const post = await runNotebookPostLifecycle(record, {
+      const validatedCounts = testCounts(result);
+      const nyxPayload = nyxEvidence?.executor
+        ? nyxEvidence
+        : Object.freeze({ executor: 'repository-inspector', result: inspection });
+      const runePayload = runeEvidence?.executor
+        ? runeEvidence
+        : Object.freeze({ executor: 'node-test-runner', result });
+      const agentEvidence = Object.freeze([
+        Object.freeze({ agent: 'nyx', ...nyxPayload }),
+        Object.freeze({ agent: 'rune', ...runePayload }),
+      ]);
+      let post = { record, stages: Object.freeze(['the-britt', 'echo', 'qra_sentinel']) };
+      if (!sliceProgress(record.mission).postLifecycle) {
+        post = await runNotebookPostLifecycle(record, {
           screenText: JSON.stringify({
             command: result.command,
             exitCode: result.exitCode,
@@ -1026,11 +1167,13 @@ export function createMissionOrchestrator({
           }),
         });
         record = post.record;
-        const lifecycle = buildLifecycleResult({
-          preStages: pre.stages,
-          workAgents: ['nyx', 'rune'],
-          postStages: post.stages,
-        });
+      }
+      const lifecycle = buildLifecycleResult({
+        preStages: pre.stages,
+        workAgents: ['nyx', 'rune'],
+        postStages: post.stages,
+      });
+      if (record.mission.status !== 'completed') {
         record = await certifyWithProof({
           record,
           payload: {
@@ -1047,10 +1190,55 @@ export function createMissionOrchestrator({
           completedWork: ['inspect-repository', 'run-node-tests', 'verify-proof'],
           resultExtras: { tests: validatedCounts, lifecycle },
         });
-        return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });
-      } catch (error) {
-        return blockThenHeal(recordFromLifecycleError(record, error), error instanceof Error ? error.message : String(error));
       }
+      return Object.freeze({ revision: record.revision, mission: record.mission, tests: record.mission.result.tests });
+    } catch (error) {
+      return stopWithTieIn(recordFromLifecycleError(record, error), error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  return Object.freeze({
+    async execute({ profile, text, missionId: requestedMissionId } = {}) {
+      const plan = planCommand({ profile, text });
+      let live = await loadLiveJob({ missionId: requestedMissionId });
+      if (live) {
+        const admitted = await missionState.admitWork({ missionId: live.mission.id });
+        live = await healLiveIfBlocked(admitted.record);
+        if (live.mission.status === 'blocked') {
+          const decision = await missionState.decideNext({
+            missionId: live.mission.id,
+            actor: 'orchestrator',
+          });
+          return Object.freeze({
+            revision: live.revision,
+            mission: live.mission,
+            status: 'blocked',
+            reason: live.mission.signals.at(-1)?.detail ?? 'blocked',
+            executive: decision,
+          });
+        }
+        const planId = live.mission.currentPlan?.id;
+        if (planId === 'titan-build-plan') return executeBuild({ text, existing: live });
+        if (planId === 'titan-test-plan') return executeTestPipeline({ text, existing: live });
+        const steps = live.mission.currentPlan?.steps ?? [];
+        const fileAction = steps.includes('organize-files')
+          ? { kind: 'local_write', resource: 'organize-by-type', target: 'workspace' }
+          : { kind: 'read', resource: 'inventory', target: 'workspace' };
+        return executeFileWork({ text, action: fileAction, existing: live });
+      }
+      if (plan.status !== 'ready') return plan;
+      const isFileInventory = plan.action.kind === 'read' && plan.action.resource === 'inventory';
+      const isFileOrganize = plan.action.kind === 'local_write' && plan.action.resource === 'organize-by-type';
+      if (isFileInventory || isFileOrganize) {
+        return executeFileWork({ text, action: plan.action });
+      }
+      if (plan.action.kind === 'build' && plan.action.target === 'titan') {
+        return executeBuild({ text });
+      }
+      if (plan.action.kind !== 'test') {
+        return Object.freeze({ status: 'blocked', reason: `no operational executor for ${plan.action.kind}` });
+      }
+      return executeTestPipeline({ text });
     },
 
     async getMission({ missionId: id, includeHistorical = false }) {
@@ -1059,6 +1247,25 @@ export function createMissionOrchestrator({
 
     async selectMissionState({ missionId: id, fields }) {
       return missionState.select({ missionId: id, fields });
+    },
+
+    async getCurrentJob() {
+      let pointer;
+      try {
+        pointer = await missionState.loadCurrentJobPointer();
+      } catch (error) {
+        if (/pointer store is not wired/i.test(error.message)) {
+          return Object.freeze({ pointer: null });
+        }
+        throw error;
+      }
+      if (!pointer?.pointer?.jobId) return Object.freeze({ pointer: null });
+      try {
+        const lookback = await missionState.lookback({ missionId: pointer.pointer.jobId });
+        return Object.freeze({ pointer, lookback, missionId: pointer.pointer.jobId, stateVersion: lookback.stateVersion });
+      } catch {
+        return Object.freeze({ pointer, missionId: pointer.pointer.jobId, missing: true });
+      }
     },
 
     async recover() {
@@ -1071,3 +1278,4 @@ export function createMissionOrchestrator({
 
   });
 }
+

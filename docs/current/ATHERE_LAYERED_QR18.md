@@ -27,6 +27,10 @@ QR18 is no longer a single completion hash check. Completion requires structured
 
 Proof store primitives (`writeProof` / `verifyProof` / artifact proofs) are unchanged and remain Level 6 / Level 2 inputs — not replaced.
 
+## Runtime step-ladder loop
+
+After each mission slice / tie-in, Titan walks QR18 Levels 1–6 **in order** against current mission state (`packages/proof/src/step-ladder-audit-loop.js`). The loop continues until the auditor can certify (all six verified + MEA auditor completion) or the job is blocked with a recorded reason. Models cannot self-certify. Work slices fail closed if Level 1 action proof is missing.
+
 ## What this does not do
 
 - Mutating the plan graph mid-mission (create-time authority remains)

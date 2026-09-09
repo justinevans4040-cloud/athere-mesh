@@ -1,5 +1,4 @@
-import { PGlite } from '@electric-sql/pglite';
-import pg from 'pg';
+let pgModule;
 
 function isReconnectable(error) {
   const message = String(error?.message ?? error);
@@ -8,6 +7,7 @@ function isReconnectable(error) {
 
 export async function createPostgresClient({ mode, databaseUrl } = {}) {
   if (mode === 'embedded') {
+    const { PGlite } = await import('@electric-sql/pglite');
     const db = new PGlite();
     return Object.freeze({
       query: (text, values) => db.query(text, values),
@@ -19,12 +19,14 @@ export async function createPostgresClient({ mode, databaseUrl } = {}) {
       throw new Error('live Postgres mode requires DATABASE_URL');
     }
 
+    pgModule = pgModule ?? (await import('pg')).default;
+
     let client = null;
     let lastClientError = null;
     let closed = false;
 
     async function openClient() {
-      const next = new pg.Client({
+      const next = new pgModule.Client({
         connectionString: databaseUrl,
         keepAlive: true,
         // Remote test wait is often 10–20s; probe before DERP/NAT idle kill.

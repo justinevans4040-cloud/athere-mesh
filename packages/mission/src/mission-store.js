@@ -5,6 +5,7 @@ import { hostname as systemHostname, platform as systemPlatform } from 'node:os'
 import { setTimeout as delay } from 'node:timers/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { normalizeCurrentJobPointer } from './current-job-pointer.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -23,9 +24,19 @@ export function isBrandedMissionStore(value) {
 }
 
 /** Brand a load/save adapter (Postgres bridge, hermetic Map stores). Not for anonymous hostile objects. */
-export function createMissionStoreBridge({ loadMission, saveMission, listMissionIds } = {}) {
+export function createMissionStoreBridge({
+  loadMission,
+  saveMission,
+  listMissionIds,
+  loadCurrentJobPointer,
+  saveCurrentJobPointer,
+} = {}) {
   if (typeof loadMission !== 'function' || typeof saveMission !== 'function') {
     throw new TypeError('mission store bridge must provide loadMission and saveMission');
+  }
+  const pointerWired = typeof loadCurrentJobPointer === 'function' && typeof saveCurrentJobPointer === 'function';
+  if ((loadCurrentJobPointer !== undefined || saveCurrentJobPointer !== undefined) && !pointerWired) {
+    throw new TypeError('current-job pointer store must provide both loadCurrentJobPointer and saveCurrentJobPointer');
   }
   // F8: bridges must serialize saves per mission — Map/Postgres adapters otherwise race.
   const serializedSave = async (options) => {
@@ -36,6 +47,7 @@ export function createMissionStoreBridge({ loadMission, saveMission, listMission
     loadMission,
     saveMission: serializedSave,
     ...(typeof listMissionIds === 'function' ? { listMissionIds } : {}),
+    ...(pointerWired ? { loadCurrentJobPointer, saveCurrentJobPointer } : {}),
   });
   BRANDED_MISSION_STORES.add(store);
   return store;
@@ -56,6 +68,16 @@ function locations(root, missionId) {
     directory,
     snapshot: path.join(directory, `${id}.json`),
     lock: path.join(directory, `.${id}.lock`),
+  };
+}
+
+function pointerLocations(root) {
+  if (typeof root !== 'string' || root.length === 0) throw new TypeError('root must be a path');
+  const directory = path.resolve(root, 'missions');
+  return {
+    directory,
+    snapshot: path.join(directory, '.current-job-pointer.json'),
+    lock: path.join(directory, '.current-job-pointer.lock'),
   };
 }
 
@@ -392,6 +414,26 @@ async function readSnapshot(snapshot, { missing = false, readFileImpl = readFile
   }
 }
 
+async function readPointerSnapshot(snapshot, { missing = false, readFileImpl = readFile } = {}) {
+  try {
+    const parsed = JSON.parse(await readFileImpl(snapshot, 'utf8'));
+    if (!Number.isSafeInteger(parsed.revision) || parsed.revision < 1 || !parsed.pointer) {
+      throw new Error('invalid shape');
+    }
+    return Object.freeze({
+      revision: parsed.revision,
+      pointer: normalizeCurrentJobPointer(parsed.pointer),
+    });
+  } catch (error) {
+    if (missing && error?.code === 'ENOENT') return undefined;
+    if (error?.code === 'ENOENT') return undefined;
+    if (error instanceof TypeError || error?.message === 'invalid shape') {
+      throw new Error('corrupt current-job pointer', { cause: error });
+    }
+    throw new Error('corrupt current-job pointer', { cause: error });
+  }
+}
+
 export async function loadMission({ root, missionId }) {
   return defaultMissionStore.loadMission({ root, missionId });
 }
@@ -448,6 +490,36 @@ export function createMissionStore({
       ids.push(match[1]);
     }
     return Object.freeze(ids);
+  }
+
+  async function loadPointer({ root }) {
+    const { snapshot } = pointerLocations(root);
+    return readPointerSnapshot(snapshot, { missing: true, readFileImpl: operations.readFile });
+  }
+
+  async function savePointer({ root, pointer, expectedRevision }) {
+    const normalized = normalizeCurrentJobPointer(pointer);
+    const { directory, snapshot, lock } = pointerLocations(root);
+    await operations.mkdir(directory, { recursive: true });
+    return withKeyedLock(lock, async () => {
+      const current = await readPointerSnapshot(snapshot, { missing: true, readFileImpl: operations.readFile });
+      const currentRevision = current?.revision ?? 0;
+      const expected = expectedRevision === undefined ? 0 : expectedRevision;
+      if (!Number.isSafeInteger(expected) || expected < 0) {
+        throw new Error('invalid expected revision');
+      }
+      if (expected !== currentRevision) {
+        throw new Error(`revision conflict: expected ${expected}, found ${currentRevision}`);
+      }
+      const record = Object.freeze({
+        revision: currentRevision + 1,
+        pointer: normalized,
+      });
+      const temporary = path.join(directory, `.current-job-pointer.${randomUUID()}.tmp`);
+      await operations.writeFile(temporary, `${JSON.stringify(record)}\n`, { encoding: 'utf8', flag: 'wx' });
+      await retryTransientSharing(() => operations.rename(temporary, snapshot), { retryDelay, maxTransientAttempts: attempts });
+      return record;
+    });
   }
 
   async function save({ root, mission, expectedRevision }) {
@@ -549,7 +621,13 @@ export function createMissionStore({
     return result;
   }
 
-  const store = Object.freeze({ loadMission: load, saveMission: save, listMissionIds: listIds });
+  const store = Object.freeze({
+    loadMission: load,
+    saveMission: save,
+    listMissionIds: listIds,
+    loadCurrentJobPointer: loadPointer,
+    saveCurrentJobPointer: savePointer,
+  });
   BRANDED_MISSION_STORES.add(store);
   return store;
 }
@@ -558,6 +636,14 @@ const defaultMissionStore = createMissionStore();
 
 export async function listMissionIds({ root }) {
   return defaultMissionStore.listMissionIds({ root });
+}
+
+export async function loadCurrentJobPointer({ root }) {
+  return defaultMissionStore.loadCurrentJobPointer({ root });
+}
+
+export async function saveCurrentJobPointer({ root, pointer, expectedRevision }) {
+  return defaultMissionStore.saveCurrentJobPointer({ root, pointer, expectedRevision });
 }
 
 export { defaultMissionStore };

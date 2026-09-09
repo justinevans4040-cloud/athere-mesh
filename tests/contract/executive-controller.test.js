@@ -88,6 +88,24 @@ test('Item 16 contract: running mission with pending inspect allocates nyx', () 
   assertExecutivePreservesIntegrity(decision, baseMission());
 });
 
+test('Item 16 contract: crash tie-in is continuity, not a recovery checkpoint', () => {
+  const mission = baseMission({
+    status: 'blocked',
+    evidence: [],
+    checkpoints: [{
+      id: 'cp-tie-in-crash',
+      verified: true,
+      label: 'tie-in-crash',
+      stateHash: 'b'.repeat(64),
+      snapshot: { status: 'running', completedWork: [] },
+    }],
+  });
+  const decision = decideNext({ mission });
+  assert.equal(decision.nextAction, 'escalate_human');
+  assert.equal(decision.humanInterventionRequired, true);
+  assert.equal(decision.canCertifySuccess, false);
+});
+
 test('Item 16 contract: blocked mission with checkpoint changes strategy without breaking integrity', () => {
   const snapshot = { status: 'running', completedWork: ['inspect-repository'] };
   const mission = baseMission({

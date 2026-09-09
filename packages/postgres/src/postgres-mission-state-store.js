@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createPostgresClient } from './postgres-client.js';
 import { createPostgresMissionStore } from './postgres-mission-store.js';
 import { createMissionStoreBridge } from '../../mission/src/mission-store.js';
+import { normalizeCurrentJobPointer } from '../../mission/src/current-job-pointer.js';
 
 function optional(value) {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -63,6 +64,9 @@ export function adaptPostgresMissionStore(postgresStore) {
   if (!postgresStore || typeof postgresStore.load !== 'function' || typeof postgresStore.save !== 'function') {
     throw new TypeError('postgres store must provide load and save');
   }
+  if (typeof postgresStore.loadPointer !== 'function' || typeof postgresStore.savePointer !== 'function') {
+    throw new TypeError('postgres store must provide loadPointer and savePointer');
+  }
   return createMissionStoreBridge({
     async loadMission({ missionId }) {
       return postgresStore.load({ missionId });
@@ -76,6 +80,20 @@ export function adaptPostgresMissionStore(postgresStore) {
     async saveMission({ mission, expectedRevision }) {
       return postgresStore.save({
         mission,
+        ...(expectedRevision === undefined ? {} : { expectedRevision }),
+      });
+    },
+    async loadCurrentJobPointer() {
+      const record = await postgresStore.loadPointer();
+      if (record === undefined) return undefined;
+      return Object.freeze({
+        revision: record.revision,
+        pointer: normalizeCurrentJobPointer(record.pointer),
+      });
+    },
+    async saveCurrentJobPointer({ pointer, expectedRevision }) {
+      return postgresStore.savePointer({
+        pointer: normalizeCurrentJobPointer(pointer),
         ...(expectedRevision === undefined ? {} : { expectedRevision }),
       });
     },

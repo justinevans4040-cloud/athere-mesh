@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createAgentOperationEnvelope } from '../../contracts/src/agent-operation.js';
 import { assertCheckpointIntegrity } from '../../mission/src/mission-checkpoints.js';
+import { isRecoverableCheckpoint } from '../../mission/src/current-job-pointer.js';
 import { defaultMissionStore, listMissionIds as listFilesystemMissionIds } from '../../mission/src/mission-store.js';
 import { createMissionStateService } from '../../mission/src/mission-state-service.js';
 
@@ -99,7 +100,8 @@ function healOperationId(missionId, kind, token) {
 
 function verifiedCheckpoints(mission) {
   return (mission.checkpoints ?? []).filter((entry) => {
-    if (entry?.verified !== true || !entry.stateHash || !entry.snapshot) return false;
+    // Crash/stop tie-ins are continuity, not a place to retry work from.
+    if (!isRecoverableCheckpoint(entry) || !entry.snapshot) return false;
     assertCheckpointIntegrity(entry);
     return true;
   });

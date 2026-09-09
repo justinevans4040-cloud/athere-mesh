@@ -7,6 +7,7 @@
 import { assessEpistemicState } from '../../contracts/src/epistemic-state.js';
 import { roleForAgent } from '../../contracts/src/execution-roles.js';
 import { assertCheckpointIntegrity } from '../../mission/src/mission-checkpoints.js';
+import { isRecoverableCheckpoint } from '../../mission/src/current-job-pointer.js';
 
 export const EXECUTIVE_ACTIONS = Object.freeze([
   'allocate_work',
@@ -71,7 +72,8 @@ function latestCheckpointId(mission) {
 
 function verifiedCheckpoints(mission) {
   return (mission.checkpoints ?? []).filter((entry) => {
-    if (entry?.verified !== true || !entry.stateHash || !entry.snapshot) return false;
+    // Tie-in labels are continuity markers, not places to retry work from.
+    if (!isRecoverableCheckpoint(entry) || !entry.snapshot) return false;
     assertCheckpointIntegrity(entry);
     return true;
   });

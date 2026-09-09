@@ -283,7 +283,15 @@ export function createTitanApi({
           if (request.method === 'GET' && url.pathname === '/health') {
             requireAuth(request);
             operationalDependencies(orchestrator, team, recovery);
-            json(response, 200, { ready: true, enabledAgents: teamView(team).enabledAgents, recovery: publicRecoverySummary(recovery) });
+            const currentJob = typeof orchestrator.getCurrentJob === 'function'
+              ? await orchestrator.getCurrentJob()
+              : undefined;
+            json(response, 200, {
+              ready: true,
+              enabledAgents: teamView(team).enabledAgents,
+              recovery: publicRecoverySummary(recovery),
+              ...(currentJob === undefined ? {} : { currentJob }),
+            });
             return;
           }
           if (request.method === 'GET' && url.pathname === '/api/team') {

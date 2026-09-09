@@ -6,7 +6,7 @@
 
 Titan accepts ordinary-language commands. Operators do not need to provide JSON.
 
-The first executable command is `test all of Titan` (and equivalent owner test wording). It creates a durable mission, records supervision, current on-disk source/test file counts, real Node test output, and a SHA-256-verified proof. NYX/RUNE evidence and exact validated test totals are persisted in the mission before completion and remain available after restart. Completion comes from deterministic tool output and stored proof—not from a model response.
+The first executable command is `test all of Titan` (and equivalent owner test wording). It resolves the current job pointer or creates a durable mission, looks back at verified state, then records supervision, current on-disk source/test file counts, real Node test output, and a SHA-256-verified proof. A new process without a mission id continues the live job. NYX/RUNE evidence and exact validated test totals are persisted in the mission before completion and remain available after restart. Completion comes from deterministic tool output and stored proof—not from a model response.
 
 The operational team is deliberately limited to implemented executors:
 
@@ -27,7 +27,7 @@ The owner API binds to loopback and requires a reusable 32–512 byte visible-pr
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /health` | Bearer-protected readiness, enabled-team count, and recovery category counts only |
+| `GET /health` | Bearer-protected readiness, enabled-team count, recovery summary, and current job pointer when wired |
 | `GET /api/team` | Bearer-protected registered team with executor/operational status |
 | `POST /api/commands` | Authenticated plain UTF-8 text command execution |
 | `GET /api/missions/:id` | Authenticated durable stored mission result |

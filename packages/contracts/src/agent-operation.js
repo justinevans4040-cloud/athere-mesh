@@ -143,6 +143,10 @@ export function createAgentOperationEnvelope({
 } = {}) {
   const operation = operationFor(agentId);
   const resolvedAction = resolveAction(agentId, action);
+  const missionId = record?.mission?.id;
+  if (agentId !== 'agent-vale' && typeof missionId === 'string' && missionId.startsWith('advisory-')) {
+    throw new Error('advisory envelope cannot admit operational tools');
+  }
   return parseAgentEnvelope({
     mission_id: record.mission.id,
     task_id: taskId ?? resolvedAction,
@@ -175,6 +179,9 @@ export function authorizeAgentOperation({
   const parsed = parseAgentEnvelope(envelope);
   const operation = operationFor(parsed.agent_id);
   const role = roleForAgent(parsed.agent_id);
+  if (parsed.mission_id.startsWith('advisory-') || parsed.state_version === 0) {
+    throw new Error('advisory envelope cannot admit operational tools');
+  }
   if (parsed.mission_id !== mission.id) throw new Error('agent envelope mission binding mismatch');
   if (parsed.operation_id !== operationId) throw new Error('agent envelope operation binding mismatch');
   if (parsed.state_version !== expectedRevision) throw new Error('agent envelope state version mismatch');
