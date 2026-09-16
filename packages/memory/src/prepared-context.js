@@ -73,6 +73,12 @@ function validateService(service) {
   }
 }
 
+function validateResolverService(service) {
+  if (!plainObject(service) || typeof service.verifyHistory !== 'function') {
+    throw new TypeError('mission service verifyHistory() is required');
+  }
+}
+
 function validateVerifiedHistory(history, missionId) {
   if (!plainObject(history)
     || history.valid !== true
@@ -387,7 +393,7 @@ export async function writePreparedContext({ root, contextPackage } = {}) {
     handle: contextPackage.handle,
     path: relativePath,
     integritySha256: contextPackage.integrity.sha256,
-    verified: true,
+    integrityVerified: true,
     ...(duplicate ? { duplicate: true } : {}),
   });
 }
@@ -403,5 +409,26 @@ export async function readPreparedContext({ root, handle } = {}) {
     throw new Error(`prepared-context stored JSON is invalid: ${error.message}`);
   }
   verifyPreparedContextPackage(parsed);
+  if (parsed.handle !== validatedHandle) {
+    throw new Error('prepared-context handle does not match requested handle');
+  }
   return deepFreeze(canonicalClone(parsed));
+}
+
+export async function resolvePreparedContext({ root, handle, service, reader } = {}) {
+  validateResolverService(service);
+  const requestedReader = requiredText(reader, 'reader');
+  const prepared = await readPreparedContext({ root, handle });
+  if (prepared.reader !== requestedReader) {
+    throw new Error('prepared-context reader mismatch');
+  }
+  const history = validateVerifiedHistory(
+    await service.verifyHistory({ missionId: prepared.mission.id }),
+    prepared.mission.id,
+  );
+  if (history.stateVersion !== prepared.mission.stateVersion
+    || history.stateHash !== prepared.mission.stateHash) {
+    throw new Error('prepared-context is stale for current mission state');
+  }
+  return prepared;
 }
