@@ -1,0 +1,32 @@
+name: Prepared Context Tests
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'packages/memory/**'
+      - 'packages/mission/**'
+      - 'packages/proof/**'
+      - 'tests/contract/prepared-context.test.js'
+      - '.github/workflows/prepared-context-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prepared-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+      - run: corepack enable
+      - run: corepack prepare pnpm@11.9.0 --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Prepared-context contract
+        run: node --test tests/contract/prepared-context.test.js
+      - name: Full regression suite
+        run: pnpm test
