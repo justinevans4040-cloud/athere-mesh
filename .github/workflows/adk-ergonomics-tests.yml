@@ -1,0 +1,60 @@
+name: ADK Ergonomics Tests
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'packages/agent/**'
+      - 'packages/skills/**'
+      - 'packages/memory/**'
+      - 'packages/orchestrator/**'
+      - 'scripts/start-agent-api.js'
+      - 'tests/contract/agent-*.test.js'
+      - 'tests/contract/prepared-context*.test.js'
+      - 'tests/contract/progressive-skill-disclosure.test.js'
+      - 'tests/contract/lifecycle-hooks.test.js'
+      - 'tests/contract/titan-startup-model-adapter.test.js'
+      - 'tests/contract/operational-prepared-context.test.js'
+      - '.github/workflows/adk-ergonomics-tests.yml'
+  push:
+    paths:
+      - 'packages/agent/**'
+      - 'packages/skills/**'
+      - 'packages/memory/**'
+      - 'packages/orchestrator/**'
+      - 'scripts/start-agent-api.js'
+      - 'tests/contract/agent-*.test.js'
+      - 'tests/contract/prepared-context*.test.js'
+      - 'tests/contract/progressive-skill-disclosure.test.js'
+      - 'tests/contract/lifecycle-hooks.test.js'
+      - 'tests/contract/titan-startup-model-adapter.test.js'
+      - 'tests/contract/operational-prepared-context.test.js'
+      - '.github/workflows/adk-ergonomics-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ergonomics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: corepack enable
+      - run: corepack prepare pnpm@11.9.0 --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Focused ergonomics contracts
+        run: >-
+          node --test
+          tests/contract/prepared-context*.test.js
+          tests/contract/progressive-skill-disclosure.test.js
+          tests/contract/lifecycle-hooks.test.js
+          tests/contract/agent-composition.test.js
+          tests/contract/agent-runtime*.test.js
+          tests/contract/titan-startup-model-adapter.test.js
+          tests/contract/operational-prepared-context.test.js
+      - name: Full regression suite
+        run: pnpm test
