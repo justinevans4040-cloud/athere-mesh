@@ -1,22 +1,31 @@
-name: Prepared Context Tests
+name: Context and Agent Ergonomics Tests
 
 on:
   pull_request:
     branches: [master]
     paths:
+      - 'packages/agent/**'
+      - 'packages/skills/**'
       - 'packages/memory/**'
       - 'packages/mission/**'
       - 'packages/proof/**'
+      - 'packages/orchestrator/**'
+      - 'scripts/start-agent-api.js'
+      - 'tests/contract/agent-*.test.js'
       - 'tests/contract/prepared-context*.test.js'
+      - 'tests/contract/progressive-skill-disclosure.test.js'
+      - 'tests/contract/lifecycle-hooks.test.js'
+      - 'tests/contract/titan-startup-model-adapter.test.js'
+      - 'tests/contract/operational-prepared-context.test.js'
       - '.github/workflows/prepared-context-tests.yml'
 
 permissions:
   contents: read
 
 jobs:
-  prepared-context:
+  context-agent-contracts:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,7 +34,15 @@ jobs:
       - run: corepack enable
       - run: corepack prepare pnpm@11.9.0 --activate
       - run: pnpm install --frozen-lockfile
-      - name: Prepared-context contract
-        run: node --test tests/contract/prepared-context*.test.js
+      - name: Focused context and ergonomics contracts
+        run: >-
+          node --test
+          tests/contract/prepared-context*.test.js
+          tests/contract/progressive-skill-disclosure.test.js
+          tests/contract/lifecycle-hooks.test.js
+          tests/contract/agent-composition.test.js
+          tests/contract/agent-runtime*.test.js
+          tests/contract/titan-startup-model-adapter.test.js
+          tests/contract/operational-prepared-context.test.js
       - name: Full regression suite
         run: pnpm test
