@@ -7,7 +7,7 @@ on:
       - 'packages/memory/**'
       - 'packages/mission/**'
       - 'packages/proof/**'
-      - 'tests/contract/prepared-context.test.js'
+      - 'tests/contract/prepared-context*.test.js'
       - '.github/workflows/prepared-context-tests.yml'
 
 permissions:
@@ -26,6 +26,6 @@ jobs:
       - run: corepack prepare pnpm@11.9.0 --activate
       - run: pnpm install --frozen-lockfile
       - name: Prepared-context contract
-        run: node --test tests/contract/prepared-context.test.js
+        run: node --test tests/contract/prepared-context*.test.js
       - name: Full regression suite
         run: pnpm test
