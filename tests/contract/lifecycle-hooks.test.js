@@ -93,7 +93,15 @@ test('required hook failures block while optional telemetry hook failures do not
       handler: async () => { throw new Error('telemetry unavailable'); },
     },
   ] });
-  assert.deepEqual(await optional.run('after_agent', {}), []);
+  assert.deepEqual(await optional.run('after_agent', {}), [
+    {
+      diagnostics: {
+        hook: 'optional-telemetry',
+        status: 'failed',
+        error: { name: 'Error', message: 'telemetry unavailable' },
+      },
+    },
+  ]);
 });
 
 test('unknown phases and invalid hook descriptors are rejected before execution', () => {
@@ -105,4 +113,26 @@ test('unknown phases and invalid hook descriptors are rejected before execution'
     () => createLifecycleHooks({ hooks: [{ phase: 'before_agent', handler: 'not-a-function' }] }),
     /handler/i,
   );
+});
+
+test('hook metadata rejects non-JSON object types and mutable collection lookalikes', async () => {
+  class DiagnosticBag {
+    constructor() {
+      this.safe = true;
+    }
+  }
+  for (const diagnostics of [
+    new Map([['safe', true]]),
+    new Set(['safe']),
+    new Date('2026-09-18T00:00:00.000Z'),
+    new DiagnosticBag(),
+  ]) {
+    const hooks = createLifecycleHooks({ hooks: [
+      { phase: 'after_agent', handler: async () => ({ diagnostics }) },
+    ] });
+    await assert.rejects(
+      () => hooks.run('after_agent', { missionId: 'mission-json-data' }),
+      /plain|JSON|metadata|diagnostics/i,
+    );
+  }
 });
