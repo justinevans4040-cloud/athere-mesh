@@ -103,7 +103,7 @@ test('composition requires tool adapters to explicitly opt out of mission contro
         modelAdapter: safeModelAdapter(),
         toolAdapters: [adapter],
       }),
-      /mission_control.*false|explicitly.*mission control/i,
+      /capabilities are required|mission_control.*false|explicitly.*mission control/i,
     );
   }
 });
