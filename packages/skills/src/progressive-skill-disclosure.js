@@ -2,6 +2,12 @@ import {
   isBrandedValidatedSkillLibrary,
 } from './validated-skill-library.js';
 
+const BRANDED_PROGRESSIVE_DISCLOSURES = new WeakSet();
+
+export function isBrandedProgressiveSkillDisclosure(value) {
+  return value != null && typeof value === 'object' && BRANDED_PROGRESSIVE_DISCLOSURES.has(value);
+}
+
 function freezeArray(value) {
   return Object.freeze(Array.isArray(value) ? [...value] : []);
 }
@@ -40,7 +46,7 @@ export function createProgressiveSkillDisclosure({ library } = {}) {
     throw new TypeError('library must be a branded validated skill library');
   }
 
-  return Object.freeze({
+  const disclosure = Object.freeze({
     list() {
       const descriptors = library.list().map(({ skillId, version, skill }) => (
         descriptorFor(skillId, version, skill)
@@ -53,4 +59,6 @@ export function createProgressiveSkillDisclosure({ library } = {}) {
       return Object.freeze({ ...reused });
     },
   });
+  BRANDED_PROGRESSIVE_DISCLOSURES.add(disclosure);
+  return disclosure;
 }
