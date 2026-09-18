@@ -69,18 +69,15 @@ test('composition rejects model or tool adapters that claim mission control', ()
 });
 
 test('composition validates optional ergonomic interfaces without taking their authority', () => {
-  const skills = Object.freeze({ list: () => Object.freeze([]), load: async () => Object.freeze({}) });
   const hooks = Object.freeze({ run: async () => Object.freeze([]) });
-  const preparedContext = Object.freeze({ bind: async () => Object.freeze({}) });
+  const preparedContext = Object.freeze({ bind: async () => Object.freeze({}), revalidate: async (bound) => bound });
   const composition = createAgentComposition({
     agentId: 'nyx',
     capabilityId: 'repository-inspector',
     modelAdapter: safeModelAdapter(),
-    skills,
     hooks,
     preparedContext,
   });
-  assert.equal(composition.skills, skills);
   assert.equal(composition.hooks, hooks);
   assert.equal(composition.preparedContext, preparedContext);
   assert.equal('missionStore' in composition, false);
