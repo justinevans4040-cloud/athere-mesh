@@ -54,6 +54,7 @@ jobs:
           tests/contract/lifecycle-hooks.test.js
           tests/contract/agent-composition.test.js
           tests/contract/agent-runtime*.test.js
+          tests/contract/agent-hardening.test.js
           tests/contract/titan-startup-model-adapter.test.js
           tests/contract/operational-prepared-context.test.js
       - name: Full regression suite
