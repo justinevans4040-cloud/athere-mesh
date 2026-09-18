@@ -103,7 +103,7 @@ test('binder fails closed when mission state changes before activation', async (
   try {
     const binder = createPreparedContextBinder({ service: serviceFixture({ staleAtResolve: true }), root });
     await assert.rejects(
-      () => binder.bind({ missionId: MISSION_ID, reader: 'nyx' }),
+      () => binder.bind({ missionId: MISSION_ID, reader: 'nyx', query: { key: 'SERVER_IP' } }),
       /prepared-context is stale for current mission state/,
     );
   } finally {
@@ -115,11 +115,24 @@ test('binder output does not expose authority services or storage roots', async 
   const root = await mkdtemp(path.join(tmpdir(), 'athere-context-safe-bind-'));
   try {
     const binder = createPreparedContextBinder({ service: serviceFixture(), root });
-    const bound = await binder.bind({ missionId: MISSION_ID, reader: 'nyx' });
+    const bound = await binder.bind({ missionId: MISSION_ID, reader: 'nyx', query: { key: 'SERVER_IP' } });
     assert.equal('service' in bound, false);
     assert.equal('root' in bound, false);
     assert.equal('verifyHistory' in bound, false);
     assert.equal('writePreparedContext' in bound, false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('binder rejects a missing retrieval query before preparing context', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'athere-context-query-required-'));
+  try {
+    const binder = createPreparedContextBinder({ service: serviceFixture(), root });
+    await assert.rejects(
+      () => binder.bind({ missionId: MISSION_ID, reader: 'nyx' }),
+      /retrieval query.*key.*text.*goalId|query.*required/i,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
