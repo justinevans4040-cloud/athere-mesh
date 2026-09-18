@@ -34,7 +34,30 @@ const FORBIDDEN_KEYS = new Set([
 ]);
 
 function plainObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function assertJsonData(value, path = 'hook metadata') {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new TypeError(`${path} must contain finite JSON numbers`);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => assertJsonData(entry, `${path}[${index}]`));
+    return;
+  }
+  if (!plainObject(value)) {
+    throw new TypeError(`${path} must contain only JSON-compatible plain data`);
+  }
+  for (const [key, child] of Object.entries(value)) {
+    if (child === undefined || typeof child === 'function' || typeof child === 'symbol' || typeof child === 'bigint') {
+      throw new TypeError(`${path}.${key} must contain only JSON-compatible plain data`);
+    }
+    assertJsonData(child, `${path}.${key}`);
+  }
 }
 
 function cloneData(value, label) {
@@ -73,6 +96,7 @@ function normalizeMetadata(value) {
       throw new Error(`forbidden authority/control or unknown hook metadata field: ${key}`);
     }
   }
+  assertJsonData(value);
   assertNoAuthorityKeys(value);
   const cloned = cloneData(value, 'hook metadata');
   if (cloned.note !== undefined && typeof cloned.note !== 'string') {
@@ -126,6 +150,16 @@ export function createLifecycleHooks({ hooks = [] } = {}) {
           if (metadata !== null) results.push(metadata);
         } catch (error) {
           if (hook.required) throw error;
+          results.push(deepFreeze({
+            diagnostics: {
+              hook: hook.name,
+              status: 'failed',
+              error: {
+                name: error instanceof Error && typeof error.name === 'string' ? error.name : 'Error',
+                message: error instanceof Error ? error.message : String(error),
+              },
+            },
+          }));
         }
       }
       return Object.freeze(results);
