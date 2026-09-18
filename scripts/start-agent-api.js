@@ -69,6 +69,8 @@ export async function createTitanService({
   const resolvedWorkspaceRoot = workspaceRoot(environment, resolvedRepositoryRoot);
   const authToken = nonEmptyEnvironment(environment, 'TITAN_API_BEARER_TOKEN');
   validateOperationalFleet();
+  const resolvedModelAdapter = modelAdapter ?? defaultModelAdapter(environment);
+  const complete = createCompletionFromAdapter(resolvedModelAdapter);
   await mkdir(resolvedWorkspaceRoot, { recursive: true });
   const executor = createNodeTestExecutor({ repositoryRoot: resolvedRepositoryRoot });
   // Offline-first: when ATHERE_MESH_REDIS_* (and optional remote/Postgres flags)
@@ -95,10 +97,9 @@ export async function createTitanService({
     ...(mesh.remoteRepositoryRoot === undefined ? {} : { remoteRepositoryRoot: mesh.remoteRepositoryRoot }),
     ...(mesh.store === undefined ? {} : { store: mesh.store }),
     ...(mesh.proofStore === undefined ? {} : { proofStore: mesh.proofStore }),
+    operationalModelAdapter: resolvedModelAdapter,
   });
 
-  const resolvedModelAdapter = modelAdapter ?? defaultModelAdapter(environment);
-  const complete = createCompletionFromAdapter(resolvedModelAdapter);
   const runtime = createAgentRuntime({ complete });
   const api = createTitanApi({
     runtime,

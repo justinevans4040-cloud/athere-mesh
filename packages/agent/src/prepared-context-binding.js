@@ -25,6 +25,11 @@ function validateService(service) {
 export function createPreparedContextBinder({ service, root } = {}) {
   validateService(service);
   const contextRoot = requiredText(root, 'prepared-context root');
+  const retrievalService = Object.freeze({
+    retrieveMemory: (input) => service.retrieveMemory({ ...input, reader: 'orchestrator' }),
+    select: (input) => service.select(input),
+    verifyHistory: (input) => service.verifyHistory(input),
+  });
 
   return Object.freeze({
     async bind({
@@ -37,7 +42,7 @@ export function createPreparedContextBinder({ service, root } = {}) {
       const mission = requiredText(missionId, 'missionId');
       const requestedReader = requiredText(reader, 'reader');
       const prepared = await prepareContextPackage({
-        service,
+        service: retrievalService,
         missionId: mission,
         reader: requestedReader,
         query,
