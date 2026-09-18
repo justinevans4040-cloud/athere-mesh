@@ -64,6 +64,7 @@ test('operational NYX reasoning receives current Prepared Context and records th
     assert.equal(providerRequest.envelope.mission_id, result.mission.id);
     assert.equal(providerRequest.envelope.agent_id, 'nyx');
     assert.equal(providerRequest.envelope.capability_id, 'repository-inspector');
+    assert.deepEqual(providerRequest.envelope.allowed_actions, ['observe_repository']);
     assert.equal(providerRequest.envelope.state_version, providerRequest.preparedContext.stateVersion);
     assert.equal(providerRequest.preparedContext.reader, 'nyx');
 
@@ -89,6 +90,13 @@ test('operational NYX reasoning receives current Prepared Context and records th
 
     const inspection = result.mission.evidence.find((entry) => entry.agent === 'nyx' && entry.executor === 'repository-inspector');
     assert.ok(inspection, 'deterministic NYX repository inspection must remain authoritative work evidence');
+    const modelEvents = result.mission.executionTrace.filter((entry) => entry.kind === 'model');
+    assert.equal(modelEvents.length, 1);
+    assert.equal(modelEvents[0].detail.provider, 'local');
+    assert.equal(modelEvents[0].detail.model, 'nyx-operational-context-test');
+    assert.ok(result.mission.executionTrace.some((entry) => (
+      entry.kind === 'latency' && Number.isFinite(entry.metrics?.latencyMs)
+    )));
     assert.equal(result.mission.objective, 'test all of Titan');
   } finally {
     await rm(root, { recursive: true, force: true });
