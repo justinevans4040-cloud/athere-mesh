@@ -2,7 +2,10 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAgentRuntime } from '../packages/agent/src/agent-runtime.js';
-import { createOllamaCompletion } from '../packages/agent/src/ollama-client.js';
+import {
+  createCompletionFromAdapter,
+  createModelAdapter,
+} from '../packages/agent/src/model-adapter.js';
 import { createTitanApi } from '../packages/api/src/titan-api.js';
 import { createNodeTestExecutor } from '../packages/execution/src/node-test-executor.js';
 import { fleetRegistry, validateOperationalFleet } from '../packages/fleet/src/registry.js';
@@ -24,6 +27,12 @@ function nonEmptyEnvironment(environment, name, fallback) {
   return value;
 }
 
+function positiveTimeout(value, label) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) throw new TypeError(`${label} must be a positive integer`);
+  return parsed;
+}
+
 function workspaceRoot(environment, repositoryRoot) {
   const requested = environment.TITAN_WORKSPACE_ROOT ?? 'workspace/titan';
   const base = path.resolve(repositoryRoot, 'workspace');
@@ -38,17 +47,30 @@ function workspaceRoot(environment, repositoryRoot) {
   return resolved;
 }
 
+function defaultModelAdapter(environment) {
+  return createModelAdapter({
+    provider: 'ollama',
+    baseUrl: nonEmptyEnvironment(environment, 'OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
+    model: nonEmptyEnvironment(environment, 'OLLAMA_MODEL', 'llama3.2:3b'),
+    timeoutMs: positiveTimeout(environment.OLLAMA_TIMEOUT_MS ?? '120000', 'OLLAMA_TIMEOUT_MS'),
+  });
+}
+
 export async function createTitanService({
   environment = process.env,
   repositoryRoot = scriptRoot,
-  /** Test-only injection; production leaves this undefined and resolves from env. */
+  /** Test-only/shared-runtime injection; production resolves from env. */
   meshDeps = undefined,
+  /** Optional canonical model adapter injection for hermetic tests/provider swaps. */
+  modelAdapter = undefined,
 } = {}) {
   if (!environment || typeof environment !== 'object') throw new TypeError('environment is required');
   const resolvedRepositoryRoot = path.resolve(repositoryRoot);
   const resolvedWorkspaceRoot = workspaceRoot(environment, resolvedRepositoryRoot);
   const authToken = nonEmptyEnvironment(environment, 'TITAN_API_BEARER_TOKEN');
   validateOperationalFleet();
+  const resolvedModelAdapter = modelAdapter ?? defaultModelAdapter(environment);
+  const complete = createCompletionFromAdapter(resolvedModelAdapter);
   await mkdir(resolvedWorkspaceRoot, { recursive: true });
   const executor = createNodeTestExecutor({ repositoryRoot: resolvedRepositoryRoot });
   // Offline-first: when ATHERE_MESH_REDIS_* (and optional remote/Postgres flags)
@@ -75,12 +97,9 @@ export async function createTitanService({
     ...(mesh.remoteRepositoryRoot === undefined ? {} : { remoteRepositoryRoot: mesh.remoteRepositoryRoot }),
     ...(mesh.store === undefined ? {} : { store: mesh.store }),
     ...(mesh.proofStore === undefined ? {} : { proofStore: mesh.proofStore }),
+    operationalModelAdapter: resolvedModelAdapter,
   });
-  const complete = createOllamaCompletion({
-    baseUrl: nonEmptyEnvironment(environment, 'OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
-    model: nonEmptyEnvironment(environment, 'OLLAMA_MODEL', 'llama3.2:3b'),
-    timeoutMs: Number.parseInt(environment.OLLAMA_TIMEOUT_MS ?? '120000', 10),
-  });
+
   const runtime = createAgentRuntime({ complete });
   const api = createTitanApi({
     runtime,

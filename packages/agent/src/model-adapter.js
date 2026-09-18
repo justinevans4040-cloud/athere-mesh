@@ -10,6 +10,12 @@ import {
 } from '../../contracts/src/model-capability-registry.js';
 import { createOllamaCompletion } from './ollama-client.js';
 
+const CANONICAL_MODEL_ADAPTERS = new WeakSet();
+
+export function isCanonicalModelAdapter(value) {
+  return value != null && typeof value === 'object' && CANONICAL_MODEL_ADAPTERS.has(value);
+}
+
 function requiredText(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
@@ -69,12 +75,14 @@ export function createModelAdapter({
   }
 
   const adapterComplete = wrapComplete(completeFn);
-  return Object.freeze({
+  const adapter = Object.freeze({
     provider: providerId,
     model: modelId,
     capabilities,
     complete: adapterComplete,
   });
+  CANONICAL_MODEL_ADAPTERS.add(adapter);
+  return adapter;
 }
 
 export function createCompletionFromAdapter(adapter) {
@@ -85,6 +93,9 @@ export function createCompletionFromAdapter(adapter) {
     throw new Error('model adapter capabilities are required');
   }
   assertControlProtocolInvariant(adapter.capabilities);
+  if (!isCanonicalModelAdapter(adapter)) {
+    throw new TypeError('canonical model adapter from createModelAdapter is required');
+  }
   // Always re-wrap so bypass adapters cannot leak control fields.
   return wrapComplete(adapter.complete);
 }

@@ -1,5 +1,8 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { createAgentComposition } from '../../agent/src/agent-composition.js';
+import { createAgentRuntime } from '../../agent/src/agent-runtime.js';
+import { createPreparedContextBinder } from '../../agent/src/prepared-context-binding.js';
 import { planCommand } from '../../command/src/command-planner.js';
 import { authorizeAgentOperation, createAgentOperationEnvelope } from '../../contracts/src/agent-operation.js';
 import { parseAgentEnvelope } from '../../contracts/src/agent-envelope.js';
@@ -105,6 +108,30 @@ function executionEnvelope({ record, taskId, operation, agentId, capabilityId, a
   });
 }
 
+function operationalReasoningEnvelope({ record, objective }) {
+  return parseAgentEnvelope({
+    mission_id: record.mission.id,
+    task_id: 'nyx-context-reasoning',
+    operation_id: `${record.mission.id}-nyx-context-invocation`,
+    agent_id: 'nyx',
+    capability_id: 'repository-inspector',
+    state_version: record.revision,
+    objective,
+    allowed_actions: ['observe_repository'],
+    required_inputs: ['prepared_context'],
+    evidence_requirements: ['prepared-context identity', 'advisory output digest'],
+    timeout: 30_000,
+    resource_budget: { max_agent_calls: 1, max_tool_calls: 0, max_state_mutations: 0 },
+    expected_output_schema: { type: 'object', required: ['content'] },
+    completion_conditions: ['provider returns non-empty advisory content'],
+    error_state: null,
+    provenance: {
+      requested_by: 'miss-vale-prime',
+      created_at: record.mission.signals.at(-1).at,
+    },
+  });
+}
+
 export function createMissionOrchestrator({
   root,
   repositoryRoot,
@@ -116,6 +143,7 @@ export function createMissionOrchestrator({
   roleExecutor,
   remoteWorkQueue,
   remoteRepositoryRoot,
+  operationalModelAdapter,
   proofStore = createSharedProofFacade(),
   clock = () => new Date().toISOString(),
   idFactory = randomUUID,
@@ -182,6 +210,19 @@ export function createMissionOrchestrator({
     clock,
     ...(store === undefined ? {} : { store }),
   });
+  const operationalRuntime = operationalModelAdapter === undefined
+    ? null
+    : createAgentRuntime({
+      compositions: [createAgentComposition({
+        agentId: 'nyx',
+        capabilityId: 'repository-inspector',
+        modelAdapter: operationalModelAdapter,
+        preparedContext: createPreparedContextBinder({
+          service: missionState,
+          root: path.join(workspaceRoot, 'prepared-context'),
+        }),
+      })],
+    });
 
   // Every operational bus fails closed unless an explicitly telemetry-only
   // implementation opts out. Silent publish loss creates a state/stream split.
@@ -1063,6 +1104,57 @@ export function createMissionOrchestrator({
         record = pre.record;
       }
 
+      const reasoningOperationId = `${record.mission.id}-nyx-context-reasoning`;
+      const reasoningRecorded = (record.mission.transitionHistory ?? [])
+        .some((entry) => entry.operationId === reasoningOperationId);
+      if (operationalRuntime !== null && !reasoningRecorded) {
+        const reasoningEnvelope = operationalReasoningEnvelope({
+          record,
+          objective: `Review current mission context before deterministic execution: ${record.mission.objective}`,
+        });
+        authorizeAgentOperation({
+          envelope: reasoningEnvelope,
+          mission: record.mission,
+          expectedRevision: record.revision,
+          operationId: reasoningEnvelope.operation_id,
+        });
+        const reasoningStarted = Date.now();
+        const reasoning = await operationalRuntime.respond({
+          profile: 'owner',
+          envelope: reasoningEnvelope,
+          contextRequest: {
+            query: { text: record.mission.objective },
+            maxEstimatedTokens: 4096,
+          },
+        });
+        const reasoningLatencyMs = Date.now() - reasoningStarted;
+        const advisoryContent = reasoning.content;
+        const evidence = Object.freeze({
+          stage: 'nyx-context-reasoning',
+          advisory: true,
+          reasoningAgent: 'nyx',
+          context: reasoning.context,
+          output: Object.freeze({
+            sha256: createHash('sha256').update(advisoryContent, 'utf8').digest('hex'),
+            utf8Bytes: Buffer.byteLength(advisoryContent, 'utf8'),
+          }),
+        });
+        record = await persistTransition(record, reasoningOperationId, {
+          type: 'running',
+          agent: 'miss-vale-prime',
+          action: 'supervise_mission',
+          detail: 'Vale Prime recorded bounded NYX Prepared Context reasoning',
+          evidence,
+        }, { activeAgents: ['miss-vale-prime'] }, {
+          latencyMs: reasoningLatencyMs,
+          models: [{
+            provider: operationalModelAdapter.provider,
+            model: operationalModelAdapter.model,
+            reasoningAgent: 'nyx',
+          }],
+        });
+      }
+
       let nyxEvidence = (record.mission.evidence ?? []).find((entry) => entry.agent === 'nyx');
       let inspection = nyxEvidence?.result;
       if (!sliceProgress(record.mission).inspected) {
@@ -1278,4 +1370,3 @@ export function createMissionOrchestrator({
 
   });
 }
-
