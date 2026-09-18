@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { parseAgentEnvelope, AgentEnvelopeError } from '../../contracts/src/agent-envelope.js';
 import { fleetRegistry } from '../../fleet/src/registry.js';
+import { isCanonicalAgentComposition } from './agent-composition.js';
 
 const agentById = new Map(fleetRegistry.agents.map((agent) => [agent.id, agent]));
 const CONTEXT_REQUEST_FIELDS = new Set(['query', 'limit', 'maxEstimatedTokens']);
+const SHA256 = /^[a-f0-9]{64}$/;
 
 export class AgentRuntimeError extends Error {
   constructor(code, message) {
@@ -66,13 +68,30 @@ function validateContextRequest(contextRequest) {
       throw runtimeError('INVALID_CONTEXT_REQUEST', `context request field is forbidden: ${key}`);
     }
   }
+  if (contextRequest.query !== undefined && !plainObject(contextRequest.query)) {
+    throw runtimeError('INVALID_CONTEXT_REQUEST', 'context request query must be an object');
+  }
   return contextRequest;
+}
+
+function contextQuery(request, envelope) {
+  if (request.query === undefined) return Object.freeze({ text: envelope.objective });
+  const hasSelector = ['key', 'text', 'goalId'].some((key) => (
+    typeof request.query[key] === 'string' && request.query[key].trim().length > 0
+  ));
+  if (!hasSelector) {
+    throw runtimeError('INVALID_CONTEXT_REQUEST', 'context request query requires key, text, or goalId');
+  }
+  return request.query;
 }
 
 function indexCompositions(compositions) {
   if (!Array.isArray(compositions)) throw new TypeError('compositions must be an array');
   const indexed = new Map();
   for (const composition of compositions) {
+    if (!isCanonicalAgentComposition(composition)) {
+      throw new TypeError('canonical agent composition from createAgentComposition is required');
+    }
     const agentId = composition?.agent?.id;
     if (typeof agentId !== 'string' || agentId.trim().length === 0) {
       throw new TypeError('composition must include a canonical agent');
@@ -114,31 +133,48 @@ function validateBoundContext(bound, envelope, agent) {
   if (bound.stateVersion !== envelope.state_version) {
     throw runtimeError('CONTEXT_STATE_MISMATCH', 'prepared context state version does not match operation envelope');
   }
+  if (typeof bound.stateHash !== 'string' || !SHA256.test(bound.stateHash)) {
+    throw runtimeError('INVALID_PREPARED_CONTEXT', 'prepared context state hash is invalid');
+  }
   if (typeof bound.handle !== 'string' || !/^ctx_[a-f0-9]{32}$/.test(bound.handle)) {
     throw runtimeError('INVALID_PREPARED_CONTEXT', 'prepared context handle is invalid');
   }
-  if (typeof bound.integritySha256 !== 'string' || !/^[a-f0-9]{64}$/.test(bound.integritySha256)) {
+  if (typeof bound.integritySha256 !== 'string' || !SHA256.test(bound.integritySha256)) {
     throw runtimeError('INVALID_PREPARED_CONTEXT', 'prepared context integrity is invalid');
   }
 }
 
-async function completeWithinTimeout(complete, request, timeoutMs) {
+function operationDeadline(timeoutMs) {
   const controller = new AbortController();
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      reject(runtimeError('OPERATION_TIMEOUT', `operation timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
+  const expiresAt = Date.now() + timeoutMs;
+
+  return Object.freeze({
+    signal: controller.signal,
+    async run(stage, operation) {
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) {
+        controller.abort();
+        throw runtimeError('OPERATION_TIMEOUT', `operation timed out after ${timeoutMs}ms during ${stage}`);
+      }
+      let timer;
+      try {
+        return await Promise.race([
+          Promise.resolve().then(() => operation({
+            signal: controller.signal,
+            remainingMs: remaining,
+          })),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              controller.abort();
+              reject(runtimeError('OPERATION_TIMEOUT', `operation timed out after ${timeoutMs}ms during ${stage}`));
+            }, remaining);
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
   });
-  try {
-    return await Promise.race([
-      Promise.resolve().then(() => complete({ ...request, signal: controller.signal })),
-      timeout,
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 export function createAgentRuntime({ complete, compositions = [] } = {}) {
@@ -162,11 +198,11 @@ export function createAgentRuntime({ complete, compositions = [] } = {}) {
       if (agent.executorId !== envelope.capability_id) {
         throw runtimeError('CAPABILITY_MISMATCH', `agent ${agent.id} is not bound to capability ${envelope.capability_id}`);
       }
-      if (!envelope.allowed_actions.includes('respond')) {
-        throw runtimeError('ACTION_NOT_ALLOWED', 'agent envelope does not permit respond');
-      }
       const advisory = envelope.mission_id.startsWith('advisory-') || envelope.state_version === 0;
       if (advisory) {
+        if (!envelope.allowed_actions.includes('respond')) {
+          throw runtimeError('ACTION_NOT_ALLOWED', 'advisory agent envelope does not permit respond');
+        }
         if (Number(envelope.resource_budget?.max_tool_calls) > 0) {
           throw runtimeError('ADVISORY_TOOLS_FORBIDDEN', 'advisory envelope cannot admit operational tools');
         }
@@ -176,6 +212,10 @@ export function createAgentRuntime({ complete, compositions = [] } = {}) {
         if (contextRequest !== undefined) {
           throw runtimeError('ADVISORY_CONTEXT_FORBIDDEN', 'advisory invocation cannot request operational mission context');
         }
+      } else if (contextRequest !== undefined) {
+        if (envelope.allowed_actions.length !== 1 || envelope.allowed_actions[0] === 'respond') {
+          throw runtimeError('ACTION_NOT_ALLOWED', 'operational context requires one canonical operational action');
+        }
       }
 
       const composition = compositionByAgentId.get(agent.id);
@@ -184,64 +224,79 @@ export function createAgentRuntime({ complete, compositions = [] } = {}) {
         throw runtimeError('NO_COMPLETION_PROVIDER', `no completion provider configured for agent ${agent.id}`);
       }
 
+      const deadline = operationDeadline(envelope.timeout);
       let preparedContext;
       let identity;
       if (contextRequest !== undefined) {
         const request = validateContextRequest(contextRequest);
-        if (!composition?.preparedContext || typeof composition.preparedContext.bind !== 'function') {
+        const query = contextQuery(request, envelope);
+        if (!composition?.preparedContext
+          || typeof composition.preparedContext.bind !== 'function'
+          || typeof composition.preparedContext.revalidate !== 'function') {
           throw runtimeError('CONTEXT_BINDER_UNAVAILABLE', `prepared context is not configured for agent ${agent.id}`);
         }
-        await composition.hooks?.run('before_context', {
+        await deadline.run('before_context', ({ signal }) => composition.hooks?.run('before_context', {
           missionId: envelope.mission_id,
           agentId: agent.id,
           stateVersion: envelope.state_version,
-          query: request.query ?? {},
-        });
-        preparedContext = await composition.preparedContext.bind({
+          query,
+        }, { signal }));
+        preparedContext = await deadline.run('context_binding', ({ signal }) => composition.preparedContext.bind({
           missionId: envelope.mission_id,
           reader: agent.id,
-          query: request.query ?? {},
+          query,
           ...(request.limit === undefined ? {} : { limit: request.limit }),
           ...(request.maxEstimatedTokens === undefined ? {} : { maxEstimatedTokens: request.maxEstimatedTokens }),
-        });
+          signal,
+        }));
         validateBoundContext(preparedContext, envelope, agent);
         identity = contextIdentity(preparedContext);
-        await composition.hooks?.run('after_context', {
+        await deadline.run('after_context', ({ signal }) => composition.hooks?.run('after_context', {
           missionId: envelope.mission_id,
           agentId: agent.id,
           stateVersion: envelope.state_version,
           context: identity,
-        });
+        }, { signal }));
       }
 
       const skills = composition?.skills?.list();
-      await composition?.hooks?.run('before_agent', {
+      await deadline.run('before_agent', ({ signal }) => composition?.hooks?.run('before_agent', {
         missionId: envelope.mission_id,
         agentId: agent.id,
         capabilityId: envelope.capability_id,
         stateVersion: envelope.state_version,
         ...(identity === undefined ? {} : { context: identity }),
-      });
+      }, { signal }));
 
-      const response = await completeWithinTimeout(provider, {
+      if (preparedContext !== undefined) {
+        preparedContext = await deadline.run(
+          'context_revalidation',
+          ({ signal }) => composition.preparedContext.revalidate(preparedContext, { signal }),
+        );
+        validateBoundContext(preparedContext, envelope, agent);
+        identity = contextIdentity(preparedContext);
+      }
+
+      const response = await deadline.run('provider', ({ signal }) => provider({
         agent: Object.freeze({ id: agent.id, name: agent.name, role: agent.role }),
         envelope,
         text: envelope.objective,
+        signal,
         ...(preparedContext === undefined ? {} : { preparedContext }),
         ...(skills === undefined ? {} : { skills }),
-      }, envelope.timeout);
+      }));
       const content = response?.content;
       if (typeof content !== 'string' || content.trim().length === 0) throw runtimeError('EMPTY_RESPONSE', 'model returned an empty response');
       const normalizedContent = content.trim();
 
-      await composition?.hooks?.run('after_agent', {
+      await deadline.run('after_agent', ({ signal }) => composition?.hooks?.run('after_agent', {
         missionId: envelope.mission_id,
         agentId: agent.id,
         capabilityId: envelope.capability_id,
         stateVersion: envelope.state_version,
         ...(identity === undefined ? {} : { context: identity }),
         content: normalizedContent,
-      });
+      }, { signal }));
 
       return Object.freeze({
         agentId: agent.id,
