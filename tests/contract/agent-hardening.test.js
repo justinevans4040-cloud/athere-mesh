@@ -26,7 +26,7 @@ function operationalEnvelope({ timeout = 5_000 } = {}) {
     capability_id: 'repository-inspector',
     state_version: 7,
     objective: 'inspect the current repository state',
-    allowed_actions: ['respond'],
+    allowed_actions: ['observe_repository'],
     required_inputs: [],
     evidence_requirements: ['resolved prepared context'],
     timeout,
