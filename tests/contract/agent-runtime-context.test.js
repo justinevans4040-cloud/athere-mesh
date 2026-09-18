@@ -15,7 +15,7 @@ function operationalNyxEnvelope() {
     capability_id: 'repository-inspector',
     state_version: 7,
     objective: 'inspect the current repository state',
-    allowed_actions: ['respond'],
+    allowed_actions: ['observe_repository'],
     required_inputs: [],
     evidence_requirements: ['resolved prepared context'],
     timeout: 5_000,
@@ -53,16 +53,16 @@ test('operational invocation derives mission/reader, resolves context before pro
       assert.equal(request.maxEstimatedTokens, 512);
       return boundContext();
     },
+    async revalidate(bound) {
+      calls.push(['revalidate', bound]);
+      return bound;
+    },
   });
   const hooks = Object.freeze({
     async run(phase, event) {
       calls.push([phase, event]);
       return Object.freeze([]);
     },
-  });
-  const skills = Object.freeze({
-    list: () => Object.freeze([Object.freeze({ skillId: 'repo-review', version: 1 })]),
-    load: async () => Object.freeze({}),
   });
   const modelAdapter = createModelAdapter({
     provider: 'local',
@@ -77,7 +77,6 @@ test('operational invocation derives mission/reader, resolves context before pro
     agentId: 'nyx',
     capabilityId: 'repository-inspector',
     modelAdapter,
-    skills,
     hooks,
     preparedContext,
   });
@@ -102,12 +101,12 @@ test('operational invocation derives mission/reader, resolves context before pro
     reader: 'nyx',
   });
   assert.equal(providerRequest.preparedContext.handle, result.context.handle);
-  assert.deepEqual(providerRequest.skills, [{ skillId: 'repo-review', version: 1 }]);
   assert.deepEqual(calls.map(([name]) => name), [
     'before_context',
     'bind',
     'after_context',
     'before_agent',
+    'revalidate',
     'provider',
     'after_agent',
   ]);
@@ -140,7 +139,7 @@ test('caller cannot override mission, reader, handle, or inject a resolved conte
     agentId: 'nyx',
     capabilityId: 'repository-inspector',
     modelAdapter,
-    preparedContext: Object.freeze({ bind: async () => boundContext() }),
+    preparedContext: Object.freeze({ bind: async () => boundContext(), revalidate: async (bound) => bound }),
   });
   const runtime = createAgentRuntime({ compositions: [composition] });
   for (const contextRequest of [
@@ -169,6 +168,7 @@ test('failed context binding stops before the provider is invoked', async () => 
     modelAdapter,
     preparedContext: Object.freeze({
       bind: async () => { throw new Error('prepared-context is stale for current mission state'); },
+      revalidate: async (bound) => bound,
     }),
   });
   const runtime = createAgentRuntime({ compositions: [composition] });
