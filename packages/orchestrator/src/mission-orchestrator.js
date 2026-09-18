@@ -117,7 +117,7 @@ function operationalReasoningEnvelope({ record, objective }) {
     capability_id: 'repository-inspector',
     state_version: record.revision,
     objective,
-    allowed_actions: ['respond'],
+    allowed_actions: ['observe_repository'],
     required_inputs: ['prepared_context'],
     evidence_requirements: ['prepared-context identity', 'advisory output digest'],
     timeout: 30_000,
@@ -1108,17 +1108,26 @@ export function createMissionOrchestrator({
       const reasoningRecorded = (record.mission.transitionHistory ?? [])
         .some((entry) => entry.operationId === reasoningOperationId);
       if (operationalRuntime !== null && !reasoningRecorded) {
+        const reasoningEnvelope = operationalReasoningEnvelope({
+          record,
+          objective: `Review current mission context before deterministic execution: ${record.mission.objective}`,
+        });
+        authorizeAgentOperation({
+          envelope: reasoningEnvelope,
+          mission: record.mission,
+          expectedRevision: record.revision,
+          operationId: reasoningEnvelope.operation_id,
+        });
+        const reasoningStarted = Date.now();
         const reasoning = await operationalRuntime.respond({
           profile: 'owner',
-          envelope: operationalReasoningEnvelope({
-            record,
-            objective: `Review current mission context before deterministic execution: ${record.mission.objective}`,
-          }),
+          envelope: reasoningEnvelope,
           contextRequest: {
             query: { text: record.mission.objective },
             maxEstimatedTokens: 4096,
           },
         });
+        const reasoningLatencyMs = Date.now() - reasoningStarted;
         const advisoryContent = reasoning.content;
         const evidence = Object.freeze({
           stage: 'nyx-context-reasoning',
@@ -1136,7 +1145,14 @@ export function createMissionOrchestrator({
           action: 'supervise_mission',
           detail: 'Vale Prime recorded bounded NYX Prepared Context reasoning',
           evidence,
-        }, { activeAgents: ['miss-vale-prime'] });
+        }, { activeAgents: ['miss-vale-prime'] }, {
+          latencyMs: reasoningLatencyMs,
+          models: [{
+            provider: operationalModelAdapter.provider,
+            model: operationalModelAdapter.model,
+            reasoningAgent: 'nyx',
+          }],
+        });
       }
 
       let nyxEvidence = (record.mission.evidence ?? []).find((entry) => entry.agent === 'nyx');
