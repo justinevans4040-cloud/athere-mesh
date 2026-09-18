@@ -1,6 +1,6 @@
 # ADK Ergonomics Hardening Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Close every still-valid finding from the two Codex reviews of PR #2 without migrating the Athere Mesh control plane, editing The Britt 4.0, or introducing Odin.
 
@@ -40,7 +40,7 @@
 - Composition accepts only canonical model adapters and branded progressive disclosure.
 - Tool adapters must declare `capabilities.mission_control === false`.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add tests equivalent to:
 
@@ -51,7 +51,7 @@ assert.throws(() => createAgentComposition({ ...base, toolAdapters: [{}] }), /mi
 assert.throws(() => createAgentComposition({ ...base, skills: forgedDisclosure }), /progressive.*disclosure|branded/i);
 ```
 
-- [ ] **Step 2: Run focused contracts and verify RED**
+- [x] **Step 2: Run focused contracts and verify RED**
 
 Run:
 
@@ -61,11 +61,11 @@ node --test tests/contract/agent-composition.test.js tests/contract/agent-runtim
 
 Expected: new forgery/fail-closed tests fail against the old shape-only validation.
 
-- [ ] **Step 3: Implement minimal factory branding**
+- [x] **Step 3: Implement minimal factory branding**
 
 Use module-private Symbols set only by the canonical factories and exported predicate functions. Keep authority checks in addition to the brand checks.
 
-- [ ] **Step 4: Re-run focused tests**
+- [x] **Step 4: Re-run focused tests**
 
 Expected: PASS.
 
@@ -79,7 +79,7 @@ Expected: PASS.
 - The envelope timeout begins before `before_context`.
 - The same deadline bounds `before_context`, context bind, `after_context`, `before_agent`, provider completion, and `after_agent`.
 
-- [ ] **Step 1: Write failing timeout tests**
+- [x] **Step 1: Write failing timeout tests**
 
 ```js
 await assert.rejects(
@@ -91,9 +91,9 @@ assert.equal(providerCalls, 0);
 
 Cover a stalled hook and a stalled binder separately.
 
-- [ ] **Step 2: Verify RED**
-- [ ] **Step 3: Add a single operation-deadline helper and wrap each async stage**
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 2: Verify RED**
+- [x] **Step 3: Add a single operation-deadline helper and wrap each async stage**
+- [x] **Step 4: Verify GREEN**
 
 ### Task 3: Prepared Context integrity and freshness
 
@@ -109,10 +109,10 @@ Cover a stalled hook and a stalled binder separately.
 - Bound `stateHash` must be a lowercase SHA-256 hex string.
 - Binder provides `revalidate(bound)`; runtime invokes it immediately before model activation.
 
-- [ ] **Step 1: Add failing tests for missing query, malformed stateHash, and state change during pre-agent hooks**
-- [ ] **Step 2: Verify RED**
-- [ ] **Step 3: Implement query validation, SHA-256 validation, and authoritative revalidation**
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 1: Add failing tests for missing query, malformed stateHash, and state change during pre-agent hooks**
+- [x] **Step 2: Verify RED**
+- [x] **Step 3: Implement query validation, SHA-256 validation, and authoritative revalidation**
+- [x] **Step 4: Verify GREEN**
 
 ### Task 4: Lifecycle hook data and failure observability
 
@@ -125,10 +125,10 @@ Cover a stalled hook and a stalled binder separately.
 - Map, Set, Date, class instances, functions, symbols, bigint, undefined-in-data, and non-finite numbers fail closed.
 - Optional-hook failures return structured advisory diagnostics containing hook name and error identity/message.
 
-- [ ] **Step 1: Add failing tests using Map, Date, class instances, and an optional hook that throws**
-- [ ] **Step 2: Verify RED**
-- [ ] **Step 3: Implement recursive JSON-data validation and structured optional failure diagnostics**
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 1: Add failing tests using Map, Date, class instances, and an optional hook that throws**
+- [x] **Step 2: Verify RED**
+- [x] **Step 3: Implement recursive JSON-data validation and structured optional failure diagnostics**
+- [x] **Step 4: Verify GREEN**
 
 ### Task 5: Production Prepared Context delivery to Ollama
 
@@ -141,10 +141,10 @@ Cover a stalled hook and a stalled binder separately.
 - When provided, the outgoing `/api/chat` request contains a bounded, read-only Prepared Context message with exact identity and resolved context.
 - When omitted, advisory chat behavior remains unchanged.
 
-- [ ] **Step 1: Add a fetch-fixture test asserting the outgoing request body contains Prepared Context**
-- [ ] **Step 2: Verify RED**
-- [ ] **Step 3: Serialize Prepared Context without adding authority claims**
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 1: Add a fetch-fixture test asserting the outgoing request body contains Prepared Context**
+- [x] **Step 2: Verify RED**
+- [x] **Step 3: Serialize Prepared Context without adding authority claims**
+- [x] **Step 4: Verify GREEN**
 
 ### Task 6: Canonical authorization for operational NYX reasoning
 
@@ -159,10 +159,10 @@ Cover a stalled hook and a stalled binder separately.
 - The orchestrator calls `authorizeAgentOperation` against current mission permissions/revision before Prepared Context is bound.
 - Advisory invocations still use `respond` and remain tool/context isolated.
 
-- [ ] **Step 1: Add a failing test proving authorization runs before binder/provider and rejects a permissionless NYX mission**
-- [ ] **Step 2: Verify RED**
-- [ ] **Step 3: Build a canonical operation envelope and call existing authorization before runtime activation**
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 1: Add a failing test proving authorization runs before binder/provider and rejects a permissionless NYX mission**
+- [x] **Step 2: Verify RED**
+- [x] **Step 3: Build a canonical operation envelope and call existing authorization before runtime activation**
+- [x] **Step 4: Verify GREEN**
 
 ### Task 7: Operational model observability
 
@@ -175,28 +175,44 @@ Cover a stalled hook and a stalled binder separately.
 - Model identity is taken from the canonical operational model adapter.
 - No raw model output is added to observability or mission evidence.
 
-- [ ] **Step 1: Add failing assertions for executionTrace model + latency events**
-- [ ] **Step 2: Verify RED**
-- [ ] **Step 3: Measure invocation latency and attach model identity to existing observability**
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 1: Add failing assertions for executionTrace model + latency events**
+- [x] **Step 2: Verify RED**
+- [x] **Step 3: Measure invocation latency and attach model identity to existing observability**
+- [x] **Step 4: Verify GREEN**
 
 ### Task 8: Full verification and review closure
 
 **Files:**
 - No production changes unless verification exposes a regression.
 
-- [ ] **Step 1: Run focused contracts**
+- [x] **Step 1: Run focused contracts**
 
 ```bash
 node --test tests/contract/prepared-context*.test.js tests/contract/progressive-skill-disclosure.test.js tests/contract/lifecycle-hooks.test.js tests/contract/agent-composition.test.js tests/contract/agent-runtime*.test.js tests/contract/titan-startup-model-adapter.test.js tests/contract/operational-prepared-context.test.js
 ```
 
-- [ ] **Step 2: Run full regression**
+- [x] **Step 2: Run full regression**
 
 ```bash
 pnpm test
 ```
 
-- [ ] **Step 3: Trigger a fresh Codex review on PR #2**
-- [ ] **Step 4: Inspect all review threads against the new head**
-- [ ] **Step 5: Do not merge while any valid P1 or P2 hardening finding remains open**
+- [x] **Step 3: Trigger a fresh Codex review on PR #2**
+- [x] **Step 4: Inspect all review threads against the new head**
+- [x] **Step 5: Do not merge while any valid P1 or P2 hardening finding remains open**
+
+
+---
+
+## Execution Record
+
+- Implemented on PR #2 branch `feat/adk-ergonomics-layer`.
+- Verified focused hardening contracts: **54 tests, 54 pass, 0 fail**.
+- Verified full repository regression: **548 tests, 531 pass, 0 fail, 17 skipped**.
+- Current verified implementation head before this documentation-only update: `86a79a54496e84a2571c63198f0cf2d460e3b904`.
+- Replied to and resolved all **15** original Codex review threads with current-head repair evidence.
+- A fresh `@codex review` was triggered after green CI. GitHub's Codex bot could not execute a new review because the account's code-review usage limit was reached. Final closure therefore used direct hostile verification of the current source against all 15 original findings plus green focused/full regression evidence.
+- The Britt 4.0 was not edited.
+- Odin was not introduced into Athere Mesh.
+- The existing Athere Mesh control plane was preserved.
+- PR #2 was **not merged** as part of this execution.
