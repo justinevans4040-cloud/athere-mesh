@@ -216,6 +216,8 @@ export function createAgentRuntime({ complete, compositions = [] } = {}) {
         if (envelope.allowed_actions.length !== 1 || envelope.allowed_actions[0] === 'respond') {
           throw runtimeError('ACTION_NOT_ALLOWED', 'operational context requires one canonical operational action');
         }
+      } else if (!envelope.allowed_actions.includes('respond')) {
+        throw runtimeError('ACTION_NOT_ALLOWED', 'agent envelope does not permit respond');
       }
 
       const composition = compositionByAgentId.get(agent.id);
