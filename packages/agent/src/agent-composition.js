@@ -1,5 +1,13 @@
 import { assertControlProtocolInvariant } from '../../contracts/src/model-capability-registry.js';
 import { fleetRegistry } from '../../fleet/src/registry.js';
+import { isBrandedProgressiveSkillDisclosure } from '../../skills/src/progressive-skill-disclosure.js';
+import { isCanonicalModelAdapter } from './model-adapter.js';
+
+const CANONICAL_AGENT_COMPOSITIONS = new WeakSet();
+
+export function isCanonicalAgentComposition(value) {
+  return value != null && typeof value === 'object' && CANONICAL_AGENT_COMPOSITIONS.has(value);
+}
 
 const agentById = new Map(fleetRegistry.agents.map((agent) => [agent.id, agent]));
 
@@ -21,6 +29,9 @@ function validateModelAdapter(modelAdapter) {
     throw new TypeError('modelAdapter capabilities are required');
   }
   assertControlProtocolInvariant(modelAdapter.capabilities);
+  if (!isCanonicalModelAdapter(modelAdapter)) {
+    throw new TypeError('canonical model adapter from createModelAdapter is required');
+  }
 }
 
 function validateToolAdapters(toolAdapters) {
@@ -29,8 +40,11 @@ function validateToolAdapters(toolAdapters) {
     if (!adapter || typeof adapter !== 'object' || Array.isArray(adapter)) {
       throw new TypeError(`tool adapter ${index} must be an object`);
     }
-    if (adapter.capabilities?.mission_control === true) {
-      throw new Error(`tool adapter ${index} cannot claim mission_control`);
+    if (!adapter.capabilities || typeof adapter.capabilities !== 'object' || Array.isArray(adapter.capabilities)) {
+      throw new TypeError(`tool adapter ${index} capabilities are required`);
+    }
+    if (adapter.capabilities.mission_control !== false) {
+      throw new Error(`tool adapter ${index} capabilities.mission_control must be explicitly false`);
     }
   }
   return Object.freeze([...toolAdapters]);
@@ -70,11 +84,17 @@ export function createAgentComposition({
 
   validateModelAdapter(modelAdapter);
   const validatedTools = validateToolAdapters(toolAdapters);
-  const validatedSkills = optionalInterface(skills, 'skills', ['list', 'load']);
+  let validatedSkills;
+  if (skills !== undefined && skills !== null) {
+    if (!isBrandedProgressiveSkillDisclosure(skills)) {
+      throw new TypeError('skills must be a branded progressive skill disclosure');
+    }
+    validatedSkills = optionalInterface(skills, 'skills', ['list', 'load']);
+  }
   const validatedHooks = optionalInterface(hooks, 'hooks', ['run']);
-  const validatedPreparedContext = optionalInterface(preparedContext, 'preparedContext', ['bind']);
+  const validatedPreparedContext = optionalInterface(preparedContext, 'preparedContext', ['bind', 'revalidate']);
 
-  return Object.freeze({
+  const composition = Object.freeze({
     agent,
     capabilityId: requestedCapability,
     modelAdapter,
@@ -83,4 +103,6 @@ export function createAgentComposition({
     ...(validatedHooks === undefined ? {} : { hooks: validatedHooks }),
     ...(validatedPreparedContext === undefined ? {} : { preparedContext: validatedPreparedContext }),
   });
+  CANONICAL_AGENT_COMPOSITIONS.add(composition);
+  return composition;
 }
