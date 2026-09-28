@@ -36,6 +36,13 @@ test('Command Deck polls live mission state and turns trace events into visible 
   assert.match(js, /renderProofStages/);
 });
 
+test('renderProof binds the mission before rendering QR18 proof stages', async () => {
+  const js = await source('apps/command-deck/deck.js');
+  const renderProof = js.match(/function renderProof\(result\) \{([\s\S]*?)\n\}/)?.[1] || '';
+  assert.match(renderProof, /const mission = result\?\.mission \|\| \{\};/);
+  assert.match(renderProof, /renderProofStages\(mission\)/);
+});
+
 test('Command Deck motion is event-driven and visibly styled', async () => {
   const css = await source('apps/command-deck/deck.css');
   for (const selector of [
