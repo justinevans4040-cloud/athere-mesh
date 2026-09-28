@@ -6,6 +6,11 @@ const state = {
   health: null,
   team: null,
   lastResult: null,
+  currentMission: null,
+  currentMissionId: null,
+  missionStartedAt: null,
+  activeAgentId: null,
+  seenTraceKeys: new Set(),
   busy: false,
 };
 
@@ -39,6 +44,15 @@ const el = {
   resultDump: document.getElementById('resultDump'),
   toast: document.getElementById('toast'),
   refreshBtn: document.getElementById('refreshBtn'),
+  missionStrip: document.getElementById('missionStrip'),
+  missionState: document.getElementById('missionState'),
+  missionElapsed: document.getElementById('missionElapsed'),
+  activeAgent: document.getElementById('activeAgent'),
+  lastEvent: document.getElementById('lastEvent'),
+  meshMap: document.getElementById('meshMap'),
+  signalLayer: document.getElementById('signalLayer'),
+  meshActivity: document.getElementById('meshActivity'),
+  proofStages: document.getElementById('proofStages'),
 };
 
 function showToast(message, isError = false) {
@@ -99,6 +113,199 @@ function renderHealth() {
   el.statBlocked.textContent = String(state.health?.recovery?.blocked ?? '—');
 }
 
+function currentMissionId(currentJob) {
+  if (!currentJob) return null;
+  if (typeof currentJob === 'string') return currentJob;
+  return currentJob.missionId || currentJob.id || currentJob.currentMissionId || currentJob.mission?.id || null;
+}
+
+function eventActor(event = {}) {
+  return String(event.agentId || event.agent || event.actor || event.executorId || event.role || event.model || event.tool || 'titan');
+}
+
+function eventLabel(event = {}) {
+  return String(event.detail || event.message || event.kind || event.type || event.action || event.status || 'mission event');
+}
+
+function eventTime(event = {}) {
+  return event.at || event.timestamp || event.createdAt || event.updatedAt || null;
+}
+
+function eventKey(event = {}, index = 0) {
+  return String(event.id || event.traceId || event.eventId || `${event.kind || event.type || 'event'}:${eventTime(event) || index}:${eventActor(event)}:${eventLabel(event)}`);
+}
+
+function normalized(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function mapNode(value) {
+  const v = normalized(value);
+  if (v.includes('proof') || v.includes('audit')) return 'proof';
+  if (v.includes('qra') || v.includes('sentinel') || v.includes('verify')) return 'qra';
+  if (v.includes('lenovo')) return 'lenovo';
+  if (v.includes('s24') || v.includes('operator') || v.includes('founder')) return 'operator';
+  if (v.includes('ichabod') || v.includes('host')) return 'ichabod';
+  if (v.includes('titan') || v.includes('orchestrator') || v.includes('mission')) return 'titan';
+  return 'agent';
+}
+
+function markAgentActive(actor) {
+  state.activeAgentId = actor || 'titan';
+  el.activeAgent.textContent = state.activeAgentId;
+  document.querySelectorAll('.agent-card.active-now').forEach((card) => card.classList.remove('active-now'));
+  const key = normalized(actor);
+  const card = [...document.querySelectorAll('.agent-card')].find((item) => {
+    return [item.dataset.agentId, item.dataset.agentName, item.dataset.executor].some((value) => normalized(value) === key);
+  });
+  if (card) {
+    card.classList.add('active-now');
+    clearTimeout(card._activityTimer);
+    card._activityTimer = setTimeout(() => card.classList.remove('active-now'), 2200);
+  }
+}
+
+function fireSignalPing(from, to, label = 'signal') {
+  if (!el.meshMap || !el.signalLayer) return;
+  const start = el.meshMap.querySelector(`[data-node="${from}"]`);
+  const end = el.meshMap.querySelector(`[data-node="${to}"]`);
+  if (!start || !end) return;
+  const mapRect = el.meshMap.getBoundingClientRect();
+  const a = start.getBoundingClientRect();
+  const b = end.getBoundingClientRect();
+  const x1 = a.left + a.width / 2 - mapRect.left;
+  const y1 = a.top + a.height / 2 - mapRect.top;
+  const x2 = b.left + b.width / 2 - mapRect.left;
+  const y2 = b.top + b.height / 2 - mapRect.top;
+  const ping = document.createElement('span');
+  ping.className = 'signal-ping';
+  ping.style.left = `${x1}px`;
+  ping.style.top = `${y1}px`;
+  ping.style.setProperty('--dx', `${x2 - x1}px`);
+  ping.style.setProperty('--dy', `${y2 - y1}px`);
+  ping.title = label;
+  el.signalLayer.appendChild(ping);
+  start.classList.add('firing');
+  end.classList.add('receiving');
+  setTimeout(() => {
+    ping.remove();
+    start.classList.remove('firing');
+    end.classList.remove('receiving');
+  }, 1050);
+}
+
+function proofLevels(mission = {}) {
+  const candidates = [
+    mission.qr18?.levels,
+    mission.proofVerification?.levels,
+    mission.verification?.levels,
+    mission.proof?.levels,
+  ].find(Array.isArray);
+  return candidates || [];
+}
+
+function renderProofStages(mission = {}) {
+  const levels = proofLevels(mission);
+  const completed = mission.status === 'completed' || mission.status === 'completedWork';
+  el.proofStages?.querySelectorAll('.proof-stage').forEach((stage) => {
+    const record = levels.find((level) => level.id === stage.dataset.proofStage);
+    const verified = record?.verified === true || (completed && stage.dataset.proofStage === 'mission' && Boolean(mission.proof || mission.proofPath));
+    stage.classList.toggle('verified', verified);
+    stage.classList.toggle('checking', !verified && ['running', 'in_progress', 'active'].includes(String(mission.status)));
+  });
+}
+
+function liveEvents(mission = {}) {
+  const trace = Array.isArray(mission.executionTrace) ? mission.executionTrace : [];
+  const signals = Array.isArray(mission.signals) ? mission.signals : [];
+  return [...trace, ...signals];
+}
+
+function renderLiveMission(mission) {
+  if (!mission) {
+    el.missionState.textContent = 'IDLE';
+    el.missionElapsed.textContent = '00:00';
+    el.activeAgent.textContent = '—';
+    el.lastEvent.textContent = 'Waiting for mission trace';
+    return;
+  }
+  const status = String(mission.status || 'active').toUpperCase();
+  el.missionState.textContent = status;
+  el.missionStrip.dataset.state = String(mission.status || 'active');
+  const started = Date.parse(mission.createdAt || mission.startedAt || '') || state.missionStartedAt || Date.now();
+  state.missionStartedAt = started;
+  const seconds = Math.max(0, Math.floor((Date.now() - started) / 1000));
+  el.missionElapsed.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  const events = liveEvents(mission);
+  const latest = events.at(-1);
+  if (latest) {
+    const actor = eventActor(latest);
+    el.lastEvent.textContent = eventLabel(latest);
+    markAgentActive(actor);
+  }
+}
+
+function renderLiveRiver(mission) {
+  const events = liveEvents(mission);
+  if (!events.length) return;
+  const signals = events.slice(-24).map((event) => ({
+    type: event.kind || event.type || event.status || 'trace',
+    detail: eventLabel(event),
+    agent: eventActor(event),
+    at: eventTime(event),
+    proof: event.proof,
+  }));
+  renderRiver({ mission: { ...mission, signals } });
+}
+
+function processNewEvents(mission) {
+  const events = liveEvents(mission);
+  events.forEach((event, index) => {
+    const key = eventKey(event, index);
+    if (state.seenTraceKeys.has(key)) return;
+    state.seenTraceKeys.add(key);
+    const actor = eventActor(event);
+    const label = eventLabel(event);
+    const source = mapNode(event.from || event.source || (actor === 'titan' ? 'ichabod' : 'titan'));
+    let target = mapNode(event.to || event.destination || actor);
+    if (/proof|verify|audit|cert/i.test(`${event.kind || ''} ${event.type || ''} ${label}`)) target = target === 'proof' ? 'proof' : 'qra';
+    if (/completed|done|certified/i.test(`${event.status || ''} ${event.type || ''} ${label}`)) target = 'proof';
+    fireSignalPing(source, target, label);
+    markAgentActive(actor);
+    el.meshActivity.textContent = `${actor} · ${label}`.slice(0, 80);
+  });
+}
+
+async function pollLiveMission() {
+  if (!state.token) return;
+  try {
+    const health = await api('/health');
+    state.health = health;
+    setLink(true);
+    renderHealth();
+    const missionId = currentMissionId(health.currentJob);
+    if (!missionId) {
+      renderLiveMission(state.currentMission);
+      return;
+    }
+    const mission = await api(`/api/missions/${encodeURIComponent(missionId)}`);
+    if (state.currentMissionId !== missionId) {
+      state.currentMissionId = missionId;
+      state.seenTraceKeys = new Set();
+      state.missionStartedAt = Date.parse(mission.createdAt || mission.startedAt || '') || Date.now();
+    }
+    state.currentMission = mission;
+    renderLiveMission(mission);
+    renderProof({ mission });
+    renderProofStages(mission);
+    renderLiveRiver(mission);
+    processNewEvents(mission);
+  } catch (error) {
+    setLink(false);
+    el.meshActivity.textContent = `live poll · ${error.message || 'failed'}`;
+  }
+}
+
 function signalList(result) {
   const mission = result?.mission;
   if (Array.isArray(result?.signals) && result.signals.length) return result.signals;
@@ -146,6 +353,7 @@ function extractProof(result) {
 
 function renderProof(result) {
   if (!result) return;
+  const mission = result?.mission || {};
   const proof = extractProof(result);
   el.missionIdLabel.textContent = proof.id || 'no mission';
   el.statMission.textContent = proof.id ? String(proof.id).slice(0, 18) : 'idle';
@@ -160,6 +368,7 @@ function renderProof(result) {
   el.proofBody.textContent = certified
     ? 'Auditor-certified completion with durable proof. This is what you show — not a chat claim.'
     : 'Mission returned. Inspect the river and raw payload for what the mesh actually did.';
+  renderProofStages(mission);
   el.resultDump.textContent = JSON.stringify(result, null, 2);
   renderRiver(result);
 }
@@ -174,7 +383,8 @@ function renderTeam() {
   const online = agents.filter((a) => a.operational);
   el.fleetCount.textContent = `${online.length} online / ${agents.length} registered`;
   el.agentGrid.innerHTML = agents.map((a) => `
-    <article class="agent-card ${a.operational ? 'on' : 'off'}">
+    <article class="agent-card ${a.operational ? 'on' : 'off'} ${normalized(state.activeAgentId) === normalized(a.id) ? 'active-now' : ''}"
+      data-agent-id="${escapeHtml(a.id)}" data-agent-name="${escapeHtml(a.name || '')}" data-executor="${escapeHtml(a.executorId || '')}">
       <h3 class="name">${escapeHtml(a.name || a.id)}</h3>
       <p class="role">${escapeHtml(a.role || '')}</p>
       <div class="foot">
@@ -233,6 +443,8 @@ async function runMission() {
   }
   if (state.busy) return;
   state.busy = true;
+  fireSignalPing('operator', 'titan', text);
+  el.meshActivity.textContent = 'operator → Titan · command admitted';
   el.runBtn.disabled = true;
   el.runHint.textContent = 'Running…';
   el.statComs.textContent = 'RUN';
@@ -289,12 +501,15 @@ async function main() {
   try {
     await bootstrap();
     await refresh();
+    await pollLiveMission();
     showToast(`Deck live on ${state.hostLabel}`);
   } catch (error) {
     setLink(false);
     showToast(error.message || 'Bootstrap failed', true);
   }
   setInterval(() => { void refresh(); }, 12_000);
+  setInterval(() => { void pollLiveMission(); }, 1000);
+  setInterval(() => { if (state.currentMission) renderLiveMission(state.currentMission); }, 1000);
 }
 
 void main();
