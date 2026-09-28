@@ -44,11 +44,44 @@
       </div>
     </header>
 
+    <section class="mission-strip" id="missionStrip" aria-live="polite">
+      <div class="mission-beacon"><i></i><span>LIVE MISSION</span></div>
+      <div class="mission-cell"><span>STATE</span><strong id="missionState">IDLE</strong></div>
+      <div class="mission-cell"><span>ELAPSED</span><strong id="missionElapsed">00:00</strong></div>
+      <div class="mission-cell"><span>ACTIVE</span><strong id="activeAgent">—</strong></div>
+      <div class="mission-cell mission-event"><span>LAST EVENT</span><strong id="lastEvent">Waiting for mission trace</strong></div>
+    </section>
+
     <section class="view view-active" data-view-panel="command">
       <div class="hero">
         <p class="brand-line">There is a <em>there</em>. It’s called <strong>Athere</strong>.</p>
         <h1>Run the mesh.<br /><span class="outline">Watch it prove.</span></h1>
         <p class="lede">Plain language in. Live A→B on this machine. COMS DONE only with proof.</p>
+      </div>
+
+      <div class="panel mesh-panel">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow">LIVE FABRIC</span>
+            <h2>Signal topology</h2>
+          </div>
+          <span class="mono" id="meshActivity">trace-linked · idle</span>
+        </div>
+        <div class="mesh-map" id="meshMap">
+          <svg class="mesh-links" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M90 180 H245 M300 180 H445 M555 180 H700 M755 180 H910" />
+            <path d="M500 120 V55 M500 240 V305" />
+          </svg>
+          <div class="mesh-node operator" data-node="operator"><b>S24</b><span>OPERATOR</span></div>
+          <div class="mesh-node lenovo" data-node="lenovo"><b>LENOVO</b><span>GAME / CONTROL</span></div>
+          <div class="mesh-node titan" data-node="titan"><b>TITAN</b><span>MISSION CORE</span></div>
+          <div class="mesh-node agent" data-node="agent"><b>AGENT CORE</b><span>EXECUTION</span></div>
+          <div class="mesh-node proof" data-node="proof"><b>PROOF VAULT</b><span>EVIDENCE</span></div>
+          <div class="mesh-node ichabod" data-node="ichabod"><b>ICHABOD</b><span>COMPUTE HOST</span></div>
+          <div class="mesh-node qra" data-node="qra"><b>QRA SENTINEL</b><span>VERIFY</span></div>
+          <div class="signal-layer" id="signalLayer" aria-hidden="true"></div>
+        </div>
+        <p class="mesh-caption">Motion is emitted only when Titan returns new mission trace or signal events. It is an execution visualization, not simulated network traffic.</p>
       </div>
 
       <div class="command-grid">
@@ -136,6 +169,16 @@
         <span class="eyebrow">PROOF</span>
         <h2 id="proofTitle">No proof yet</h2>
         <p id="proofBody">Run a mission. When the auditor certifies, SHA and path land here — not chat “done.”</p>
+
+        <div class="proof-stages" id="proofStages">
+          <div class="proof-stage" data-proof-stage="action"><i>1</i><span>Action</span></div>
+          <div class="proof-stage" data-proof-stage="artifact"><i>2</i><span>Artifact</span></div>
+          <div class="proof-stage" data-proof-stage="state-transition"><i>3</i><span>State</span></div>
+          <div class="proof-stage" data-proof-stage="subgoal"><i>4</i><span>Subgoal</span></div>
+          <div class="proof-stage" data-proof-stage="workflow"><i>5</i><span>Workflow</span></div>
+          <div class="proof-stage" data-proof-stage="mission"><i>6</i><span>Mission</span></div>
+        </div>
+
         <div class="proof-meta">
           <div><span>SHA-256</span><code id="proofSha">—</code></div>
           <div><span>Path</span><code id="proofPath">—</code></div>
